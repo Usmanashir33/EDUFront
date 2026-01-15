@@ -1,0 +1,7 @@
+{
+  "name": "EduPortal",
+  "description": "A modern, professional school management platform for directors, teachers, and students.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
