@@ -19,7 +19,7 @@ const schools: School[] = [
   },
   {
     id: '2',
-    name: 'Ainul-Ma,arif Islamic Academy',
+    name: 'Ainul-Ma,arif Islamic Ac',
     address: '456 River Rd, Westside',
     studentCount: 850,
     image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'

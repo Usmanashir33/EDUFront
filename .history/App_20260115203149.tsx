@@ -12,14 +12,14 @@ import { Dashboard } from './views/DirectorDashboard';
 const schools: School[] = [
   {
     id: '1',
-    name: 'AUA Technologu Ltd',
+    name: 'AUA Technolo',
     address: '123 Education Lane, Knowledge City',
     studentCount: 1250,
     image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
   },
   {
     id: '2',
-    name: 'Ainul-Ma,arif Islamic Academy',
+    name: 'Riverside International School',
     address: '456 River Rd, Westside',
     studentCount: 850,
     image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
