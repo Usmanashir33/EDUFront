@@ -1,7 +1,7 @@
 
 
 
-export type UserRole = 'director' | 'teacher' | 'staff' | 'student';
+export type UserRole = 'director' | 'teacher' | 'staff' | 'student' | "parent";
 
 export interface School {
   id: string;
@@ -21,9 +21,9 @@ export interface Director {
 }
 
 export interface SessionData {
-  role: UserRole;
-  userId: string;
-  schoolId?: string;
+  role: string;
+  user: any;
+  school?: any;
   timestamp: number;
 }
 

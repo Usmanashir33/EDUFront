@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState ,useContext } from 'react';
 import { Input, Button, FadeIn } from '../components/UI';
 import { ViewState } from '../types';
+import { uiContext } from '@/customContexts/UiContext';
+import useRequest from '@/customHooks/RequestHook';
 
 interface ForgotPasswordProps {
   onNavigate: (view: ViewState) => void;
@@ -10,31 +12,37 @@ type Step = 'EMAIL' | 'OTP' | 'NEW_PASSWORD' | 'SUCCESS';
 
 export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) => {
   const [step, setStep] = useState<Step>('EMAIL');
-  const [loading, setLoading] = useState(false);
+  const {setToast,isLoading,setIsLoading,pageLoading,} = useContext(uiContext);
   const [email, setEmail] = useState('');
-  
-  // OTP State
+  const {sendAuthRequest} = useRequest();
   const [otp, setOtp] = useState(['', '', '', '', '']); // 5 digit OTP
   
   // Password State
   const [passwords, setPasswords] = useState({ new: '', confirm: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // function to grab data from the server 
+  const TriggeredFunc = (data: any) => { 
+    if (data.success === 'otp_sent') { 
+        setToast({message: 'OTP has been sent to your email ', type: 'success'});
+        setStep('OTP');
+    } else if (data?.success?.toLowerCase().replace(/\s+/g, '') === 'passwordchanged') {
+        setToast({message: 'Password updated successfully', type: 'success'});
+        setStep('SUCCESS');
+    }
+  };
   // Step 1: Handle Email Submit
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      setErrors({ email: 'Valid email is required' });
+    let formDetails:React.FC<any> = { // data to be sent to backend as the view requested 
+      username_field : email.trim(),
+    }
+    if (!formDetails.username_field) {
+      setErrors({ email: 'Email is required' });
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setStep('OTP');
-      setErrors({});
-    }, 1000);
+    sendAuthRequest('/authuser/resend-otp/',"POST",formDetails,TriggeredFunc,true,false);
   };
-
   // Step 2: Handle OTP Logic
   const handleOtpChange = (element: HTMLInputElement, index: number) => {
     if (isNaN(Number(element.value))) return;
@@ -52,10 +60,11 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
       alert("Please enter full code");
       return;
     }
-    setLoading(true);
+    setIsLoading(true);
+    // Simulate OTP verification
     setTimeout(() => {
-      setLoading(false);
       setStep('NEW_PASSWORD');
+      setIsLoading(false);
     }, 1000);
   };
 
@@ -70,11 +79,18 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
       setErrors({ confirm: 'Passwords do not match' });
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setStep('SUCCESS');
-    }, 1000);
+    let formDetails:React.FC<any> = { // data to be sent to backend as the view requested 
+      username_field : email.trim(),
+      code1 : passwords.new,
+      code2 : passwords.confirm,
+      verificationCode : otp.join(''),
+      operation_mode : 'reset',
+    }
+    if (!formDetails.username_field) {
+      setErrors({ email: 'Email is required' });
+      return;
+    }
+    sendAuthRequest('/authuser/password-change/',"POST",formDetails,TriggeredFunc,true,false);
   };
 
   const renderStep = () => {
@@ -91,14 +107,14 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
             </div>
             <Input
               name="email"
-              label="Registered Email"
-              type="email"
+              label="Registered Email / Username / ID"
+              type="text"
               iconClass="fa-regular fa-envelope"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setErrors({}); }}
               error={errors.email}
             />
-            <Button type="submit" isLoading={loading}>Send Recovery Code</Button>
+            <Button type="submit" isLoading={isLoading}>Send Recovery Code</Button>
             <button type="button" onClick={() => onNavigate(ViewState.LOGIN)} className="w-full text-sm text-navy-600 hover:text-navy-800 font-medium mt-4">
               Back to Login
             </button>
@@ -125,7 +141,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
                   />
                 ))}
              </div>
-             <Button type="submit" isLoading={loading} disabled={otp.some(d => d === '')}>Verify Code</Button>
+             <Button type="submit" isLoading={isLoading} disabled={otp.some(d => d === '')}>Verify Code</Button>
              <button type="button" onClick={() => setStep('EMAIL')} className="w-full text-sm text-navy-600 mt-4">Change Email</button>
           </form>
         );
@@ -133,6 +149,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
       case 'NEW_PASSWORD':
         return (
           <form onSubmit={handlePasswordSubmit} className="space-y-6">
+              <span className="text-sm text-navy-600 hover:text-navy-800 font-medium cursor-pointer" onClick={() => setStep('OTP')}>Back</span>
              <div className="text-center mb-6">
                <h2 className="text-xl font-bold text-navy-900">Reset Password</h2>
                <p className="text-sm text-gray-600">Create a strong new password for your account.</p>
@@ -144,7 +161,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
                iconClass="fa-solid fa-lock"
                value={passwords.new}
                onChange={e => { setPasswords({...passwords, new: e.target.value}); setErrors({}); }}
-               error={errors.new}
+               error={errors.new} 
              />
              <Input
                name="confirm"
@@ -155,7 +172,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
                onChange={e => { setPasswords({...passwords, confirm: e.target.value}); setErrors({}); }}
                error={errors.confirm}
              />
-             <Button type="submit" isLoading={loading}>Update Password</Button>
+             <Button type="submit" isLoading={isLoading}>Update Password</Button>
           </form>
         );
       

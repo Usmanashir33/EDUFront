@@ -4,7 +4,7 @@ import { SchoolSection, ClassRoom, Subject, Student, Teacher, ActivityLog, Subje
 import { Button, Input, Modal, MultiSelectGrid, PinModal, Toast, MultiSelectDropdown } from '../components/UI';
 
 interface AcademicManagerProps {
-    sections: SchoolSection[];
+    sections: SchoolSection[]; 
     classRooms: ClassRoom[];
     subjects: Subject[];
     students: Student[];
@@ -1012,7 +1012,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
                          <p className="text-sm text-gray-500 flex items-center gap-3 mt-1"><span><i className="fa-solid fa-calendar mr-1"></i> {currentSession}</span><span><i className="fa-solid fa-flag mr-1"></i> {currentTerm}</span></p>
                     </div>
                 </div>
-                {viewMode === 'LIST' && (
+                {viewMode === 'LIST' && ( 
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="flex p-1 bg-gray-100 rounded-lg w-full md:w-auto">
                             {[ { id: 'SECTIONS', label: 'Sections', count: sections.length }, { id: 'CLASSROOMS', label: 'Classes', count: classRooms.length }, { id: 'SUBJECTS', label: 'Subjects', count: subjects.length } ].map(tab => (

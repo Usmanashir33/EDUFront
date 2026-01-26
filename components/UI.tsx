@@ -1,6 +1,54 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 
+
+// --- STUNNING LOADING ICON (Small) ---
+export const Spinner: React.FC<{ size?: 'sm' | 'md' | 'lg', className?: string }> = ({ size = 'sm', className = '' }) => {
+  const sizeClass = size === 'md' ? 'w-6 h-6' : size === 'lg' ? 'w-8 h-8' : 'w-4 h-4';
+  const borderClass = size === 'md' ? 'border-2' : size === 'lg' ? 'border-[3px]' : 'border-[1.5px]';
+  
+  return (
+    <div className={`relative flex items-center justify-center ${sizeClass} ${className}`}>
+        <div className={`absolute inset-0 rounded-full border-navy-200 border-t-navy-900 ${borderClass} animate-spin`}></div>
+        <div className={`absolute inset-0 rounded-full border-transparent border-b-gold-500 ${borderClass} animate-spin-reverse opacity-70`}></div>
+    </div>
+  );
+};
+
+// --- STUNNING FULL PAGE LOADER ---
+export const PageLoader: React.FC = () => {
+  return (
+    <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-fadeIn">
+      <div className="relative w-24 h-24 flex items-center justify-center mb-8">
+        {/* Outer Navy Ring */}
+        <div className="absolute inset-0 rounded-full border-4 border-navy-100 border-t-navy-900 animate-spin-slow"></div>
+        {/* Inner Gold Ring */}
+        <div className="absolute inset-2 rounded-full border-4 border-white border-b-gold-500 animate-spin-reverse shadow-sm"></div>
+        
+        {/* Central Floating Icon */}
+        <div className="relative z-10 text-navy-900 text-3xl animate-float">
+           <div className="bg-white rounded-full p-2 shadow-sm">
+             <i className="fa-solid fa-graduation-cap"></i>
+           </div>
+        </div>
+        
+        {/* Pulse Effect */}
+        <div className="absolute inset-0 rounded-full bg-gold-400/20 animate-ping opacity-20"></div>
+      </div>
+      
+      <div className="text-center space-y-2">
+        <h3 className="text-xl font-black text-navy-900 tracking-widest uppercase">SchoolManger</h3>
+        <div className="flex items-center justify-center gap-1">
+           <span className="w-1.5 h-1.5 bg-gold-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+           <span className="w-1.5 h-1.5 bg-gold-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+           <span className="w-1.5 h-1.5 bg-gold-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+        </div>
+        <p className="text-[10px] font-bold text-navy-400 uppercase tracking-wider">Loading Resources...</p>
+      </div>
+    </div>
+  );
+};
+// --- INPUT COMPONENT WITH ICON & PASSWORD TOGGLE ---
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   iconClass: string;
@@ -343,7 +391,8 @@ export const Toggle: React.FC<ToggleProps> = ({ label, checked, onChange, descri
   </div>
 );
 
-// --- TOAST NOTIFICATION ---
+
+// --- PROFESSIONAL TOAST NOTIFICATION ---
 interface ToastProps {
   message: string;
   type: 'success' | 'error' | 'info';
@@ -352,32 +401,64 @@ interface ToastProps {
 
 export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   useEffect(() => {
-    const timer = setTimeout(onClose, 2000); // Updated to 2000ms
+    const timer = setTimeout(onClose, 3000); // Increased duration slightly
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const colors = {
-    success: 'bg-green-600',
-    error: 'bg-red-600',
-    info: 'bg-navy-900'
+  const styles = {
+    success: {
+      bg: 'bg-white',
+      border: 'border-l-4 border-green-500',
+      icon: 'fa-circle-check',
+      iconColor: 'text-green-500',
+      progress: 'bg-green-500'
+    },
+    error: {
+      bg: 'bg-white',
+      border: 'border-l-4 border-red-500',
+      icon: 'fa-circle-xmark',
+      iconColor: 'text-red-500',
+      progress: 'bg-red-500'
+    },
+    info: {
+      bg: 'bg-navy-900',
+      border: 'border-l-4 border-gold-500',
+      icon: 'fa-circle-info',
+      iconColor: 'text-gold-500',
+      progress: 'bg-gold-500',
+      textColor: 'text-white' // Special case for info
+    }
   };
 
-  const icons = {
-    success: 'fa-check-circle',
-    error: 'fa-triangle-exclamation',
-    info: 'fa-circle-info'
-  };
+  const currentStyle = styles[type];
+  const isInfo = type === 'info';
 
   return (
-    <div className={`fixed top-6 right-6 z-[110] ${colors[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-4 animate-fadeIn max-w-sm`}>
-      <i className={`fa-solid ${icons[type]} text-xl`}></i>
-      <p className="font-medium text-sm">{message}</p>
-      <button onClick={onClose} className="ml-auto hover:text-gray-200">
-        <i className="fa-solid fa-xmark"></i>
-      </button>
+    <div className={`fixed top-6 right-6 z-[9999] flex flex-col w-full max-w-sm overflow-hidden rounded-lg shadow-2xl animate-slideInRight ${currentStyle.bg} ${currentStyle.border}`}>
+      <div className="flex items-center p-4 gap-4">
+        <div className="shrink-0">
+           <i className={`fa-solid ${currentStyle.icon} text-2xl ${currentStyle.iconColor}`}></i>
+        </div>
+        <div className="flex-1 min-w-0">
+           <p className={`text-sm font-bold ${isInfo ? 'text-white' : 'text-gray-900'}`}>
+             {type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Information'}
+           </p>
+           <p className={`text-sm ${isInfo ? 'text-gray-300' : 'text-gray-600'} truncate`}>
+             {message}
+           </p>
+        </div>
+        <button onClick={onClose} className={`ml-auto ${isInfo ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>
+          <i className="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      {/* Progress Bar */}
+      <div className="w-full h-1 bg-gray-200/20">
+         <div className={`h-full ${currentStyle.progress} animate-progress`}></div>
+      </div>
     </div>
   );
 };
+
 
 interface ModalProps {
   isOpen: boolean;

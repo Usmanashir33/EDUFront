@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { School, ViewState } from '../types';
 import { FadeIn, Button } from '../components/UI';
+import urls from '@/customHooks/ServerUrls';
 
 interface SchoolSelectionProps {
     onNavigate: (view: ViewState) => void;
@@ -11,7 +12,7 @@ interface SchoolSelectionProps {
 export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, onSelectSchool, schools }) => {
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    const handleEnter = () => {
+    const handleEnter = () => { 
         if (selectedId) {
             onSelectSchool(selectedId);
         }
@@ -41,11 +42,12 @@ export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, on
                                 ? 'border-navy-900 shadow-xl ring-2 ring-navy-900/10' 
                                 : 'border-transparent bg-gray-50 hover:bg-white hover:shadow-lg hover:border-gray-200'
                             }`}
-                            style={{ animationDelay: `${idx * 100}ms` }}
+                            style={{ animationDelay: `${idx * 100} ms` }}
                         >
                             <div className="aspect-[16/9] relative overflow-hidden bg-gray-200">
                                 <img 
-                                    src={school.image} 
+                                    // src={school?.logo} 
+                                    src={urls.BASE_URL + school?.logo} 
                                     alt={school.name} 
                                     className={`w-full h-full object-cover transition-transform duration-700 ${selectedId === school.id ? 'scale-105 saturate-100' : 'grayscale group-hover:grayscale-0 group-hover:scale-105'}`}
                                 />
@@ -67,7 +69,7 @@ export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, on
                                 <div className="pt-3 border-t border-gray-200 flex items-center justify-between text-xs font-medium text-gray-500">
                                     <span className="flex items-center">
                                         <i className="fa-solid fa-users mr-2"></i>
-                                        {school.studentCount.toLocaleString()} Students
+                                        {'unknown'} Students
                                     </span>
                                     <span className="px-2 py-1 bg-gray-200 rounded text-gray-600">Active</span>
                                 </div>
@@ -77,13 +79,13 @@ export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, on
                 </div>
 
                 <div className="flex justify-end gap-4 pt-6 border-t border-gray-100">
-                    <Button 
+                    {/* <Button 
                         variant="outline"
                         onClick={() => onNavigate(ViewState.LOGIN)}
                         className="w-auto px-6"
                     >
                         Switch Account
-                    </Button>
+                    </Button> */}
                     <Button
                         variant={selectedId ? 'primary' : 'outline'}
                         disabled={!selectedId}

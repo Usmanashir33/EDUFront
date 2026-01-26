@@ -1,20 +1,33 @@
 
-import React, { useState } from 'react';
-import { Input, Button, FadeIn } from '../components/UI';
+import React, { useState,useEffect } from 'react';
+import { Input, Button, FadeIn ,PageLoader } from '../components/UI';
 import { ViewState } from '../types';
+import useRequest from '@/customHooks/RequestHook';
+import { uiContext } from '@/customContexts/UiContext';
 
 interface LoginFormProps {
   onNavigate: (view: ViewState) => void;
-  onLogin: (mode: 'director' | 'academic', id: string) => void;
+  onLogin: (mode: 'director' | 'academic', response:any) => void;
+}
+interface formDataType {
+    username_field: string;
+    password: string;
+    otp: string | null ;
 }
 
 type LoginMode = 'director' | 'academic';
 type LoginStep = 'CREDENTIALS' | 'OTP';
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => {
-  const [step, setStep] = useState<LoginStep>('CREDENTIALS');
-  const [loading, setLoading] = useState(false);
+
+const [step, setStep] = useState<LoginStep>('CREDENTIALS');
   const [loginMode, setLoginMode] = useState<LoginMode>('director');
+  const {sendAuthRequest} = useRequest();
+  const [url,setUrl] = useState<string>("/authuser/loginRequest/");
+  const {setToast,isLoading,pageLoading,} = React.useContext(uiContext);
+  const [oldResent, setOldResent] = useState<number>(20); // initial 20 seconds
+  const [resent, setResent] = useState<number>(0); 
+  
   
   const [formData, setFormData] = useState({
     identifier: '', // Email or Enrollment ID
@@ -46,6 +59,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
     }
   };
 
+    useEffect(() => {
+        if (resent === 0) return setOldResent(oldResent *2); // add 30 minutes for next resend;
+        setTimeout(() => {
+            setResent(resent-1);
+        }, 1000);
+        
+    }, [resent]);
+
   const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
     if (e.key === "Backspace" && otp[index] === "" && index > 0) {
         const inputs = document.querySelectorAll('input[name="login-otp"]');
@@ -68,7 +89,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
 
     if (!formData.identifier) {
       newErrors.identifier = loginMode === 'director' 
-        ? 'Email address is required' 
+        ? 'Email address or Username is required' 
         : 'Enrollment ID is required';
       isValid = false;
     } else if (loginMode === 'director' && !/\S+@\S+\.\S+/.test(formData.identifier)) {
@@ -76,8 +97,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
       isValid = false;
     }
 
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
+    if (!formData.password || formData.password.length < 6) {
+      newErrors.password = 'Password greater than 6 characters required';
       isValid = false;
     }
 
@@ -85,32 +106,58 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
     return isValid;
   };
 
+  const TriggeredFunc = (data: any) => {
+    const loginstatus =["emailverified","loginsuccessfully"]
+    const preloginstatus =["otp_sent","incomplete_registration"]
+    // check if data is success or error and proceed accordingly
+    if (preloginstatus.includes(data.success)) {
+        if (data.success === preloginstatus[1]) { // users email is not verified on his account
+            setToast({message: 'Incomplete Registration / Unverified Email. Please complete your registration.', type: 'info'});
+        }else{
+            setToast({message: 'OTP has been sent to your email ', type: 'success'});
+        }
+        setResent(oldResent);
+        if (step === 'CREDENTIALS') {
+            setStep('OTP');
+            setUrl(data?.redirect_to);
+        }
+    }
+    else if (loginstatus.includes(data?.success?.toLowerCase().replace(/\s+/g, ''))) {
+        setToast({message: 'Login successful', type: 'success'});
+        // check user role and redirect accordingly
+        if (data?.role?.toLowerCase() === 'director') {
+            return onLogin('director',data) ;
+        }
+        onLogin(loginMode,data) ;
+    }
+    else {
+        // Handle error (for simplicity, setting a generic error)
+        setToast({ message: data.error || 'An error occurred. Please try again.', type: 'error' });
+    }
+    
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    let formDetails:React.FC<formDataType> = { // data to be sent to backend as the view requested 
+        username_field : formData.identifier,
+        password : formData.password,
+        otp : otp.join('')
+    }
     
     if (step === 'CREDENTIALS') {
         if (!validateCredentials()) return;
-
-        setLoading(true);
         // Simulate API Credential Check
-        setTimeout(() => {
-            setLoading(false);
-            // Move to OTP step (Simulate sending email)
-            setStep('OTP');
-        }, 1500);
+        sendAuthRequest(url,"POST",formDetails,TriggeredFunc,true,false);
     } else {
+
         // OTP Step
         if (otp.some(d => d === '')) {
             setErrors({ otp: 'Please enter the complete 5-digit code.' });
             return;
         }
-
-        setLoading(true);
-        // Simulate OTP Verification
-        setTimeout(() => {
-            setLoading(false);
-            onLogin(loginMode, formData.identifier); 
-        }, 1500);
+        sendAuthRequest(url,"POST",formDetails,TriggeredFunc,true,false); 
     }
   };
 
@@ -124,10 +171,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
           <p className="mt-2 text-sm text-gray-600">
             {step === 'CREDENTIALS' 
                 ? 'Secure access for our educational community.' 
-                : <span>Please enter the verification code sent to <br/><span className="font-bold text-navy-900">{formData.identifier}</span></span>}
+                : <span>Please enter the verification code sent to <span className="font-bold text-red-600">Check spam folder</span><br/><span className="font-bold text-navy-900">{formData.identifier}</span></span>}
           </p>
         </div>
-
         {step === 'CREDENTIALS' && (
             <>
                 {/* Login Type Tabs */}
@@ -173,7 +219,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
                     label="Password"
                     type="password"
                     iconClass="fa-solid fa-lock"
-                    placeholder="••••••••"
+                    placeholder=" •••••••• "
                     value={formData.password}
                     onChange={handleChange}
                     error={errors.password}
@@ -190,8 +236,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
                 </div>
 
                 <div className="pt-2">
-                    <Button type="submit" isLoading={loading} variant="primary">
-                    Verify Credentials
+                    <Button type="submit" isLoading={isLoading} variant="primary">
+                        Verify Credentials
                     </Button>
                 </div>
                 </form>
@@ -203,7 +249,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
                     onClick={() => onNavigate(ViewState.REGISTER)}
                     className="font-bold text-navy-700 hover:text-navy-900 transition-colors underline decoration-2 decoration-gold-400 hover:decoration-gold-500"
                     >
-                    Director Registration
+                        Director Registration
                     </button>
                 </p>
                 </div>
@@ -217,7 +263,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
                     <input
                         key={index}
                         name="login-otp"
-                        type="text"
+                        type="number"
+                        min="0"
+                        max="9"
                         maxLength={1}
                         className="w-12 h-14 border border-gray-300 rounded-lg text-center text-xl font-bold text-navy-900 focus:border-navy-900 focus:ring-1 focus:ring-navy-900 focus:outline-none transition-all bg-gray-50 focus:bg-white shadow-sm"
                         value={data}
@@ -230,23 +278,40 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => 
                 </div>
                 {errors.otp && <p className="text-red-600 text-xs text-center mb-4">{errors.otp}</p>}
 
-                <Button type="submit" isLoading={loading} disabled={otp.some(d => d === '')} variant="primary">
+                <Button type="submit" isLoading={isLoading} disabled={otp.some(d => d === '')} variant="primary">
                     Verify & Login
                 </Button>
 
                 <div className="mt-6 text-center space-y-3">
-                    <button
+                    {resent === 0 && <button
                         type="button"
                         className="text-sm text-navy-600 font-medium hover:text-navy-800"
-                        onClick={() => alert("New code sent!")}
+                        onClick={() => {
+                            // Resend OTP Logic
+                            let formDetails:React.FC<formDataType> = { // data to be sent to backend as the view requested 
+                                username_field : formData.identifier,
+                            }
+                            setOtp(['','','','','']);
+                            sendAuthRequest("/authuser/resend-otp/","POST",formDetails,TriggeredFunc,true,false);
+                        }}
                     >
                         Resend Code
-                    </button>
+                    </button>}
+                    {!(resent == 0) &&  <button
+                        type="button"
+                        className="text-sm text-navy-600 font-medium hover:text-navy-800"
+                    >
+                        Resend code in the next <b>{resent}</b> secs
+                    </button>}
+
                     <div className="block">
                         <button
                             type="button"
                             className="text-xs text-gray-400 hover:text-gray-600"
-                            onClick={() => { setStep('CREDENTIALS'); setOtp(['','','','','']); }}
+                            onClick={() => { 
+                                setStep('CREDENTIALS'); setOtp(['','','','','']); 
+
+                            }}
                         >
                             <i className="fa-solid fa-arrow-left mr-1"></i> Back to Credentials
                         </button>

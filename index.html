@@ -2,7 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <!-- 
+      ROBUST CONTENT SECURITY POLICY (CSP)
+      1. default-src * 'unsafe-inline' 'unsafe-eval': Allows all default resources.
+      2. script-src * ...: Explicitly allows scripts (React, Tailwind) from any URL.
+      3. connect-src * ...: Fixes the specific error you saw regarding devtools/localhost connections.
+      4. style-src * ...: Allows inline styles (used by Tailwind).
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; script-src * 'self' data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src * 'self' data: blob: 'unsafe-inline'; img-src * 'self' data: blob: 'unsafe-inline'; style-src * 'self' data: blob: 'unsafe-inline'; font-src * 'self' data: blob: 'unsafe-inline';">
+
     <title>EduPortal - School Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -30,21 +40,38 @@
               }
             },
             animation: {
-              fadeIn: 'fadeIn 0.6s ease-out forwards',
-              slideIn: 'slideIn 0.4s ease-out forwards',
+              fadeIn: 'fadeIn 0.4s ease-out forwards',
+              slideIn: 'slideIn 0.3s ease-out forwards',
+              slideInRight: 'slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+              progress: 'progress 2s linear forwards',
+              'spin-slow': 'spin 2s linear infinite',
+              'spin-reverse': 'spin 2s linear infinite reverse',
+              'float': 'float 3s ease-in-out infinite',
             },
             keyframes: {
               fadeIn: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '0%': { opacity: '0', transform: 'translateY(5px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
               },
               slideIn: {
                 '0%': { transform: 'translateX(100%)' },
                 '100%': { transform: 'translateX(0)' },
+              },
+              slideInRight: {
+                '0%': { transform: 'translateX(100%)', opacity: '0' },
+                '100%': { transform: 'translateX(0)', opacity: '1' },
+              },
+              progress: {
+                '0%': { width: '100%' },
+                '100%': { width: '0%' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-5px)' },
               }
             },
             fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
+              sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
             }
           }
         }
@@ -53,14 +80,38 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      html {
-        font-size: 14px; /* Reduced from default 16px for a more compact look */
+      /* 
+         HIGH DENSITY DASHBOARD SCALING
+         12.5px makes 1rem = 12.5px. 
+         This tightens all p-*, m-*, w-*, h-* utilities by ~22% compared to default.
+      */
+      @keyframes toast-progress {
+        from { width: 100%; }
+        to   { width: 0%; }
       }
+
+      .animate-progress {
+        animation: toast-progress 3s linear forwards;
+      }
+
+      html {
+        font-size: 13px !important; 
+        -webkit-text-size-adjust: 100%;
+        -moz-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f0f4f8; /* navy-50 */
+        line-height: 1.5;
+        letter-spacing: -0.011em; /* Tighter font tracking for modern look */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
       }
-      /* Custom scrollbar for cleaner look */
+
+      /* Clean Scrollbar */
       ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -80,8 +131,26 @@
           display: none;
       }
       .no-scrollbar {
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+      @layer base {
+        /* Chrome, Safari, Edge, Opera */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0; 
+      }
+
+}
+
+      
+      input:-webkit-autofill, select,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active{
+          -webkit-box-shadow: 0 0 0 30px white inset !important;
+          transition: background-color 5000s ease-in-out 0s;
       }
     </style>
   <script type="importmap">
