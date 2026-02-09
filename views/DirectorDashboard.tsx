@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useContext } from 'react';
 import { School, Student, Teacher, Staff, ClassRoom, SchoolSection, Subject, Director, UserRole, ActivityLog } from '../types';
 import { Button, Modal, Input, ImageUpload, Toast, ImageViewer } from '../components/UI';
 import { StudentManager } from './StudentManager';
@@ -8,6 +8,9 @@ import { TeacherManager } from './TeacherManager';
 import { SettingsManager } from './SettingsManager';
 import { FinanceManager } from './FinanceManager';
 import { StaffManager } from './StaffManager';
+import { uiContext } from '@/customContexts/UiContext';
+import { authContext } from '@/customContexts/AuthContext';
+import urls from '@/customHooks/ServerUrls';
 
 interface DashboardProps {
   school: School;
@@ -17,7 +20,8 @@ interface DashboardProps {
 
 type Module = 'OVERVIEW' | 'STUDENTS' | 'TEACHERS' | 'STAFF' | 'ACADEMICS' | 'FINANCE' | 'SETTINGS' | 'PROFILE' | 'MY_CLASSES' | 'MY_SUBJECTS';
 
-export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout }) => {
+export const Dashboard: React.FC<DashboardProps> = ({userRole, onLogout }) => {
+    const {selectedSchool:school} = useContext(uiContext)
   const [activeModule, setActiveModule] = useState<Module>('OVERVIEW');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
@@ -25,25 +29,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
   const [targetStudentId, setTargetStudentId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const {selectedSchool} = useContext(uiContext) 
+  const {currentUser,currentUserFullname} = useContext(authContext) 
 
   // --- DATA INITIALIZATION ---
-  // Using Mock Data directly inside Dashboard to simulate "DB" state across modules
-  const [sections, setSections] = useState<SchoolSection[]>([{ id: 'sec1', name: 'Junior Secondary' }, { id: 'sec2', name: 'Senior Secondary' }]);
-  const [classRooms, setClassRooms] = useState<ClassRoom[]>([{ id: 'c1', name: 'JSS 1 A', sectionId: 'sec1' }, { id: 'c2', name: 'JSS 1 B', sectionId: 'sec1' }, { id: 'c3', name: 'SSS 1 Science', sectionId: 'sec2' }]);
-  const [subjects, setSubjects] = useState<Subject[]>([{ id: 'sub1', name: 'General Math', code: 'MTH101', classRoomIds: ['c1', 'c2'], teacherIds: ['t1'] }, { id: 'sub2', name: 'Physics', code: 'PHY101', classRoomIds: ['c3'], teacherIds: [] }, { id: 'sub3', name: 'English Lang', code: 'ENG101', classRoomIds: ['c1', 'c2', 'c3'], teacherIds: ['t1'] }]);
+    const {
+        students,setStudents, // students data
+        teachers, setTeachers ,// teachers data
+        staff, setStaff, // staff data
+        sections, setSections, // sections data
+        classRooms, setClassRooms, // classRooms data
+        subjects, setSubjects, // subjects data
+    } = useContext(uiContext)
+
   
-  const [students, setStudents] = useState<Student[]>([
-    { id: '1', firstName: 'Emily', lastName: 'Clarke', middleName: 'Rose', email: 'emily@edu.com', gender: 'Female', status: 'Active', admissionNumber: 'ADM-001', joinedAt: '2024-01-15T10:00:00Z', classRoomIds: ['c1'], picture: '', nin: '', guardian: { fullName: 'Mrs. Sarah Clarke', relationship: 'Mother', phone: '08012345678', email: 'sarah.c@gmail.com', address: '42 Pine Avenue, Springfield', altPhone: '08099991111' }, academicHistory: [] },
-    { id: '2', firstName: 'Michael', lastName: 'Ojo', middleName: 'D', email: 'mike@edu.com', gender: 'Male', status: 'Active', admissionNumber: 'ADM-002', joinedAt: '2024-01-20T10:00:00Z', classRoomIds: ['c3'], picture: '', nin: '', guardian: { fullName: 'Mr. David Ojo', relationship: 'Father', phone: '08098765432', address: '10 Riverside Drive, Lagos' }, academicHistory: [] }
-  ]);
-
-  const [teachers, setTeachers] = useState<Teacher[]>([
-      { id: 't1', firstName: 'Robert', lastName: 'Langdon', email: 'rob@edu.com', phone: '000-111', gender: 'Male', title: 'Prof.', staffId: 'STAFF-001', sectionIds: ['sec2'], joinedAt: '2023-09-01', picture: '', nin: '', salary: '120000', status: 'Active', paymentHistory: [{ id: 'p1', date: '2023-10-25', amount: '120000', status: 'Paid', month: 'October', transactionRef: 'TXN-001' }] }
-  ]);
-
-  const [staff, setStaff] = useState<Staff[]>([
-    { id: 's1', firstName: 'John', lastName: 'Smith', email: 'john.smith@school.edu', phone: '08011122233', role: 'Security Head', department: 'Security', gender: 'Male', staffId: 'STF-001', status: 'Active', joinedAt: '2023-01-15', salary: '85000', address: '12 Guard Post', picture: '', nin: '' }
-  ]);
 
   // Activity Logs
   const [activities, setActivities] = useState<ActivityLog[]>([
@@ -52,21 +51,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
 
   // --- CURRENT USER CONTEXT ---
   // Simulate finding the current user based on role
-  const currentUser = React.useMemo(() => {
-      if (userRole === 'director') return { id: 'd1', name: 'Dr. John Doe', title: 'Director', picture: '' };
-      if (userRole === 'student') {
-          const s = students.find(s => s.id === '1'); // Mock: Logged in as Emily
-          return s ? { id: s.id, name: `${s.firstName} ${s.lastName}`, title: 'Student', picture: s.picture } : { id: '0', name: 'Unknown', title: 'Student' };
-      }
-      if (userRole === 'teacher') {
-          const t = teachers.find(t => t.id === 't1'); // Mock: Logged in as Robert
-          return t ? { id: t.id, name: `${t.title} ${t.firstName} ${t.lastName}`, title: 'Teacher', picture: t.picture } : { id: '0', name: 'Unknown', title: 'Teacher' };
-      }
-      return { id: '0', name: 'User', title: 'Guest' };
-  }, [userRole, students, teachers]);
+//   const currentUser = React.useMemo(() => {
+//       if (userRole === 'director') return { id: 'd1', name: 'Dr. John Doe', title: 'Director', picture: '' };
+//       if (userRole === 'student') {
+//           const s = students.find(s => s.id === '1'); // Mock: Logged in as Emily
+//           return s ? { id: s.id, name: `${s.firstName} ${s.lastName}`, title: 'Student', picture: s.picture } : { id: '0', name: 'Unknown', title: 'Student' };
+//       }
+//       if (userRole === 'teacher') {
+//           const t = teachers.find(t => t.id === 't1'); // Mock: Logged in as Robert
+//           return t ? { id: t.id, name: `${t.title} ${t.firstName} ${t.lastName}`, title: 'Teacher', picture: t.picture } : { id: '0', name: 'Unknown', title: 'Teacher' };
+//       }
+//       return { id: '0', name: 'User', title: 'Guest' };
+//   }, [userRole, students, teachers]);
 
   const logActivity = (action: ActivityLog['action'], module: ActivityLog['module'], description: string) => {
-      setActivities([{ id: Date.now().toString(), action, module, description, timestamp: Date.now(), user: currentUser.name }, ...activities]);
+      setActivities([{ id: Date.now().toString(), action, module, description, timestamp: Date.now(), user: currentUserFullname() }, ...activities]);
   };
 
   // --- NAVIGATION ---
@@ -85,7 +84,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
               { id: 'FINANCE', icon: 'fa-solid fa-wallet', label: 'Finance' },
               { id: 'SETTINGS', icon: 'fa-solid fa-sliders', label: 'Settings' }
           );
-      } else if (userRole === 'teacher') {
+      } else if (userRole === 'teacher') { 
           items.push(
               { id: 'MY_CLASSES', icon: 'fa-solid fa-chalkboard-user', label: 'My Classes' },
               { id: 'ACADEMICS', icon: 'fa-solid fa-calendar-days', label: 'Timetable' },
@@ -106,12 +105,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
       if (userRole === 'director') {
           return (
             <div className="space-y-8 animate-fadeIn">
+                {/* Director Dashbord  */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                     {[
-                        { label: 'Students', val: students.length, icon: 'fa-user-graduate', color: 'text-blue-600', bg: 'bg-blue-100', mod: 'STUDENTS' },
-                        { label: 'Teachers', val: teachers.length, icon: 'fa-chalkboard-user', color: 'text-purple-600', bg: 'bg-purple-100', mod: 'TEACHERS' },
-                        { label: 'Staff', val: staff.length, icon: 'fa-id-card', color: 'text-pink-600', bg: 'bg-pink-100', mod: 'STAFF' },
-                        { label: 'Classes', val: classRooms.length, icon: 'fa-chalkboard', color: 'text-orange-600', bg: 'bg-orange-100', mod: 'ACADEMICS' },
+                        { label: 'Students', val: selectedSchool?.total_students, icon: 'fa-user-graduate', color: 'text-blue-600', bg: 'bg-blue-100', mod: 'STUDENTS' },
+                        { label: 'Teachers', val: selectedSchool?.total_teachers, icon: 'fa-chalkboard-user', color: 'text-purple-600', bg: 'bg-purple-100', mod: 'TEACHERS' },
+                        { label: 'Staff', val: selectedSchool?.total_staffs, icon: 'fa-id-card', color: 'text-pink-600', bg: 'bg-pink-100', mod: 'STAFF' },
+                        { label: 'Classes', val: selectedSchool?.total_classrooms, icon: 'fa-chalkboard', color: 'text-orange-600', bg: 'bg-orange-100', mod: 'ACADEMICS' },
+                        // { label: 'Parents', val: selectedSchool?.total_parents, icon: 'fa-chalkboard', color: 'text-orange-600', bg: 'bg-orange-100', mod: 'PARENTS' },
                     ].map((s, i) => (
                         <div key={i} onClick={() => setActiveModule(s.mod as Module)} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md transition-all group">
                             <div><p className="text-sm font-medium text-gray-500">{s.label}</p><h3 className="text-2xl font-bold text-navy-900 mt-1">{s.val}</h3></div>
@@ -122,7 +123,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
                 <div className="bg-gradient-to-r from-navy-900 to-navy-800 text-white rounded-xl shadow-lg p-8 relative overflow-hidden">
                     <div className="relative z-10">
                         <h3 className="text-2xl font-bold mb-2">Welcome, Director</h3>
-                        <p className="text-navy-100">School operations are running smoothly. You have {students.length} active students and {teachers.length} teachers.</p>
+                        <p className="text-navy-100">School operations are running smoothly. You have {selectedSchool?.total_students} active students and {selectedSchool?.total_teachers} teachers.</p>
                     </div>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-3xl"></div>
                 </div>
@@ -137,7 +138,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
                       <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl -mr-16 -mt-16"></div>
                       <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
                           <div>
-                              <h2 className="text-3xl font-bold mb-2">Hello, {currentUser.name.split(' ')[0]}! 👋</h2>
+                              <h2 className="text-3xl font-bold mb-2">Hello, {currentUserFullname()}! 👋</h2>
                               <p className="text-blue-100">"Education is the passport to the future."</p>
                               <div className="mt-6 flex gap-3">
                                   <Button variant="secondary" className="w-auto px-6 text-sm" onClick={() => setActiveModule('ACADEMICS')}>View Timetable</Button>
@@ -199,10 +200,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
                       {/* Teacher Profile Card */}
                       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex-1 flex items-center gap-6">
                           <div className="w-20 h-20 bg-navy-100 rounded-full flex items-center justify-center text-3xl text-navy-600">
-                              {currentUser.picture ? <img src={currentUser.picture} className="w-full h-full rounded-full object-cover"/> : <i className="fa-solid fa-chalkboard-user"></i>}
+                              {currentUser?.picture ? <img src={currentUser.picture} className="w-full h-full rounded-full object-cover"/> : <i className="fa-solid fa-chalkboard-user"></i>}
                           </div>
                           <div>
-                              <h2 className="text-xl font-bold text-navy-900">Prof. {currentUser.name.split(' ')[2]}</h2>
+                              <h2 className="text-xl font-bold text-navy-900">{currentUserFullname()}</h2>
                               <p className="text-sm text-gray-500">Senior Lecturer • Mathematics Dept</p>
                               <div className="flex gap-2 mt-3">
                                   <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">On Duty</span>
@@ -260,53 +261,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
       return null;
   };
 
-  // --- TEACHER: MY CLASSES ---
-  const TeacherClassesView = () => {
-      // Filter classes where this teacher is assigned (Mocked for ID 't1')
-      const teacherId = 't1';
-      const myClasses = classRooms.filter(c => 
-          subjects.some(s => s.teacherIds.includes(teacherId) && s.classRoomIds.includes(c.id))
-      );
-
-      return (
-          <div className="space-y-6 animate-fadeIn">
-              <div className="flex justify-between items-center mb-4">
-                  <div>
-                      <h2 className="text-2xl font-bold text-navy-900">My Classes</h2>
-                      <p className="text-sm text-gray-500">Manage students and grading for your subjects.</p>
-                  </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {myClasses.map(c => (
-                      <div key={c.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all group">
-                          <div className="bg-navy-900 p-4 flex justify-between items-center">
-                              <h3 className="text-white font-bold text-lg">{c.name}</h3>
-                              <span className="text-xs bg-white/20 text-white px-2 py-1 rounded">2 Subjects</span>
-                          </div>
-                          <div className="p-6">
-                              <div className="flex justify-between text-sm text-gray-600 mb-4">
-                                  <span><i className="fa-solid fa-users mr-2"></i> {students.filter(s => s.classRoomIds.includes(c.id)).length} Students</span>
-                              </div>
-                              <div className="space-y-2">
-                                  {subjects.filter(s => s.teacherIds.includes(teacherId) && s.classRoomIds.includes(c.id)).map(sub => (
-                                      <div key={sub.id} className="flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-100">
-                                          <span className="text-sm font-bold text-navy-800">{sub.name}</span>
-                                          <button onClick={() => setToast({message: `Opened grading for ${sub.name}`, type: 'info'})} className="text-xs text-blue-600 hover:underline">Grade</button>
-                                      </div>
-                                  ))}
-                              </div>
-                          </div>
-                          <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                              <button className="w-full text-center text-sm font-bold text-navy-700 hover:text-navy-900">View Student List</button>
-                          </div>
-                      </div>
-                  ))}
-                  {myClasses.length === 0 && <div className="col-span-3 text-center py-12 text-gray-400">No classes assigned yet.</div>}
-              </div>
-          </div>
-      );
-  };
-
   return (
     <div className={`flex h-screen overflow-hidden font-sans transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-navy-50'}`}>
       
@@ -353,17 +307,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
             <div className="flex items-center gap-3 md:gap-6">
                 <div className="flex items-center gap-3">
                     <div className="text-right hidden md:block">
-                        <p className="text-sm font-bold text-navy-900">{currentUser.name}</p>
-                        <p className="text-xs text-gray-500">{currentUser.title}</p>
+                        <p className="text-sm font-bold text-navy-900">{currentUserFullname()}</p>
+                        {/* <p className="text-xs text-gray-500">{currentUser.title}</p> */}
                     </div>
-                    <div className="w-10 h-10 rounded-full border overflow-hidden flex items-center justify-center font-bold bg-navy-100 text-navy-600">{currentUser.picture ? <img src={currentUser.picture} className="w-full h-full object-cover" /> : <span>{currentUser.name.charAt(0)}</span>}</div>
+                    <div className="w-10 h-10 rounded-full border overflow-hidden flex items-center justify-center font-bold bg-navy-100 text-navy-600">
+                        {currentUser.picture ? <img src={urls.BASE_URL+currentUser.picture} className="w-full h-full object-cover" /> : <span>{currentUser.name.charAt(0)}</span>}
+                    </div>
                 </div>
                 <div className="h-8 w-px hidden md:block bg-gray-200"></div>
                 <button onClick={() => setIsLogoutConfirmOpen(true)} className="text-gray-400 hover:text-red-600 transition-colors"><i className="fa-solid fa-arrow-right-from-bracket text-lg"></i></button>
             </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 relative ">
             {activeModule === 'OVERVIEW' && <RenderOverview />}
             
             {/* Director Modules */}
@@ -375,7 +331,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
             {userRole === 'director' && activeModule === 'FINANCE' && <FinanceManager students={students} teachers={teachers} staff={staff} />}
 
             {/* Teacher Modules */}
-            {userRole === 'teacher' && activeModule === 'MY_CLASSES' && <TeacherClassesView />}
+            {/* {userRole === 'teacher' && activeModule === 'MY_CLASSES' && <TeacherClassesView />} */}
             {userRole === 'teacher' && activeModule === 'ACADEMICS' && <AcademicManager sections={sections} classRooms={classRooms} subjects={subjects} students={students} teachers={teachers} onUpdateSections={()=>{}} onUpdateClassRooms={()=>{}} onUpdateSubjects={()=>{}} onUpdateStudents={()=>{}} onLogActivity={logActivity} />}
             {userRole === 'teacher' && activeModule === 'FINANCE' && <FinanceManager students={students} teachers={teachers} staff={staff} personalMode={true} currentUserId={currentUser.id} currentUserRole="teacher" />}
 
@@ -392,6 +348,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ school, userRole, onLogout
       </Modal>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        
     </div>
   );
 };

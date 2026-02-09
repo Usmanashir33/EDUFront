@@ -114,52 +114,76 @@ export interface KYCInfo {
   documents: KYCDocument[];
 }
 
+
+// Updated to match Django Model + Frontend extensions
 export interface Teacher {
-  id: string;
-  firstName: string;
-  lastName: string;
-  middleName?: string;
+  id: string; // CharField(max_length=25)
+  // User OneToOne relation handled via auth/API usually, but we keep fields here
+  
+  firstName: string; // first_name
+  lastName: string;  // last_name
+  middleName?: string; // middle_name
   email: string;
-  title?: string;
   gender: Gender;
-  picture?: string;
-  nin?: string; // National Identity Number
-  dateOfBirth?: string;
+  title: string; // title
+  picture?: string; // picture
+  dateOfBirth?: string; // date_of_birth
   phone: string;
-  address?: string;
   
   // Relationships
-  sectionIds: string[]; // ManyToMany to SchoolSection
-  staffId: string;
-  joinedAt: string;
-
-  // Extended properties needed for TeacherManager
-  status: 'Active' | 'Inactive' | 'Suspended';
-  salary?: string;
-  paymentHistory?: PaymentRecord[];
+  schoolId?: string; // ForeignKey to School
+  classRoomIds: string[]; // ManyToMany to ClassRoom
+  role: string; // default 'Teacher'
   
-  // New Fields
+  staffId: string; // staff_id (Unique)
+  joinedAt: string; // joined_at
+
+  // --- Frontend / Extended Logic Fields (Not in Django model snippet, likely related models) ---
+  sectionIds: string[]; // Helper for UI grouping
+  address?: string;
+  status: 'Active' | 'Inactive' | 'Suspended'; 
+  salary?: string;
   bankDetails?: BankDetails;
+  
+  paymentHistory?: PaymentRecord[];
   disciplinaryRecords?: DisciplinaryRecord[];
   kyc?: KYCInfo;
+  nin?: string;
 }
-
+// --- ActivityRole Model ---
+export interface ActivityRole {
+    id: string; // CharField(max_length=25)
+    role: 'security' | 'cleaner' | 'driver' | 'staff'; // NSA_CHOICES
+    rank: 'header' | 'vice' | 'standerd'; // NSA_RANKS
+    active: boolean;
+    description: string;
+    dateAssigned?: string;
+}
+// Updated Staff to match Django Model
 export interface Staff {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  gender: Gender;
-  picture?: string;
-  nin?: string; // National Identity Number
-  address?: string;
+  id: string; // CharField(max_length=25)
   
-  // Job Info
-  role: string; // e.g., 'Driver', 'Security', 'Bursar'
-  department: string; // e.g., 'Transport', 'Security', 'Admin'
-  staffId: string;
-  joinedAt: string;
+  firstName: string; // first_name
+  lastName: string;  // last_name
+  middleName?: string; // middle_name
+  email: string; // email
+  title: string; // title
+  gender: Gender; // gender
+  
+  picture?: string; // picture
+  dateOfBirth?: string; // date_of_birth
+  phone: string; // phone
+  
+  schoolId?: string; // school ForeignKey
+  
+  role: string; // role (CharField default 'Staff')
+  activityRole?: ActivityRole; // ForeignKey to ActivityRole
+  
+  address?: string; // address
+  staffId: string; // staff_id (Unique)
+  joinedAt: string; // joined_at
+  
+  // --- Frontend Extensions ---
   status: 'Active' | 'Inactive' | 'Suspended';
   salary?: string;
   
@@ -169,9 +193,11 @@ export interface Staff {
 
   // KYC
   kyc?: KYCInfo;
+  nin?: string; // Usually part of profile but not in model snippet explicitly
 }
 
-// --- NEW STUDENT STRUCTURES ---
+
+// --- NEW STUDENT STRUCTURES --- 
 
 export interface Guardian {
   fullName: string;

@@ -1,5 +1,8 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect,useContext } from 'react';
+import { uiContext } from '@/customContexts/UiContext';
+import useRequest from '@/customHooks/RequestHook';
+import { authContext } from '@/customContexts/AuthContext';
 
 
 // --- STUNNING LOADING ICON (Small) ---
@@ -8,7 +11,7 @@ export const Spinner: React.FC<{ size?: 'sm' | 'md' | 'lg', className?: string }
   const borderClass = size === 'md' ? 'border-2' : size === 'lg' ? 'border-[3px]' : 'border-[1.5px]';
   
   return (
-    <div className={`relative flex items-center justify-center ${sizeClass} ${className}`}>
+    <div className={`relative z-[9999999]  flex items-center justify-center ${sizeClass} ${className}`}>
         <div className={`absolute inset-0 rounded-full border-navy-200 border-t-navy-900 ${borderClass} animate-spin`}></div>
         <div className={`absolute inset-0 rounded-full border-transparent border-b-gold-500 ${borderClass} animate-spin-reverse opacity-70`}></div>
     </div>
@@ -18,7 +21,7 @@ export const Spinner: React.FC<{ size?: 'sm' | 'md' | 'lg', className?: string }
 // --- STUNNING FULL PAGE LOADER ---
 export const PageLoader: React.FC = () => {
   return (
-    <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-fadeIn">
+    <div className="fixed inset-0 z-[99999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-fadeIn">
       <div className="relative w-24 h-24 flex items-center justify-center mb-8">
         {/* Outer Navy Ring */}
         <div className="absolute inset-0 rounded-full border-4 border-navy-100 border-t-navy-900 animate-spin-slow"></div>
@@ -117,10 +120,13 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, currentImage, o
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const {dataURLtoFile} = useContext(uiContext) ;
 
   useEffect(() => {
+  if (!preview && currentImage) {
     setPreview(currentImage);
-  }, [currentImage]);
+  }
+}, [currentImage]);
 
   // Handle File Select
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +136,9 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, currentImage, o
       reader.onloadend = () => {
         const result = reader.result as string;
         setPreview(result);
-        onImageSelected(result);
+         // Convert to File before sending
+        const file = dataURLtoFile(result, 'photo.jpg'); 
+        onImageSelected(file);
         setZoom(1); // Reset zoom on new image
       };
       reader.readAsDataURL(file);
@@ -176,7 +184,9 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, currentImage, o
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg');
         setPreview(dataUrl);
-        onImageSelected(dataUrl);
+         // Convert to File before sending
+        const file = dataURLtoFile(dataUrl, 'student_photo.jpg');
+        onImageSelected(file);
         setZoom(1);
         stopCamera();
       }
@@ -217,14 +227,14 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, currentImage, o
                 onClick={() => fileInputRef.current?.click()}
                 className="flex-1 py-1.5 px-3 bg-white border border-gray-300 rounded text-xs font-semibold text-navy-700 hover:bg-navy-50 hover:border-navy-300 transition-colors flex items-center justify-center"
             >
-                <i className="fa-solid fa-upload mr-1.5"></i> Upload
+                <i className="fa-solid fa-upload mr-1.5"></i>  Upload
             </button>
             <button 
                 type="button"
                 onClick={startCamera}
                 className="flex-1 py-1.5 px-3 bg-white border border-gray-300 rounded text-xs font-semibold text-navy-700 hover:bg-navy-50 hover:border-navy-300 transition-colors flex items-center justify-center"
             >
-                <i className="fa-solid fa-camera mr-1.5"></i> Camera
+                <i className="fa-solid fa-camera mr-1.5"></i>  Camera
             </button>
          </div>
 
@@ -260,7 +270,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, currentImage, o
       {/* Camera Modal */}
       {showCamera && (
         <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center animate-fadeIn">
-            <div className="relative w-full max-w-2xl aspect-video bg-black flex items-center justify-center">
+            <div className="relative w-full max-w-2xl  aspect-video bg-black flex items-center justify-center">
                 <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain transform scale-x-[-1]"></video>
                 
                 {/* Overlay Guides */}
@@ -434,7 +444,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   const isInfo = type === 'info';
 
   return (
-    <div className={`fixed top-6 right-6 z-[9999] flex flex-col w-full max-w-sm overflow-hidden rounded-lg shadow-2xl animate-slideInRight ${currentStyle.bg} ${currentStyle.border}`}>
+    <div className={`fixed top-6 right-6 z-[9999999] flex flex-col w-full max-w-sm overflow-hidden rounded-lg shadow-2xl animate-slideInRight ${currentStyle.bg} ${currentStyle.border}`}>
       <div className="flex items-center p-4 gap-4">
         <div className="shrink-0">
            <i className={`fa-solid ${currentStyle.icon} text-2xl ${currentStyle.iconColor}`}></i>
@@ -504,7 +514,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 interface PinModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (data:string) => void;
   title?: string;
 }
 
@@ -515,12 +525,25 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess, 
     const [pin, setPin] = useState(['', '', '', '']);
     const [currentPin, setCurrentPin] = useState("0000"); // Default PIN
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+    const {sendRequest} = useRequest();
+    const {currentUser} = useContext(authContext) ;
+    const {isLoading:loading,setIsLoading:setLoading,setToast} = useContext(uiContext) ;
 
     // Reset Flow States
-    const [resetEmail, setResetEmail] = useState('');
+    const [resetEmail, setResetEmail] = useState(currentUser?.email);
     const [otp, setOtp] = useState(['', '', '', '', '']);
-
+    
+    const TriggeredFunc = (data) => {
+      setToast({message: data?.success, type: 'success'}); 
+      if (data?.success == 'otp_sent'){
+        setFlow('OTP');
+        setError('');
+      }else{ // success 
+        setFlow('ENTER')
+        setResetEmail(currentUser?.email)
+        setOtp(['', '', '', '', ''])
+      }
+    }
     useEffect(() => {
         if (isOpen) {
             setPin(['', '', '', '']);
@@ -541,22 +564,14 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess, 
             (element.nextSibling as HTMLInputElement).focus();
         }
     };
+    
 
     // 1. Verify PIN
     const handleVerify = () => {
         if (pin.join('').length !== 4) return;
         setLoading(true);
-        setTimeout(() => {
-            if (pin.join('') === currentPin) {
-                setLoading(false);
-                setPin(['', '', '', '']); 
-                onSuccess();
-            } else {
-                setLoading(false);
-                setError('Invalid PIN. Access Denied.');
-                setPin(['', '', '', '']); 
-            }
-        }, 800);
+        onSuccess(pin.join(''));
+        setPin(['', '', '', '']); 
     };
 
     // 2. Send Reset Code
@@ -565,12 +580,11 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess, 
             setError('Please enter a valid email.');
             return;
         }
-        setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
-            setFlow('OTP');
-            setError('');
-        }, 1000);
+        let form:any ={
+          "username_field" : resetEmail,
+        }
+        sendRequest("/authuser/resend-otp/","POST",form,TriggeredFunc,true,false)
+       
     };
 
     // 3. Verify OTP
@@ -587,24 +601,21 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess, 
     const handleSetNewPin = () => {
         const newP = pin.join('');
         if (newP.length !== 4) return;
-        
-        setLoading(true);
-        setTimeout(() => {
-            setCurrentPin(newP);
-            setLoading(false);
-            setFlow('ENTER'); // Go back to start
-            setError('');
-            setPin(['', '', '', '']);
-            alert("PIN Updated Successfully");
-        }, 1000);
+        let form:any ={
+          "email" : resetEmail,
+          "pin1":newP,
+          "pin2":newP,
+          "otp" : otp.join('') 
+        }
+        sendRequest("/authuser/pin-change/","POST",form,TriggeredFunc,true,false)
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center">
+        <div className="fixed inset-0 z-[9999] overflow-hidden flex items-center justify-center">
              {/* Full screen backdrop with blur */}
-            <div className="fixed inset-0 bg-navy-950/90 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+            <div className="fixed inset-0 bg-navy-950/50 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
 
             <div className="relative bg-white rounded-2xl px-8 pt-8 pb-8 text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-sm sm:w-full animate-fadeIn border border-gray-100">
                 

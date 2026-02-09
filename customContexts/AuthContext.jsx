@@ -9,18 +9,25 @@ const AuthContextProvider = ({children} ) => {
     const Aborter = new AbortController() ;
     const [currentUser,setCurrentUser] = useState(null) ; // object to hold current user info
     const [currentSchool,setCurrentSchool] = useState(null); // for future use
-    const {setError,setIsLoading} = useContext(uiContext) ;
+    const [userRole, setUserRole] = useState('director');
+    const {
+        setError,setPageLoading,
+             selectedSchool, setSelectedSchool,
+             setStudents,                    // students data
+             setTeachers ,                 // teachers data
+             setStaffs,                     // staff data
+             setSections,                   // sections data
+             setClassRooms,                   // classRooms data
+             setSubjects,                   // subjects data
+        } = useContext(uiContext) ;
     
     const [isAuthenticated,setIsAuthenticated] = useState(
         localStorage.getItem("a_token")? true : false
     );
 
-    useEffect(() => {
-        // if the currrent user fetch failed so we need to trigger it here 
-        if (isAuthenticated && !currentUser?.value){ // 
-            // getCurrentUser() ;
-        }
-    },[isAuthenticated])
+    const currentUserFullname = () => {
+        return `${currentUser?.title} ${currentUser?.first_name} ${currentUser?.last_name} ${currentUser?.middle_name}`
+    }
 
     const  getCurrentUser = async () => {
         let token = await getToken()
@@ -53,6 +60,7 @@ const AuthContextProvider = ({children} ) => {
 
         return (() => {Aborter.abort()})
     }
+
     const refreshToken = () => {
         console.log('refreshing token.....');
         const RToken = localStorage.getItem('r_token');
@@ -91,7 +99,6 @@ const AuthContextProvider = ({children} ) => {
                 // Check if token is expired 
                 if (decoded.exp < Math.floor(Date.now() / 1000)) {
                     // Obtain a new token
-                    // console.log('expired refresh starts');
                     const newToken =  await refreshToken();   // this is async funtion 
 
                     if (newToken?.access) {
@@ -112,22 +119,29 @@ const AuthContextProvider = ({children} ) => {
             return Promise.reject(null); // Return null in case of an error
         }
     };
-
-    const logout = () => {
-        setIsLoading(true);
+    
+    const setSchoolData = (data) => {
+        console.log('data: ', data);
+        setSelectedSchool(data?.school_and_academics);
+        setStudents(data?.school_students);
+        setTeachers(data?.school_teachers);
+        setStaffs(data?.school_staffs) ;
+        setSections(data?.school_and_academics?.sections) ;
+        setSubjects(data?.school_subjects) ;
+        setClassRooms(data?.school_and_academics?.sections.flatMap(
+                        section => section.classrooms)
+                    ) ;
         setTimeout(() => {
-            localStorage.removeItem('a_token');
-            localStorage.removeItem('r_token');
-            setIsAuthenticated(false);
-            setCurrentUser({});
-            setIsLoading(false);
-        }, 700);
+            setPageLoading(false)
+        }, 2000);
     }
-   
+
+    
     return ( 
         <authContext.Provider value={{
-            currentUser,setCurrentUser,getCurrentUser,getToken,
-            isAuthenticated,setIsAuthenticated,logout ,
+            currentUser,setCurrentUser,currentUserFullname,userRole, setUserRole,
+            currentSchool,setCurrentSchool,
+            getCurrentUser,getToken,isAuthenticated,setIsAuthenticated,setSchoolData
         }} >
             {children}
         </authContext.Provider>

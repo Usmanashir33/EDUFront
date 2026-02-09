@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState ,useContext} from 'react';
 import { School, ViewState } from '../types';
 import { FadeIn, Button } from '../components/UI';
 import urls from '@/customHooks/ServerUrls';
+import { authContext } from '@/customContexts/AuthContext';
 
 interface SchoolSelectionProps {
     onNavigate: (view: ViewState) => void;
-    onSelectSchool: (id: string) => void;
+    onSelectSchool: (id: string) => void; 
     schools: School[];
 }
 
-export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, onSelectSchool, schools }) => {
+export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, onSelectSchool }) => {
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [schools,setSchools] = useState(JSON.parse(localStorage.getItem('directorschools')) || []);
+    const {currentUserFullname,userRole} = useContext(authContext);
 
+    
     const handleEnter = () => { 
         if (selectedId) {
             onSelectSchool(selectedId);
@@ -23,12 +27,12 @@ export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, on
             <FadeIn>
                 <div className="flex justify-between items-center mb-10 pb-6 border-b border-gray-200">
                     <div>
-                         <h2 className="text-2xl font-bold text-navy-900">Select Campus</h2>
+                         <h2 className="text-2xl font-bold text-navy-900">Select School</h2>
                          <p className="mt-1 text-sm text-gray-600">Choose the institution you wish to manage.</p>
                     </div>
                     <div className="text-right">
-                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Director</p>
-                         <p className="text-sm font-medium text-navy-800">Dr. John Doe</p>
+                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{userRole?.toUpperCase()}</p>
+                         <p className="text-sm font-medium text-navy-800">{currentUserFullname()}</p>
                     </div>
                 </div>
 
@@ -69,7 +73,7 @@ export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, on
                                 <div className="pt-3 border-t border-gray-200 flex items-center justify-between text-xs font-medium text-gray-500">
                                     <span className="flex items-center">
                                         <i className="fa-solid fa-users mr-2"></i>
-                                        {'unknown'} Students
+                                        {school?.total_students} Students
                                     </span>
                                     <span className="px-2 py-1 bg-gray-200 rounded text-gray-600">Active</span>
                                 </div>

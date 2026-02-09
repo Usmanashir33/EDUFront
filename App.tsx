@@ -11,6 +11,7 @@ import { authContext } from './customContexts/AuthContext';
 import { Input, Button, FadeIn ,Toast,PageLoader ,Spinner } from './components/UI';
 import { uiContext, } from './customContexts/UiContext';
 import ProtectedRoute from './customProtectors/ProtectedRoute';
+import useRequest from './customHooks/RequestHook';
 
 // Mock Schools Data moved outside for accessibility
 const schoolsMock = [
@@ -128,66 +129,26 @@ const DashboardLayout = ({ children }: { children?: React.ReactNode }) => {
 );
 };
 
-
+ 
 const App: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>('');
-  const [selectedSchool, setSelectedSchool] = useState<School | null | any>(null);
-  const [schools, setSchools] = useState<School | null | []>([]);
-  const [userRole, setUserRole] = useState<UserRole>('director');
+  const { currentUser,setCurrentUser,
+          getCurrentUser,getToken,
+          userRole, setUserRole,
+          isAuthenticated,setIsAuthenticated,
+          setSchoolData,
+        } = useContext(authContext);
+  const {sendRequest} = useRequest();
 
-  // const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>({ message: "string", type: 'success' });
-  const { currentUser,setCurrentUser,getCurrentUser,getToken,
-            isAuthenticated,setIsAuthenticated,logout } = useContext(authContext);
-  const {currentView, setCurrentView,setPageLoading} = useContext(uiContext)
-  // --- SESSION PERSISTENCE ---
-  useEffect(() => {
-    const storedSession = localStorage.getItem('session');
-    const storedTokens =  localStorage.getItem('a_token');
-
-    if (storedSession && storedTokens) {
-        try {
-            const session: SessionData = JSON.parse(storedSession);
-            const directorschools =  JSON.parse(localStorage.getItem('directorschools'));
-            setSchools(directorschools);
-            setUserRole(session.role);
-            setCurrentUser(session.user)
-            
-            // Check expiry (e.g. 24 hours) - Mock implementation
-            if (Date.now() - session.timestamp > 86400000) {
-                localStorage.removeItem('session');
-                return;
-            }
-
-            if (session?.school?.id) {
-                const school = directorschools?.find(s => s.id === session.school?.id);
-                if (school) { // either has selected school or no 
-                    setSelectedSchool(school);
-                    setCurrentView(ViewState.DASHBOARD);
-
-                } else if (session.role === 'director') { // but school not selected 
-                    setCurrentView(ViewState.SELECT_SCHOOL);
-                }
-            } else if (session.role === 'director') {
-                setCurrentView(ViewState.SELECT_SCHOOL);
-            } else {
-                // If student/staff has no school selected (shouldn't happen in real app but mock safety)
-                setCurrentView(ViewState.LOGIN);
-            }
-        } catch (e) {
-            console.error("Failed to parse session", e);
-            // localStorage.removeItem('session');
-        }
-    }
-    
-  }, []);
-
+  const {currentView, setCurrentView,setPageLoading,selectedSchool, setSelectedSchool} = useContext(uiContext)
+  
+  
   const handleNavigate = (view: ViewState) => {
     setCurrentView(view);
   };
 
   const handleLogin = (mode:String, response:any) => {
     const responseData = response?.data
-    setPageLoading(true)
     console.log('response login : ', response?.data);
     let role:string = 'director';
     let nextView = ViewState.SELECT_SCHOOL;
@@ -196,51 +157,50 @@ const App: React.FC = () => {
     if (mode === 'director') {
         // Directors & Parents go to School Selection
         role = 'director';
-        setSchools(responseData?.data?.directorschools)
+        // setSchools(responseData?.data?.directorschools)
         nextView = ViewState.SELECT_SCHOOL;
         
     } else {
-        // Students & Staff go DIRECTLY to Dashboard
+      // Students & Staff go DIRECTLY to Dashboard
+        setPageLoading(true)
         initialSchool = responseData?.data?.school ;
         role = mode?.toLowerCase() 
         setSelectedSchool(initialSchool) ;
         nextView = ViewState.DASHBOARD ;
 
     }
-    //'data' : {"role":user.role,"tokens":tokens,"data":data},
     // set is Authenticated true 
     setTimeout(() => {
       localStorage.setItem('a_token',responseData?.tokens?.access);
       localStorage.setItem('r_token',responseData?.tokens?.refresh);
       localStorage.setItem('directorschools',JSON.stringify(responseData?.data?.directorschools));
+
       // set currentUser 
       setUserRole(role);
-      setCurrentUser(responseData?.data?.user) // user base on the role 
+      setCurrentUser(responseData?.data) // user instance data base on the role 
       setIsAuthenticated(true);
-
       setCurrentView(nextView);
-      setPageLoading(false)
 
       // Save Session
     const session: SessionData = {
         role,
-        user: responseData?.data?.user,
+        user: responseData?.data,
         school : initialSchool,
         timestamp: Date.now()
     };
+    
     localStorage.setItem('session', JSON.stringify(session));
-    }, 2000);
-
+    
+  }, 2000);
+    setPageLoading(false)
   };
 
-
-
   const handleSelectSchool = (schoolId: string) => {
-    const school = schools.find(s => s?.id === schoolId);
-    if (school) {
-      setSelectedSchool(school);
+    const directorschools =  JSON.parse(localStorage.getItem('directorschools'));
+    const school = directorschools.find(s => s?.id === schoolId);
+    if (school) { 
+      setSelectedSchool(school); // this will trigger session update in the authcontext 
       setCurrentView(ViewState.DASHBOARD);
-      
       // Update session with school selection
       const stored = localStorage.getItem('session');
       if (stored) {
@@ -249,18 +209,66 @@ const App: React.FC = () => {
           localStorage.setItem('session', JSON.stringify(session));
       }
     }
+    sendRequest(`/director/school-detail/${school?.id}/`,'GET',setSchoolData,true,false) ;
+
   };
 
+  // --- SESSION PERSISTENCE ---
+  useEffect(() => {
+        const storedSession = localStorage.getItem('session');
+        const storedTokens =  localStorage.getItem('a_token');
+    
+        if (storedSession && storedTokens) {
+            try {
+                const session  = JSON.parse(storedSession);
+                const directorschools =  JSON.parse(localStorage.getItem('directorschools'));
+                // setSchools(directorschools);
+                setUserRole(session.role);
+                setCurrentUser(session.user)
+                
+                // Check expiry (e.g. 24 hours) - Mock implementation
+                if (Date.now() - session.timestamp > 86400000) {
+                    localStorage.removeItem('session');
+                    localStorage.removeItem('r_token');
+                    localStorage.removeItem('a_token');
+                    return;
+                }
+                if (session?.school?.id) {
+                    const school = directorschools?.find(s => s.id === session.school?.id);
+                    if (school ) {
+                        //          either has selected school or no              //
+                        //          fetch school big data  records here           //
+                        setSelectedSchool(school) ;
+                        if ( session.role === 'director'){
+                          sendRequest(`/director/school-detail/${school?.id}/`,'GET',null,setSchoolData,false,false) ;
+                        }
+                        // setCurrentView(ViewState.DASHBOARD) ; 
+
+                    } else if (session.role === 'director') { // but school not selected 
+                        setCurrentView(ViewState.SELECT_SCHOOL);
+                    }
+                } else if (session.role === 'director') {
+                    setCurrentView(ViewState.SELECT_SCHOOL);
+                } else {
+                    // If student/staff has no school selected (shouldn't happen in real app but mock safety)
+                    setCurrentView(ViewState.LOGIN);
+                }
+            } catch (e) {
+                console.error("Failed to parse session", e);
+            }
+        }
+      }, []); // when ever school is selected we need to fetch its bulk data 
+    
   const handleLogout = () => {
     setPageLoading(true)
     setTimeout(() => {
-      localStorage.removeItem('session');
-      localStorage.removeItem('a_token');
-      localStorage.removeItem('r_token');
-      localStorage.removeItem('directorschools');
-      setIsAuthenticated(false);
-      setCurrentUser(null);
-      setSelectedSchool(null);
+      localStorage.removeItem('session') ;
+      localStorage.removeItem('a_token') ;
+      localStorage.removeItem('r_token') ;
+      localStorage.removeItem('directorschools') ;
+      setIsAuthenticated(false) ;
+      setCurrentUser(null) ;
+      setSelectedSchool(null) ;
       setCurrentView(ViewState.LOGIN); 
       setUserRole('director'); // Reset role 
       setPageLoading(false)
@@ -306,7 +314,6 @@ const App: React.FC = () => {
                     <SchoolSelection 
                           onNavigate={handleNavigate} 
                           onSelectSchool={handleSelectSchool} 
-                          schools={schools} 
                     />
                   </ProtectedRoute>
                </div>
@@ -317,7 +324,7 @@ const App: React.FC = () => {
             <DashboardLayout>
               <ProtectedRoute>
                 {selectedSchool && (
-                    <Dashboard school={selectedSchool} userRole={userRole} onLogout={handleLogout} />
+                    <Dashboard userRole={userRole} onLogout={handleLogout} />
                 )}
               </ProtectedRoute>
             </DashboardLayout>
