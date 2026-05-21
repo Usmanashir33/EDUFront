@@ -70,8 +70,8 @@ export const ClassView: React.FC<ClassViewProps> = ({
               {cls.name}
             </h4>
             <div className="flex justify-between text-xs text-gray-500 border-t border-gray-100 pt-2 cursor-pointer">
-              <span>{students.filter((s) => s.class_room?.includes(cls.id)).length} Students</span>
-              <span>{subjects.filter((s) => s.class_room?.includes(cls.id)).length} Subjects</span>
+              <span>{students.filter((s) => s.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map(c => c.class_room).includes(cls.id)).length} Students</span>
+              <span>{subjects.filter((s) => s.class_rooms?.includes(cls.id)).length} Subjects</span>
             </div>
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-navy-900 p-1"
@@ -93,14 +93,15 @@ export const ClassView: React.FC<ClassViewProps> = ({
 
   // --- DETAIL VIEW ---
   const cls = classRooms.find((c) => c.id === selectedId);
-  if (!cls) return null;
+  if (!cls) return null ;
 
-  const classStudents = students.filter((s) => s.class_room?.includes(cls.id));
-  const classSubjects = subjects.filter((s) => s.class_room?.includes(cls.id));
+  const classStudents = students.filter((s) => s.class_rooms?.filter(
+    (cls) => ( cls.status === 'active' ||  cls.status === 'enrolled') 
+  ).map(cls => cls.class_room).includes(cls.id));
+  const classSubjects = subjects.filter((s) => s.class_rooms?.includes(cls.id)) ;
 
   // Get Teachers
   const classTeachers = teachers.filter((teacher) => teacher.class_room.includes(cls.id))
-
   const classMaster = teachers.find((t) => t.id === cls?.form_teacher);
   const schedule = generateMockTimetable(cls.name);
   const currentPeriod = getCurrentPeriodInfo(schedule, subjects, teachers, currentTime);
@@ -241,7 +242,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
             </div>
           </div>
           <div className="space-y-1 max-h-80 overflow-y-auto custom-scrollbar">
-            {classStudents.map((s) => (
+            {classStudents.map((s) => ( 
               <div
                 key={s.id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-navy-50 group transition-colors cursor-pointer"
@@ -249,7 +250,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-navy-700">
-                   <img className="w-8 h-8 bg-navy-100 border border-navy-200 rounded-full" src={urls.BASE_URL + s.picture} alt="pic" srcset="" />
+                   <img className="w-8 h-8 bg-navy-100 border border-navy-200 rounded-full" src={urls.BASE_URL + s.picture} alt="pic" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-navy-900">

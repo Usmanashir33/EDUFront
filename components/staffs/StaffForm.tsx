@@ -4,6 +4,7 @@ import { Staff } from '../../types';
 import { Input, Button, ImageUpload } from '../UI';
 import { cleanCurrencyInput, formatInputCurrency } from './StaffFinance';
 import urls from '@/customHooks/ServerUrls';
+import { uiContext } from '@/customContexts/UiContext';
 
 interface StaffFormProps { 
     initialData?: Staff | null; 
@@ -16,6 +17,7 @@ export const StaffForm: React.FC<StaffFormProps> = ({
     onSubmit, 
     onCancel 
 }) => {
+    const {isLoading} = React.useContext(uiContext); // Assuming you have a context for loading state
     const [formData, setFormData] = useState({
             firstName: initialData?.first_name || '', 
             lastName: initialData?.last_name ||  '', 
@@ -23,7 +25,7 @@ export const StaffForm: React.FC<StaffFormProps> = ({
             title: initialData?.title ||  '',
             email: initialData?.email || '', 
             phone: initialData?.phone || '', 
-            gender: initialData?.gender || "", 
+            gender: initialData?.gender || "male", 
             address: initialData?.address || '',
             dateOfBirth: initialData?.date_of_birth || '', 
             picture: initialData?.picture || '', 
@@ -35,11 +37,11 @@ export const StaffForm: React.FC<StaffFormProps> = ({
             bankName: initialData?.bank_details?.bank_name || '', 
             accountNumber: initialData?.bank_details?.account_number || '', 
             accountName: initialData?.bank_details?.account_name || '' },
-        
+         
         // Initialize Activity Role default
         activityRole: {
-            role: initialData?.activity_role?.role || '',
-            rank: initialData?.activity_role?.rank || '',
+            role: initialData?.activity_role?.role || 'academic',
+            rank: initialData?.activity_role?.rank || 'standerd',
             active: initialData?.activity_role?.active || true,
             description: initialData?.activity_role?.description || ''
         },
@@ -102,15 +104,15 @@ export const StaffForm: React.FC<StaffFormProps> = ({
                                 <Input label="Title" placeholder="Mr/Ms" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} iconClass="fa-solid fa-heading" />
                             </div>
                             <div className="md:col-span-3 grid grid-cols-3 gap-4">
-                                <Input required label="First Name" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} iconClass="fa-solid fa-user" />
-                                <Input label="Middle Name" value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} iconClass="fa-solid fa-user" />
-                                <Input required label="Last Name" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} iconClass="fa-solid fa-user" />
+                                <Input placeholder='First Name' required label="First Name" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} iconClass="fa-solid fa-user" />
+                                <Input placeholder='Last Name' required label="Last Name" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} iconClass="fa-solid fa-user" />
+                                <Input placeholder='Middle Name' label="Middle Name" value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} iconClass="fa-solid fa-user" />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <Input required type="email" label="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} iconClass="fa-regular fa-envelope" />
-                            <Input required type="tel" label="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} iconClass="fa-solid fa-phone" />
-                            <Input label="Address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} iconClass="fa-solid fa-map-pin" />
+                            <Input placeholder='e.g name@gmail.com' required type="email" label="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} iconClass="fa-regular fa-envelope" />
+                            <Input placeholder='e.g +256 700 000 000' required type="tel" label="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} iconClass="fa-solid fa-phone" />
+                            <Input placeholder='e.g 123 Main Street' label="Address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} iconClass="fa-solid fa-map-pin" />
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-navy-800 mb-1.5">Gender</label>
@@ -119,14 +121,14 @@ export const StaffForm: React.FC<StaffFormProps> = ({
                                         value={formData.gender}
                                         onChange={e => setFormData({...formData, gender: e.target.value as any})}
                                     >
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                        <option value="other">Other</option>
                                     </select>
                                 </div>
                                 <Input type="date" label="Date of Birth" value={formData.dateOfBirth} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} iconClass="fa-solid fa-calendar" />
                             </div>
-                            <Input label="NIN / National ID" value={formData.nin} onChange={e => setFormData({...formData, nin: e.target.value})} iconClass="fa-solid fa-fingerprint" />
+                            <Input  placeholder='e.g. 123456789' label="NIN / National ID" value={formData.nin} onChange={e => setFormData({...formData, nin: e.target.value})} iconClass="fa-solid fa-fingerprint" />
                         </div>
                     </div>
                 </div>
@@ -137,17 +139,18 @@ export const StaffForm: React.FC<StaffFormProps> = ({
                             <span className="w-6 h-6 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center mr-2 text-xs"><i className="fa-solid fa-briefcase"></i></span>
                             Employment Details
                         </h3>
+
                         <Input 
-                            label="Job Title (General)" 
-                            value={formData.role} 
-                            onChange={e => setFormData({...formData, role: e.target.value})} 
+                            label="Role (General)" 
+                            value={formData.role || 'not yet registered'}  
                             iconClass="fa-solid fa-user-tag" 
                             placeholder="e.g. Administrator, Bursar"
+                            disabled={true}
                         />
                         
                         {/* Activity Role Specifics */}
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <h4 className="text-sm font-bold text-navy-900 mb-3">Activity Role Configuration</h4>
+                            <h4 className="text-sm font-bold text-navy-900 mb-3">Activity Role Configuration(optional)</h4>
                             <div className="grid grid-cols-2 gap-4 mb-3">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">NSA Role</label>
@@ -156,8 +159,9 @@ export const StaffForm: React.FC<StaffFormProps> = ({
                                         value={formData.activityRole?.role}
                                         onChange={e => updateActivityRole('role', e.target.value)}
                                     >
+                                        <option value="academic">Academic</option>
                                         <option value="security">Security</option>
-                                        <option value="cleaner">Cleaner</option>
+                                        <option value="cleaner">Cleaner</option> 
                                         <option value="driver">Driver</option>
                                     </select>
                                 </div>
@@ -168,9 +172,9 @@ export const StaffForm: React.FC<StaffFormProps> = ({
                                         value={formData.activityRole?.rank}
                                         onChange={e => updateActivityRole('rank', e.target.value)}
                                     >
+                                        <option value="standerd">Standard</option>
                                         <option value="header">Header</option>
                                         <option value="vice">Vice</option>
-                                        <option value="standerd">Standard</option>
                                     </select>
                                 </div>
                             </div>
@@ -197,15 +201,15 @@ export const StaffForm: React.FC<StaffFormProps> = ({
                             <span className="w-6 h-6 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center mr-2 text-xs"><i className="fa-solid fa-building-columns"></i></span>
                             Financial
                         </h3>
-                        <Input label="Bank Name" value={formData.bankDetails?.bankName} onChange={e => updateBank('bankName', e.target.value)} iconClass="fa-solid fa-building-columns" />
-                        <Input label="Account Number" value={formData.bankDetails?.accountNumber} onChange={e => updateBank('accountNumber', e.target.value)} iconClass="fa-solid fa-hashtag" />
-                        <Input label="Account Name" value={formData.bankDetails?.accountName} onChange={e => updateBank('accountName', e.target.value)} iconClass="fa-solid fa-signature" />
+                        <Input placeholder='Your Bank Name' label="Bank Name" value={formData.bankDetails?.bankName} onChange={e => updateBank('bankName', e.target.value)} iconClass="fa-solid fa-building-columns" />
+                        <Input placeholder='e.g 0987654321' label="Account Number" value={formData.bankDetails?.accountNumber} onChange={e => updateBank('accountNumber', e.target.value)} iconClass="fa-solid fa-hashtag" />
+                        <Input placeholder='e.g John Slim' label="Account Name" value={formData.bankDetails?.accountName} onChange={e => updateBank('accountName', e.target.value)} iconClass="fa-solid fa-signature" />
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
                     <Button type="button" variant="outline" className="w-auto px-8" onClick={onCancel}>Cancel</Button>
-                    <Button type="submit" className="w-auto px-8">{initialData ? 'Update Staff' : 'Complete Onboarding'}</Button>
+                    <Button disabled={isLoading} type="submit" className="w-auto px-8">{initialData ? 'Update Staff' : 'Complete Onboarding'}</Button>
                 </div>
             </form>
         </div>

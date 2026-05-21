@@ -41,7 +41,7 @@ const schoolsMock = [
 
 // Layout for Authentication Pages
 const AuthLayout = ({ children }: { children?: React.ReactNode }) => {
-  const {toast, setToast, isLoading,setIsLoading,pageLoading,setPageLoading, } = useContext(uiContext);
+  const {toast, setToast, isLoading,pageLoading } = useContext(uiContext);
   
   useEffect(() => { // to automatically close toast after 3 seconds
   if (toast) {
@@ -105,7 +105,7 @@ const AuthLayout = ({ children }: { children?: React.ReactNode }) => {
 
 // Layout for Dashboard (Full Screen)
 const DashboardLayout = ({ children }: { children?: React.ReactNode }) => {
-  const {toast, setToast, isLoading,setIsLoading,pageLoading,setPageLoading, } = useContext(uiContext);
+  const {toast, setToast, isLoading,pageLoading } = useContext(uiContext);
   
   useEffect(() => { // to automatically close toast after 3 seconds
   if (toast) {
@@ -132,6 +132,7 @@ const DashboardLayout = ({ children }: { children?: React.ReactNode }) => {
  
 const App: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>('');
+  const [isLoginSession ,setIsLoginSession] = useState(false);
   const { currentUser,setCurrentUser,
           getCurrentUser,getToken,
           userRole, setUserRole,
@@ -149,7 +150,7 @@ const App: React.FC = () => {
 
   const handleLogin = (mode:String, response:any) => {
     const responseData = response?.data
-    console.log('response login : ', response?.data);
+    // console.log('response login : ', response?.data);
     let role:string = 'director';
     let nextView = ViewState.SELECT_SCHOOL;
     let initialSchool: School | null | any = null;
@@ -157,50 +158,56 @@ const App: React.FC = () => {
     if (mode === 'director') {
         // Directors & Parents go to School Selection
         role = 'director';
-        // setSchools(responseData?.data?.directorschools)
-        nextView = ViewState.SELECT_SCHOOL;
-        
-    } else {
-      // Students & Staff go DIRECTLY to Dashboard
-        setPageLoading(true)
-        initialSchool = responseData?.data?.school ;
+        // check if its one school 
+        if(responseData?.directorschools?.length > 1 ){
+          nextView = ViewState.SELECT_SCHOOL;
+        }
+        // DIRECTLY to Dashboard
+        initialSchool = responseData?.directorschools[0] ;
         role = mode?.toLowerCase() 
         setSelectedSchool(initialSchool) ;
         nextView = ViewState.DASHBOARD ;
 
+        
+    } else {
+      // Students & Staff go DIRECTLY to Dashboard
+          initialSchool = responseData?.school ;
+          role = mode?.toLowerCase() 
+          setSelectedSchool(initialSchool) ;
+          nextView = ViewState.DASHBOARD ;
     }
     // set is Authenticated true 
-    setTimeout(() => {
-      localStorage.setItem('a_token',responseData?.tokens?.access);
-      localStorage.setItem('r_token',responseData?.tokens?.refresh);
-      localStorage.setItem('directorschools',JSON.stringify(responseData?.data?.directorschools));
-
-      // set currentUser 
+      localStorage.setItem('a_token',response?.tokens?.access);
+      localStorage.setItem('r_token',response?.tokens?.refresh);
+      if (role === 'director'){
+        localStorage.setItem('directorschools',JSON.stringify(responseData?.directorschools));
+      }else{
+        localStorage.setItem('school',JSON.stringify(responseData?.school));
+      }
+      setIsLoginSession(true);
       setUserRole(role);
-      setCurrentUser(responseData?.data) // user instance data base on the role 
+      setCurrentUser(responseData) // user instance data base on the role 
       setIsAuthenticated(true);
       setCurrentView(nextView);
-
       // Save Session
     const session: SessionData = {
         role,
-        user: responseData?.data,
+        user: responseData,
         school : initialSchool,
         timestamp: Date.now()
     };
-    
     localStorage.setItem('session', JSON.stringify(session));
+      // set currentUser
+  }
     
-  }, 2000);
-    setPageLoading(false)
-  };
 
   const handleSelectSchool = (schoolId: string) => {
-    const directorschools =  JSON.parse(localStorage.getItem('directorschools'));
+    const directorschools =  JSON.parse(localStorage.getItem('directorschools') as any );
     const school = directorschools.find(s => s?.id === schoolId);
     if (school) { 
       setSelectedSchool(school); // this will trigger session update in the authcontext 
       setCurrentView(ViewState.DASHBOARD);
+
       // Update session with school selection
       const stored = localStorage.getItem('session');
       if (stored) {
@@ -209,19 +216,31 @@ const App: React.FC = () => {
           localStorage.setItem('session', JSON.stringify(session));
       }
     }
-    sendRequest(`/director/school-detail/${school?.id}/`,'GET',setSchoolData,true,false) ;
-
+    if ( school?.id) { 
+      sendRequest(`/director/school-detail/${school?.id}/`,'GET',null as any ,setSchoolData,false,false) ;
+    }
   };
+
+  useEffect(() => {
+    if (!isLoginSession) return ;
+    // call the big data api here 
+    let role = userRole?.toLowerCase()
+    if ( selectedSchool?.id) { 
+      sendRequest(`/${role}/school-detail/${selectedSchool?.id}/`,'GET',null as any ,setSchoolData,false,false) ;
+    }
+    setIsLoginSession(false);
+  },[isLoginSession,selectedSchool,])
 
   // --- SESSION PERSISTENCE ---
   useEffect(() => {
+    if (isLoginSession) return ;
         const storedSession = localStorage.getItem('session');
         const storedTokens =  localStorage.getItem('a_token');
     
         if (storedSession && storedTokens) {
             try {
                 const session  = JSON.parse(storedSession);
-                const directorschools =  JSON.parse(localStorage.getItem('directorschools'));
+                const directorschools =  JSON.parse(localStorage.getItem('directorschools') as any ) || null;
                 // setSchools(directorschools);
                 setUserRole(session.role);
                 setCurrentUser(session.user)
@@ -234,23 +253,22 @@ const App: React.FC = () => {
                     return;
                 }
                 if (session?.school?.id) {
-                    const school = directorschools?.find(s => s.id === session.school?.id);
-                    if (school ) {
-                        //          either has selected school or no              //
-                        //          fetch school big data  records here           //
+                    // const school = directorschools?.find(s => s.id === session.school?.id);
+                    const school = session?.school;
+                    if (school) {
+                        // fetch school big data  records here           //
                         setSelectedSchool(school) ;
-                        if ( session.role === 'director'){
-                          sendRequest(`/director/school-detail/${school?.id}/`,'GET',null,setSchoolData,false,false) ;
+                        if (session?.role){ // director/student/teacher/parent/staff 
+                          sendRequest(`/${session.role?.toLowerCase()}/school-detail/${school?.id}/`,'GET',null as any , setSchoolData,false,false) ;
                         }
-                        // setCurrentView(ViewState.DASHBOARD) ; 
-
-                    } else if (session.role === 'director') { // but school not selected 
+                    } else if (session.role === 'director' && directorschools ) { // but school not selected 
                         setCurrentView(ViewState.SELECT_SCHOOL);
+                    }else{
+                      // If student/staff has no school 
+                      setCurrentView(ViewState.LOGIN);
                     }
-                } else if (session.role === 'director') {
-                    setCurrentView(ViewState.SELECT_SCHOOL);
                 } else {
-                    // If student/staff has no school selected (shouldn't happen in real app but mock safety)
+                    // If student/staff has no school 
                     setCurrentView(ViewState.LOGIN);
                 }
             } catch (e) {
@@ -260,7 +278,7 @@ const App: React.FC = () => {
       }, []); // when ever school is selected we need to fetch its bulk data 
     
   const handleLogout = () => {
-    setPageLoading(true)
+    setPageLoading(true) 
     setTimeout(() => {
       localStorage.removeItem('session') ;
       localStorage.removeItem('a_token') ;
@@ -272,7 +290,7 @@ const App: React.FC = () => {
       setCurrentView(ViewState.LOGIN); 
       setUserRole('director'); // Reset role 
       setPageLoading(false)
-    }, 3000);
+    }, 2000);
   };
 
   // Router

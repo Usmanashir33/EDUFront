@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect, useRef ,useContext } from 'react';
 import { Student, ClassRoom, Subject, AcademicRecord } from '../../types';
-import { Input, Button, FadeIn, MultiSelectDropdown, PinModal, Toast, ImageUpload, ImageViewer } from '../UI';
+import { Input, Button, FadeIn, MultiSelectDropdown, PinModal, Toast, ImageUpload,} from '../UI';
 import { uiContext } from '@/customContexts/UiContext';
 import urls from '@/customHooks/ServerUrls';
 
 // --- FORM LOGIC ---
-// 
+//  
 export const StudentForm = ({ 
     initialData, 
     onSubmit, 
@@ -25,7 +25,9 @@ export const StudentForm = ({
       gender: initialData?initialData.gender : '',
       picture: initialData?initialData.picture :'',
       nin: initialData?initialData?.nin :'',
-      classRoomIds: initialData?initialData.class_room : [],
+      classRoomIds: initialData?initialData.class_rooms?.filter(
+        cls => cls.status === 'active' || cls.status === 'enrolled'
+      ).map(c => c.class_room) : [],
       status: initialData?initialData.user?.is_active : '',
       admissionNumber: initialData?initialData.admission_number : '',
       dateOfBirth: initialData?initialData.date_of_birth :'',
@@ -44,6 +46,7 @@ export const StudentForm = ({
               staff, setStaff, // staff data
               classRooms, setClassRooms, // classRooms data
               subjects, setSubjects, // subjects data
+              isLoading,
           } = useContext(uiContext)
     const updateGuardian = (field: string, value: string) => {
         setFormData({
@@ -86,9 +89,9 @@ export const StudentForm = ({
                    Identity Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Input required label="First Name" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} iconClass="fa-solid fa-user" />
-                  <Input label="Middle Name" value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} iconClass="fa-solid fa-user" />
-                  <Input required label="Last Name" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} iconClass="fa-solid fa-user" />
+                  <Input placeholder='First Name' autoFocus required label="First Name" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} iconClass="fa-solid fa-user" />
+                  <Input placeholder='Last Name' required label="Last Name/ Sure Name " value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} iconClass="fa-solid fa-user" />
+                  <Input placeholder='Middle Name' label="Middle Name(Optional)" value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} iconClass="fa-solid fa-user" />
                   
                   <div>
                     <label className="block text-sm font-semibold text-navy-800 mb-1.5">Gender</label>
@@ -105,7 +108,7 @@ export const StudentForm = ({
                   <Input type="date" label="Date of Birth" value={formData.dateOfBirth} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} iconClass="fa-solid fa-calendar" />
                   <Input label="NIN / ID Number" value={formData.nin} onChange={e => setFormData({...formData, nin: e.target.value})} iconClass="fa-solid fa-fingerprint" placeholder="National Identity Number" />
                </div>
-               <Input type="email" label="Student Email (Required)" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} iconClass="fa-regular fa-envelope" />
+               <Input type="email" placeholder="student@example.com" label="Student Email (Required for portal access)" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} iconClass="fa-regular fa-envelope" />
              </div>
            </div>
 
@@ -128,25 +131,6 @@ export const StudentForm = ({
                   {initialData && (
                      <Input disabled label="Admission Number" value={formData.admissionNumber} iconClass="fa-solid fa-id-badge" />
                   )}
-                  
-                  <div>
-                    <label className="block text-sm font-semibold text-navy-800 mb-1.5">Current Status</label>
-                    <div className="flex gap-4">
-                        {['Active', 'Inactive', 'Suspended'].map(s => (
-                             <label key={s} className="flex items-center cursor-pointer">
-                                 <input 
-                                    type="radio" 
-                                    name="status"
-                                    value={s}
-                                    checked={formData.status === s}
-                                    onChange={() => setFormData({...formData, status: s as any})}
-                                    className="w-4 h-4 text-navy-900 border-gray-300 focus:ring-navy-900" 
-                                 />
-                                 <span className="ml-2 text-sm text-gray-700">{s}</span>
-                             </label>
-                        ))}
-                    </div>
-                  </div>
                </div>
 
                <div className="space-y-6">
@@ -155,19 +139,19 @@ export const StudentForm = ({
                     Guardian Information
                   </h3>
                   <div className="grid grid-cols-1 gap-4">
-                    <Input label="Guardian Full Name" value={formData.guardian?.fullName} onChange={e => updateGuardian('fullName', e.target.value)} iconClass="fa-solid fa-user-shield" />
-                    <Input label="Email" value={formData.guardian?.email} onChange={e => updateGuardian('email', e.target.value)} iconClass="fa-solid fa-phone" />
-                    <Input label="Phone Number" value={formData.guardian?.phone} onChange={e => updateGuardian('phone', e.target.value)} iconClass="fa-solid fa-phone" />
-                    <Input label="Relationship" value={formData.guardian?.relationship} onChange={e => updateGuardian('relationship', e.target.value)} iconClass="fa-solid fa-link" />
-                    <Input label="Address" value={formData.guardian?.address} onChange={e => updateGuardian('address', e.target.value)} iconClass="fa-solid fa-map-pin" />
+                    <Input label="Guardian Full Name" placeholder='Enter full name ' value={formData.guardian?.fullName} onChange={e => updateGuardian('fullName', e.target.value)} iconClass="fa-solid fa-user-shield" />
+                    <Input label="Email (Required to access portal)" placeholder='e.g parentemail@gmail.com' value={formData.guardian?.email} onChange={e => updateGuardian('email', e.target.value)} iconClass="fa-solid fa-phone" />
+                    <Input label="Phone Number (optional)" placeholder='(081000000001)' value={formData.guardian?.phone} onChange={e => updateGuardian('phone', e.target.value)} iconClass="fa-solid fa-phone" />
+                    <Input label="Relationship" placeholder='Parents/Brother etc' value={formData.guardian?.relationship} onChange={e => updateGuardian('relationship', e.target.value)} iconClass="fa-solid fa-link" />
+                    <Input label="Address" placeholder='Full address' value={formData.guardian?.address} onChange={e => updateGuardian('address', e.target.value)} iconClass="fa-solid fa-map-pin" />
                   </div>
                </div>
            </div>
 
            <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
-              <Button variant="outline" className="w-auto px-8" onClick={onCancel} type="button">Cancel</Button>
-              <Button className="w-auto px-8" type="submit">
-                  {initialData ? 'Update Record' : 'Register Student'}
+              <Button variant="outline" disabled={isLoading} className="w-auto px-8" onClick={onCancel} type="button">Cancel</Button>
+              <Button className="w-auto px-8" type="submit" disabled={isLoading}>
+                  {isLoading ? 'Saving...' : initialData ? 'Update Record' : 'Register Student'}
               </Button>
            </div>
         </form>

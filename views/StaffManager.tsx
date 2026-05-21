@@ -1,18 +1,17 @@
 
-import React, { useState, useMemo ,useContext} from 'react';
+import React, { useState, useMemo ,useContext,useRef,useEffect} from 'react';
 import { Staff, PaymentRecord, KYCDocument, KYCInfo, ActivityLog } from '../types';
-import { Button, PinModal, Toast, Modal, ImageUpload, ImageViewer } from '../components/UI';
+import { Button, PinModal, Toast, Modal, ImageUpload, ImageViewer, Paginator } from '../components/UI';
 import { StaffForm } from '@/components/staffs/StaffForm';
 import { StaffDetail } from '../components/staffs/StaffDetail';
 import { PayrollCalculator, PaymentReceipt, BankDetailsModal, safeParseFloat } from '../components/staffs/StaffFinance';
 import { authContext } from '@/customContexts/AuthContext';
-import { uiContext } from '@/customContexts/UiContext';
+import { uiContext } from '@/customContexts/UiContext'; 
 import useRequest from '@/customHooks/RequestHook';
 import urls from '@/customHooks/ServerUrls';
 
 interface StaffManagerProps {
   staff: Staff[];
-  onLogActivity: (action: ActivityLog['action'], module: ActivityLog['module'], description: string) => void;
 }
 
 type ViewMode = 'LIST' | 'DETAIL' | 'ADD' | 'EDIT';
@@ -29,26 +28,26 @@ const getMockAttendance = (staffId: string, dateStr: string) => {
     return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} AM`;
 };
 
-export const StaffManager: React.FC<StaffManagerProps> = ({onLogActivity }) => {
+export const StaffManager: React.FC<StaffManagerProps> = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('LIST');
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   let [serverForm,setServerForm]= useState(new FormData()) // form to handle server data 
-    const {currentUser} = useContext(authContext);
-    const {     selectedSchool,
-              students,setStudents, // students data
-              teachers, setTeachers ,// teachers data
+  let [admForm,setAdmForm] = useState({})
+  
+  const {currentUser} = useContext(authContext);
+  const {     selectedSchool,
               staffs, setStaffs, // staff data
-              sections, setSections, // sections data
-              classRooms, setClassRooms, // classRooms data
-              subjects, setSubjects, // subjects data
           } = useContext(uiContext)
-    const {sendRequest} = useRequest();
+  const {sendRequest} = useRequest();
   
   // Filters
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterMonth, setFilterMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
   const [filterDept, setFilterDept] = useState('All');
+  const [filterGender, setFilterGender] = useState<'All' | 'male' | "other"|'female'>('All');
+  const [filterStatus, setFilterStatus] = useState<'All' | "Active" | "Inactive">('All');
+  
   
   // DrillDown
   const [drillDownType, setDrillDownType] = useState<DrillDownType>(null);
@@ -67,7 +66,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({onLogActivity }) => {
   const [bankForm, setBankForm] = useState({ bankName: '', accountNumber: '', accountName: '' });
   const [viewDoc, setViewDoc] = useState<KYCDocument | null>(null);
 
-  const departments = ['All', ...Array.from(new Set(staffs.map(s => s.activity_role?.role || 'security')))];
+  const departments = ['All', ...Array.from(new Set(staffs.map(s => s.activity_role?.role || 'academic')))];
 
   // Date Navigation
   const handleDateChange = (offset: number) => {
@@ -97,33 +96,36 @@ export const StaffManager: React.FC<StaffManagerProps> = ({onLogActivity }) => {
   };
     // /   this is react function
   const TriggeredFunc = (data:any) => {
-    console.log('data: ', data);
+    // console.log('data: ', data);
     if (data?.success){
+        if (data?.success === "searchResults"){
+            // only students not already in the list of the students 
+            let searched = data?.results.filter((res) => staffs.find(s => s.id !== res.id))
+            setStaffs((prev) => [...searched,...prev])
+            return;
+        }
         if (viewMode === "ADD"){
             setStaffs([ data?.new_staff,...staffs]);
-            onLogActivity('CREATE', 'STAFF', `Added ${data?.new_staff?.first_name}`);
             setToast({ message: "New staff member added", type: "success" });
             setViewMode('LIST');
         }else if (viewMode === "EDIT"){
             setStaffs(staffs.map(x => x.id === selectedStaffId ? data?.updated_staff : x));
-            onLogActivity('UPDATE', 'STAFF', `Updated profile`);
             setToast({ message: "Profile updated", type: "success" });
             setViewMode('DETAIL');
+
+        }else if (data?.sus_staff){
+          const updated = staffs.map(s => s.id === selectedStaffId ? data?.sus_staff : s);
+          setStaffs(updated);
+          setToast({ message: "Status updated", type: 'success' });
+        }else if (data?.del_staff){
+          setStaffs(staffs.filter(s => s.id !== selectedStaffId));
+          setViewMode('LIST');
+          setSelectedStaffId(null);
+          setToast({ message: "Staff deleted", type: 'success' });
         }
     }
   }
     const handleApiCall = (data:any) => {
-    if (!currentUser?.user?.pin_set){
-      // Make the api call here  when user  need no pin to talk to server  
-        if (viewMode === "ADD") { 
-          sendRequest("/director/add-staff/","POST",serverForm,TriggeredFunc,true,true)
-        }
-        if (viewMode === "EDIT") {
-          sendRequest(`/director/update-staff/${selectedStaffId}/`,"PUT",serverForm,TriggeredFunc,true,true)
-        }
-        return 
-    }
-    setShowPinModal(true)
     let form = new FormData() 
     // Only include id if updating
     form.append("first_name", data.firstName);
@@ -132,11 +134,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({onLogActivity }) => {
     form.append("middle_name", data.middleName || "");
     form.append("email", data.email);
     form.append("phone", data.phone);
-    form.append("gender", data.gender?.toLowerCase() );
+    form.append("gender", data.gender?.toLowerCase());
     form.append("school", selectedSchool?.id);
     form.append("date_of_birth", data.dateOfBirth);
     form.append("nin", data.nin);
-    form.append("address", data.nin);
+    form.append("address", data.address);
     form.append("salary", data.salary);
 
     // Image file only if selected
@@ -158,67 +160,86 @@ export const StaffManager: React.FC<StaffManagerProps> = ({onLogActivity }) => {
     }));
 
     setServerForm(form)  // initialize the server form 
+    if (!currentUser?.user?.pin_set){
+      // Make the api call here  when user  need no pin to talk to server  
+        if (viewMode === "ADD") { 
+          sendRequest("/staff/add-staff/","POST",form as any,TriggeredFunc,true,true)
+        }
+        if (viewMode === "EDIT") {
+          sendRequest(`/staff/update-staff/${selectedStaffId}/`,"PUT",form as any,TriggeredFunc,true,true)
+        }
+        return 
+    }
+    setShowPinModal(true) ;
   }
   // Actions
   const handlePinSuccess = (pins:any) => {
     serverForm.append("pin", pins );
         setShowPinModal(false);
-
         // Make the api call here  when user  need no pin to talk to server 
         if (viewMode === "ADD") { 
-          sendRequest("/director/add-staff/","POST",serverForm,TriggeredFunc,true,true)
+          sendRequest("/staff/add-staff/","POST",serverForm as any ,TriggeredFunc,true,true)
         }
         if (viewMode === "EDIT") {
-          sendRequest(`/director/update-staff/${selectedStaffId}/`,"PUT",serverForm,TriggeredFunc,true,true)
+          sendRequest(`/staff/update-staff/${selectedStaffId}/`,"PUT",serverForm as any ,TriggeredFunc,true,true)
         }
     if (!pendingAction) return;
-
-    // if (pendingAction.type === 'SUSPEND' && selectedStaffId) {
-    //     const updated = staff.map(s => s.id === selectedStaffId ? { ...s, status: s.status === 'Suspended' ? 'Active' : 'Suspended' } as Staff : s);
-    //     onUpdateStaff(updated);
-    //     onLogActivity('SUSPEND', 'STAFF', `Status changed`);
-    //     setToast({ message: "Status updated", type: 'success' });
-    // } 
-    // else if (pendingAction.type === 'DELETE' && selectedStaffId) {
-    //     onUpdateStaff(staff.filter(s => s.id !== selectedStaffId));
-    //     onLogActivity('DELETE', 'STAFF', `Deleted staff record`);
-    //     setViewMode('LIST'); setSelectedStaffId(null);
-    //     setToast({ message: "Staff deleted", type: 'success' });
-    // }
-    // else if (pendingAction.type === 'PAY_SALARY' && selectedStaffId) {
-    //     const { month, breakdown } = pendingAction.payload;
-    //     const updated = staff.map(s => {
-    //         if (s.id === selectedStaffId) {
-    //             const newPayment: PaymentRecord = {
-    //                 id: Date.now().toString(),
-    //                 date: new Date().toISOString(),
-    //                 amount: breakdown.netSalary,
-    //                 status: 'Paid',
-    //                 month,
-    //                 transactionRef: `TXN-${Date.now().toString().slice(-8)}`,
-    //                 breakdown
-    //             };
-    //             setReceiptData({ staff: s, record: newPayment }); setShowReceipt(true);
-    //             return { ...s, paymentHistory: [newPayment, ...(s.paymentHistory || [])] };
-    //         }
-    //         return s;
-    //     });
-    //     onUpdateStaff(updated);
-    //     onLogActivity('PAYMENT', 'FINANCE', `Salary paid`);
-    // }
-    // else if (pendingAction.type === 'VERIFY_DOC' && selectedStaffId) {
-    //      const { docName } = pendingAction.payload;
-    //      const updated = staff.map(s => {
-    //          if (s.id !== selectedStaffId) return s;
-    //          const newDocs = s.kyc?.documents.map(d => d.name === docName ? { ...d, status: 'Verified' as const } : d) || [];
-    //          return { ...s, kyc: { ...s.kyc, isVerified: newDocs.every(d => d.status === 'Verified'), documents: newDocs } as KYCInfo };
-    //      });
-    //      onUpdateStaff(updated);
-    //      setToast({ message: `Document verified.`, type: 'success' });
-    // }
-    // setPendingAction(null);
+    if (pendingAction.type === 'SUSPEND' || pendingAction.type === 'DELETE' && selectedStaffId) {
+      let admF:any = admForm
+        admF.pin = pins
+      const requestAction = pendingAction.type?.toLowerCase()
+      sendRequest(`/staff/manage-staff/${selectedStaffId}/${requestAction}/`,"POST",admF as any,TriggeredFunc,true,false)
+    } 
   };
+  // ACTIONS
+    const triggerSuspend = () => { 
+      setPendingAction({ type: 'SUSPEND' }); 
+      let form ={
+        school : selectedSchool?.id
+      }
+      setAdmForm(form)
 
+      if (!currentUser?.user?.pin_set){
+        sendRequest(`/staff/manage-staff/${selectedStaffId}/${'suspend'}/`,"POST",form as any,TriggeredFunc,true,false)
+        return ;
+      }
+      setShowPinModal(true) ;
+    };
+
+    const triggerDelete = () => { 
+      setPendingAction({ type: 'DELETE' }); 
+      let form ={
+        school :selectedSchool?.id
+      }
+      setAdmForm(form)
+      if (!currentUser?.user?.pin_set){
+        sendRequest(`/staff/manage-staff/${selectedStaffId}/${'delete'}/`,"POST",form as any,TriggeredFunc,true,false)
+        return ;
+      }
+      setShowPinModal(true) 
+    };
+
+    const filteredStaffs = staffs.filter(t => {
+              let status = ( filterStatus  == "Active") ? true :false
+              const matchSearch = (t.title + t.first_name + t.last_name + t.middle_name + t.phone + t.staff_id + t.email).toLowerCase().includes(searchTerm.toLowerCase());
+              const matchGender = filterGender === 'All' || t.gender?.toLowerCase() === filterGender?.toLowerCase() ;
+              const matchActivity = filterDept  === 'All' || t?.activity_role?.role === filterDept ;
+              const matchStatus = filterStatus === 'All' || t.user.is_active === status ;
+            //   const matchClass = filterClassIds.length === 0 || s.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map((cls) => cls.class_room).some(cid => filterClassIds.includes(cid));
+            //   return matchSearch && matchStatus && matchClass;
+              return matchSearch && matchActivity  && matchGender && matchStatus ;
+          });
+        
+      const allowSearch = useRef(true);
+      useEffect(() => {
+            if (searchTerm.length && !filteredStaffs.length && allowSearch.current) {
+              sendRequest(`/staff/search/staff/${selectedSchool?.id}/${searchTerm}/`, "GET", null, TriggeredFunc, true, false)
+              allowSearch.current = false;
+              setTimeout(() => {
+                allowSearch.current = true;
+              }, 500);
+            }
+      }, [searchTerm]);
   // Render Views
   if (viewMode === 'ADD') {
       return (
@@ -253,17 +274,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({onLogActivity }) => {
 
       return (
         <>
+            <PinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={handlePinSuccess} title="Authorize Action" />
             <StaffDetail 
                 id={selectedStaffId}
                 staff={selectedStaff} 
                 onBack={() => setViewMode('LIST')}
                 onEdit={() => setViewMode('EDIT')}
-                // onUpdateStaff={(s) => onUpdateStaff(staffs.map(old => old.id === s.id ? s : old))}
-                onLogActivity={onLogActivity}
                 onTriggerSalary={(data) => { setPayrollData(data); setShowPayrollModal(true); }}
                 onViewReceipt={(record) => { setReceiptData({ staff: selectedStaff, record }); setShowReceipt(true); }}
-                onTriggerSuspend={() => { setPendingAction({ type: 'SUSPEND' }); setShowPinModal(true); }}
-                onTriggerDelete={() => { setPendingAction({ type: 'DELETE' }); setShowPinModal(true); }}
+                onTriggerSuspend={triggerSuspend}
+                onTriggerDelete={triggerDelete}
                 onOpenBankModal={() => { setBankForm(selectedStaff?.bank_details || { bankName:'',accountNumber:'',accountName:'' }); setShowBankModal(true); }}
                 onSetToast={setToast}
                 onViewDoc={(doc) => setViewDoc(doc)}
@@ -287,68 +307,88 @@ export const StaffManager: React.FC<StaffManagerProps> = ({onLogActivity }) => {
   }
 
   return (
-    <div className="animate-fadeIn space-y-6">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
-      {/* Header & Filters */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200 gap-4">
-            <div><h2 className="text-xl font-bold text-navy-900">Staff Management</h2><p className="text-sm text-gray-500">Overview, Attendance & Payroll</p></div>
-            <div className="flex flex-wrap gap-3">
-                <div className="flex items-center border border-gray-300 rounded-md bg-gray-50">
-                    <button onClick={() => handleDateChange(-1)} className="px-3 py-2 text-gray-500 hover:text-navy-900 border-r"><i className="fa-solid fa-chevron-left"></i></button>
-                    <div className="px-3 py-2 text-sm font-semibold text-navy-900 min-w-[180px] text-center">{formattedDateDisplay}</div>
-                    <button onClick={() => handleDateChange(1)} className="px-3 py-2 text-gray-500 hover:text-navy-900 border-l"><i className="fa-solid fa-chevron-right"></i></button>
-                </div>
-                <div className="flex items-center border border-gray-300 rounded-md px-3 py-2 bg-gray-50">
-                    <span className="text-xs font-bold text-gray-500 mr-2 uppercase">Month:</span>
-                    <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="bg-transparent text-sm font-semibold text-navy-900 outline-none">{['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m}>{m}</option>)}</select>
-                </div>
-            </div>
-      </div>
+    <>
+      <Paginator 
+          data={staffs}
+          setData={setStaffs}
+          filteredData={filteredStaffs}
+          schoolId = {selectedSchool?.id}
+          url={`/staff/all-staffs/${selectedSchool?.id}/`} 
+          sendRequest={sendRequest}
+      /> 
+      <div className="animate-fadeIn space-y-6">
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        
+        {/* Header & Filters */}
+        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200 gap-4">
+              <div><h2 className="text-xl font-bold text-navy-900">Staff Management</h2><p className="text-sm text-gray-500">Overview, Attendance & Payroll</p></div>
+              <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center border border-gray-300 rounded-md bg-gray-50">
+                      <button onClick={() => handleDateChange(-1)} className="px-3 py-2 text-gray-500 hover:text-navy-900 border-r"><i className="fa-solid fa-chevron-left"></i></button>
+                      <div className="px-3 py-2 text-sm font-semibold text-navy-900 min-w-[180px] text-center">{formattedDateDisplay}</div>
+                      <button onClick={() => handleDateChange(1)} className="px-3 py-2 text-gray-500 hover:text-navy-900 border-l"><i className="fa-solid fa-chevron-right"></i></button>
+                  </div>
+                  <div className="flex items-center border border-gray-300 rounded-md px-3 py-2 bg-gray-50">
+                      <span className="text-xs font-bold text-gray-500 mr-2 uppercase">Month:</span>
+                      <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="bg-transparent text-sm font-semibold text-navy-900 outline-none">{['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => <option key={m}>{m}</option>)}</select>
+                  </div>
+              </div>
+        </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200"><p className="text-xs font-bold text-gray-400 uppercase">Total Staff</p><h3 className="text-2xl font-bold text-navy-900">{staffs?.length}</h3></div>
-         <div onClick={() => setDrillDownType('LATE')} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-orange-500"><div className="flex justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase">Late Today</p><h3 className="text-2xl font-bold text-orange-600">{dashboardStats.lateList.length}</h3></div><i className="fa-solid fa-clock text-orange-100 text-3xl"></i></div></div>
-         <div onClick={() => setDrillDownType('PAID')} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-green-500"><div className="flex justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase">Paid ({filterMonth.slice(0,3)})</p><h3 className="text-2xl font-bold text-green-600">{dashboardStats.paidList.length}</h3></div><i className="fa-solid fa-money-bill text-green-100 text-3xl"></i></div></div>
-         <div onClick={() => setDrillDownType('UNPAID')} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-red-500"><div className="flex justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase">Unpaid</p><h3 className="text-2xl font-bold text-red-600">{dashboardStats.unpaidList.length}</h3></div><i className="fa-solid fa-triangle-exclamation text-red-100 text-3xl"></i></div></div>
-      </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200"><p className="text-xs font-bold text-gray-400 uppercase">Total Staff</p><h3 className="text-2xl font-bold text-navy-900">{staffs?.length}</h3></div>
+          <div onClick={() => setDrillDownType('LATE')} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-orange-500"><div className="flex justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase">Late Today</p><h3 className="text-2xl font-bold text-orange-600">{dashboardStats.lateList.length}</h3></div><i className="fa-solid fa-clock text-orange-100 text-3xl"></i></div></div>
+          <div onClick={() => setDrillDownType('PAID')} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-green-500"><div className="flex justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase">Paid ({filterMonth.slice(0,3)})</p><h3 className="text-2xl font-bold text-green-600">{dashboardStats.paidList.length}</h3></div><i className="fa-solid fa-money-bill text-green-100 text-3xl"></i></div></div>
+          <div onClick={() => setDrillDownType('UNPAID')} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-red-500"><div className="flex justify-between"><div><p className="text-xs font-bold text-gray-400 uppercase">Unpaid</p><h3 className="text-2xl font-bold text-red-600">{dashboardStats.unpaidList.length}</h3></div><i className="fa-solid fa-triangle-exclamation text-red-100 text-3xl"></i></div></div>
+        </div>
 
-      {/* List Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200 gap-4">
-         <div className="flex gap-4 w-full md:w-auto">
-            <div className="relative flex-1 md:w-64"><i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i><input type="text" placeholder="Search staff..." className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:border-navy-900" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/></div>
-            <select className="border rounded-md px-3 py-2 bg-white" value={filterDept} onChange={e => setFilterDept(e.target.value)}>{
-            departments.map(
-              (d: any) => 
-              <option key={d} value={d}>{d === 'All' ? 'All Roles' : d.charAt(0).toUpperCase() + d.slice(1)}</option>
-              )}</select>
-         </div>
-         <Button className="w-auto px-6" onClick={() => setViewMode('ADD')}><i className="fa-solid fa-plus mr-2"></i> Add Staff</Button>
-      </div>
+        {/* List Controls */}
+        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200 gap-4">
+          <div className="flex gap-4 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64"><i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i><input type="text" placeholder="Search staff..." className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:border-navy-900" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/></div>
+              <select className="border rounded-md px-3 py-2 bg-white" value={filterDept} onChange={e => {setFilterDept(e.target.value)}}>{
+              departments.map(
+                (d: any) => 
+                <option key={d} value={d}>{d === 'All' ? 'All Roles' : d.charAt(0).toUpperCase() + d.slice(1)}</option>
+                )}</select>
+              <select value={filterGender} onChange={(e) => setFilterGender(e.target.value as any)} className="border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-sm font-semibold"><option value="All">All Genders</option><option value="Male">Male</option><option value="Female">Female</option></select>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-sm font-semibold"><option value="All">All Statuses</option><option value={true}>Active</option><option value={false}>Inactive</option></select>
 
-      {/* List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {staffs.filter(s => (s.first_name + ' ' + s.last_name + s?.activityRole?.role).toLowerCase().includes(searchTerm.toLowerCase()) && (filterDept === 'All' || s.activity_role?.role === filterDept)).map(s => (
-          <div key={s.id} onClick={() => { setSelectedStaffId(s.id); setViewMode('DETAIL'); }} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all group cursor-pointer hover:-translate-y-1">
-            <div className="p-6 flex items-start gap-4">
-               <div className="w-12 h-12 rounded-full bg-navy-100 flex items-center justify-center text-navy-700 font-bold text-lg border border-white shadow-sm overflow-hidden">{s.picture ? <img src={urls.BASE_URL + s.picture} alt="" className="w-full h-full object-cover"/> : `${s.first_name[0]}${s.last_name[0]}`}</div>
-               <div className="flex-1">
-                  <div className="flex justify-between items-start"><h3 className="font-bold text-navy-900 group-hover:text-gold-600 transition-colors">{s.title} {s.first_name} {s.last_name}</h3><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${s.user?.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{s.user?.is_active ? 'Active' : 'Inactive'}</span></div>
-                  <p className="text-xs text-navy-500 font-bold uppercase mb-1">{s.role}</p>
-                  <p className="text-xs text-gray-500 flex items-center gap-2 capitalize"><i className="fa-solid fa-layer-group"></i> {s.activity_role?.role || 'Staff'}</p>
-                  <p className="text-xs text-gray-500 flex items-center gap-2 mt-1"><i className="fa-solid fa-phone"></i> {s.phone}</p>
-               </div>
-            </div>
-            <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center text-xs"><span className="font-mono text-gray-400">{s.staff_id}</span><span className="text-navy-600 font-bold hover:underline">View Profile <i className="fa-solid fa-arrow-right ml-1"></i></span></div>
           </div>
-        ))}
-      </div>
+          <Button className="w-auto px-6" onClick={() => setViewMode('ADD')}><i className="fa-solid fa-plus mr-2"></i> Add Staff</Button>
+        </div>
 
-       {/* Drill Down Modal */}
-       <Modal isOpen={drillDownType !== null} onClose={() => setDrillDownType(null)} title="Detailed List" icon="fa-solid fa-list">
-            <div className="max-h-[60vh] overflow-y-auto"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50 sticky top-0"><tr><th className="px-4 py-2 text-left text-xs font-bold">Staff</th><th className="px-4 py-2 text-right text-xs font-bold">{drillDownType === 'LATE' ? 'Time In' : 'Status'}</th></tr></thead><tbody className="divide-y divide-gray-200">{getDrillDownList().map((s: any) => (<tr key={s.id} onClick={() => { setDrillDownType(null); setSelectedStaffId(s.id); setViewMode('DETAIL'); }} className="cursor-pointer hover:bg-navy-50"><td className="px-4 py-3"><p className="font-bold text-sm text-navy-900">{s.first_name} {s.last_name}</p><p className="text-xs text-gray-500 capitalize">{s.activityRole?.role}</p></td><td className="px-4 py-3 text-right">{drillDownType === 'LATE' ? <span className="font-mono text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700">{s.arrivalTime}</span> : <span className="text-xs font-bold px-2 py-1 rounded uppercase bg-green-100 text-green-700">Paid</span>}</td></tr>))}</tbody></table></div>
-        </Modal>
-    </div>
+        {/* List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {(filteredStaffs.length === 0) && 
+          <div className="col-span-full bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="w-100 px-6 py-8 text-center text-md text-gray-500">No staff found matching filters.</div>
+          </div>
+          }
+          {(filteredStaffs.length !== 0) && filteredStaffs?.map(s => (
+            <div key={s.id} onClick={() => { setSelectedStaffId(s.id); setViewMode('DETAIL'); }} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all group cursor-pointer hover:-translate-y-1">
+              <div className="p-6 flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-navy-100 flex items-center justify-center text-navy-700 font-bold text-lg border border-white shadow-sm overflow-hidden">{s.picture ? <img src={urls.BASE_URL + s.picture} alt="" className="w-full h-full object-cover"/> : `${s.first_name[0]}${s.last_name[0]}`}</div>
+                <div className="flex-1">
+                    <div className="flex justify-between items-start"><h3 className="font-bold text-navy-900 group-hover:text-gold-600 transition-colors">{s.title} {s.first_name} {s.last_name}</h3><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${s.user?.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{s.user?.is_active ? 'Active' : 'Inactive'}</span></div>
+                    <p className="text-xs text-navy-500 font-bold uppercase mb-1">{s.role}</p>
+                    <p className="text-xs text-gray-500 flex items-center gap-2 capitalize"><i className="fa-solid fa-layer-group"></i> {s.activity_role?.role || 'Staff'}</p>
+                    <p className="text-xs text-gray-500 flex items-center gap-2 mt-1"><i className="fa-solid fa-phone"></i> {s.phone}</p>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center text-xs"><span className="font-mono text-gray-400">{s.staff_id}</span><span className="text-navy-600 font-bold hover:underline">View Profile <i className="fa-solid fa-arrow-right ml-1"></i></span></div>
+            </div>
+          ))}
+          
+        </div>
+
+        {/* Drill Down Modal */}
+        <Modal isOpen={drillDownType !== null} onClose={() => setDrillDownType(null)} title="Detailed List" icon="fa-solid fa-list">
+              <div className="max-h-[60vh] overflow-y-auto"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50 sticky top-0"><tr><th className="px-4 py-2 text-left text-xs font-bold">Staff</th><th className="px-4 py-2 text-right text-xs font-bold">{drillDownType === 'LATE' ? 'Time In' : 'Status'}</th></tr></thead><tbody className="divide-y divide-gray-200">{getDrillDownList().map((s: any) => (<tr key={s.id} onClick={() => { setDrillDownType(null); setSelectedStaffId(s.id); setViewMode('DETAIL'); }} className="cursor-pointer hover:bg-navy-50"><td className="px-4 py-3"><p className="font-bold text-sm text-navy-900">{s.first_name} {s.last_name}</p><p className="text-xs text-gray-500 capitalize">{s.activityRole?.role}</p></td><td className="px-4 py-3 text-right">{drillDownType === 'LATE' ? <span className="font-mono text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700">{s.arrivalTime}</span> : <span className="text-xs font-bold px-2 py-1 rounded uppercase bg-green-100 text-green-700">Paid</span>}</td></tr>))}</tbody></table></div>
+          </Modal>
+      </div>
+    </>
+
   );
 };

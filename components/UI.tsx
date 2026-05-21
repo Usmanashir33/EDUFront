@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect,useContext } from 'react';
 import { uiContext } from '@/customContexts/UiContext';
 import useRequest from '@/customHooks/RequestHook';
 import { authContext } from '@/customContexts/AuthContext';
+import { createPortal } from 'react-dom';
 
 
 // --- STUNNING LOADING ICON (Small) ---
@@ -126,6 +127,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, currentImage, o
   if (!preview && currentImage) {
     setPreview(currentImage);
   }
+  // return () => {setPreview(undefined)}
 }, [currentImage]);
 
   // Handle File Select
@@ -313,9 +315,9 @@ interface ImageViewerProps {
 export const ImageViewer: React.FC<ImageViewerProps> = ({ isOpen, imageUrl, altText, onClose }) => {
     if (!isOpen || !imageUrl) return null;
 
-    return (
+    const previewContent =  (
         <div 
-            className="fixed inset-0 z-[300] bg-navy-950/95 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn" 
+            className="fixed inset-0 z-[99999] bg-navy-950/95 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn" 
             onClick={onClose}
         >
             <button 
@@ -333,14 +335,16 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ isOpen, imageUrl, altT
             </div>
         </div>
     );
+    return createPortal(previewContent, document.body);
 };
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'danger';
   isLoading?: boolean;
+  icon? : any ;
 }
 
-export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', isLoading, className, ...props }) => {
+export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', isLoading, className,...props }) => {
   const baseStyles = "w-full flex justify-center items-center py-3 px-4 border text-sm font-semibold rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200";
   
   const variants = {
@@ -356,7 +360,7 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', i
       className={`${baseStyles} ${variants[variant]} ${className || ''} ${isLoading || props.disabled ? 'opacity-70 cursor-not-allowed' : ''}`}
       {...props}
     >
-      {isLoading && <i className="fa-solid fa-circle-notch fa-spin mr-2"></i>}
+      {isLoading && <i className={`mr-2 ${props?.icon? props.icon : 'fa-solid fa-circle-notch fa-spin'}`}></i>}
       {children}
     </button>
   );
@@ -476,41 +480,77 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   icon?: string;
+  className?:string
 }
 
+// export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon, className }) => {
+//   if (!isOpen) return null;
+
+//   return (
+//     <div className={`fixed inset-0 z-50 overflow-y-auto ${className}`} aria-labelledby="modal-title" role="dialog" aria-modal="true">
+//       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+//         <div className="fixed inset-0 bg-navy-900 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onClose}></div>
+
+//         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+//         <div className="relative inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6 animate-fadeIn">
+//           <div>
+//             {icon && (
+//               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-navy-50 mb-4 border border-navy-100">
+//                 <i className={`${icon} text-navy-600 text-xl`}></i>
+//               </div>
+//             )}
+//             <div className="text-center sm:text-left w-full">
+//               <h3 className="text-lg leading-6 font-bold text-navy-900 text-center mb-6" id="modal-title">
+//                 {title}
+//               </h3>
+//               <div className="mt-2 w-full">
+//                 {children}
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// --- PIN MODAL ---
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-navy-900 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onClose}></div>
+  const modalContent = (
+    <div className="fixed inset-0 z-[150] overflow-hidden flex items-center justify-center p-4 sm:p-6" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 bg-navy-950/35 bg-opacity-80 backdrop-blur-sm transition-opacity" aria-hidden="true" onClick={onClose}></div>
 
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div className="relative inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6 animate-fadeIn">
-          <div>
-            {icon && (
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-navy-50 mb-4 border border-navy-100">
-                <i className={`${icon} text-navy-600 text-xl`}></i>
-              </div>
-            )}
-            <div className="text-center sm:text-left w-full">
-              <h3 className="text-lg leading-6 font-bold text-navy-900 text-center mb-6" id="modal-title">
+        <div className="relative bg-white rounded-xl shadow-2xl transform transition-all sm:max-w-2xl sm:w-full animate-fadeIn max-h-[90vh] flex flex-col w-full">
+          <div className="flex-shrink-0 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              {icon ? (
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-navy-50 border border-navy-100">
+                  <i className={`${icon} text-navy-600 text-xl`}></i>
+                </div>
+              ) : <div></div>}
+              <button onClick={onClose} className="text-gray-400 hover:text-navy-900 transition-colors ml-auto">
+                <i className="fa-solid fa-xmark text-xl"></i>
+              </button>
+            </div>
+            <div className="text-left w-full">
+              <h3 className="text-lg leading-6 font-bold text-navy-900" id="modal-title">
                 {title}
               </h3>
-              <div className="mt-2 w-full">
-                {children}
-              </div>
             </div>
           </div>
+          <div className="w-full overflow-y-auto custom-scrollbar flex-grow p-4 sm:p-6">
+            {children}
+          </div>
         </div>
-      </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
-// --- PIN MODAL ---
 interface PinModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -612,7 +652,7 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess, 
 
     if (!isOpen) return null;
 
-    return (
+    const modalContent = (
         <div className="fixed inset-0 z-[9999] overflow-hidden flex items-center justify-center">
              {/* Full screen backdrop with blur */}
             <div className="fixed inset-0 bg-navy-950/50 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
@@ -742,6 +782,7 @@ export const PinModal: React.FC<PinModalProps> = ({ isOpen, onClose, onSuccess, 
             </div>
         </div>
     );
+    return createPortal(modalContent, document.body);
 };
 
 interface MultiSelectGridProps {
@@ -862,3 +903,102 @@ export const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
     </div>
   );
 };
+interface PaginatorProps {
+  data: string[];
+  setData: (data:any) => void;
+  filteredData: string[];
+  schoolId: string | undefined;
+  url: string;
+  sendRequest: (url: string, method: string, body: any, onSuccess: (resp: any) => void, showLoading: boolean, showError: boolean) => void;
+}
+export const Paginator:React.FC<PaginatorProps> = ({ data, setData, filteredData, schoolId, url, sendRequest }) => {
+  //----------------------------------- Pagination States Starts ----------------------------------------
+    const [totalData,setTotalData] = useState(0) ;
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages,setTotalPages] = useState(2);
+    // const dataPerPage = 2 ; // testinh
+    const dataPerPage = 50;
+    
+    
+    const handlePageDataChange = (resp: any) => {
+      let paginated_data = resp?.results?.paginated_data || [];
+      setData(paginated_data);
+      setTotalData(resp?.count || 0);
+      setTotalPages(resp?.total_pages || 10);
+    }
+    //----------------------------------- Pagination States Ends ----------------------------------------
+    
+
+  return ( 
+    <>
+       {((data.length >= dataPerPage) || (totalData > 0 )) && (
+                     <div className="fixed bottom-3 right-1 -translate-x-1/4 bg-white/90 backdrop-blur-md shadow-xl border border-gray-200 rounded-full px-4 py-2 flex items-center gap-6 z-10 transition-all">
+                         <div className="text-sm text-gray-600 font-medium whitespace-nowrap">
+                             Showing <span className="font-bold text-navy-900">{filteredData.length}</span> to <span className="font-bold text-navy-900">{Math.min(dataPerPage, totalData)}</span> of <span className="font-bold text-navy-900">{totalData}</span> students
+                         </div>
+                         <div className="w-px h-6 bg-gray-300"></div>
+                         <div className="flex items-center gap-2">
+                             <button 
+                                 onClick={() => {
+                                  let nextPage = Math.max(1, currentPage - 1);
+                                  sendRequest(`${url}?page=${nextPage}`,"GET",null as any ,handlePageDataChange,true,false)
+
+                                  setCurrentPage(nextPage);
+                                }}
+                                 disabled={currentPage === 1}
+                                 className="w-10 h-10 flex items-center justify-center rounded-full text-navy-700 hover:bg-navy-50 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                             >
+                                 <i className="fa-solid fa-chevron-left"></i>
+                             </button>
+                             
+                             <div className="flex items-center gap-1">
+                                 {[...Array(totalPages)].map((_, i) => {
+                                     // Show limited pages (max 5)
+                                     const pageNumber = i + 1;
+                                     if (
+                                         pageNumber === 1 ||
+                                         pageNumber === totalPages ||
+                                         (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                                     ) {
+                                         return (
+                                              <button 
+                                                 key={pageNumber}
+                                                 onClick={() => {
+                                                  setCurrentPage(pageNumber) ;
+                                                  sendRequest(`${url}?page=${pageNumber}`,"GET",null as any ,handlePageDataChange,true,false)
+                                                 }}
+                                                 className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${currentPage === pageNumber ? 'bg-navy-900 text-white shadow-md' : 'text-navy-700 hover:bg-navy-50'}`}
+                                             >
+                                                 {pageNumber}
+                                             </button>
+                                         );
+                                     } else if (
+                                         pageNumber === currentPage - 2 ||
+                                         pageNumber === currentPage + 2
+                                     ) {
+                                         return <span key={pageNumber} className="w-4 text-center text-gray-400">...</span>;
+                                     }
+                                     return null;
+                                 })}
+                             </div>
+
+                             <button 
+                                onClick={() => {
+                                  if (!schoolId) return;
+                                  let nextPage = Math.min(totalPages, currentPage + 1);
+                                  sendRequest(`${url}?page=${nextPage}`,"GET",null as any ,handlePageDataChange,true,false)
+                                  setCurrentPage(nextPage)
+
+                                 }}
+                                 disabled={currentPage === totalPages}
+                                 className="w-10 h-10 flex items-center justify-center rounded-full text-navy-700 hover:bg-navy-50 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                             >
+                                 <i className="fa-solid fa-chevron-right"></i>
+                             </button>
+                         </div>
+                     </div>
+            )} 
+    </>
+  );
+}
+ 

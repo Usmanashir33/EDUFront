@@ -7,7 +7,7 @@ import { authContext } from '@/customContexts/AuthContext';
 interface SchoolSelectionProps {
     onNavigate: (view: ViewState) => void;
     onSelectSchool: (id: string) => void; 
-    schools: School[];
+    // schools: School[];
 }
 
 export const SchoolSelection: React.FC<SchoolSelectionProps> = ({ onNavigate, onSelectSchool }) => {

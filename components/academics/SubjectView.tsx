@@ -45,6 +45,9 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                 Code
               </th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                Credits
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
                 Subject Name
               </th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
@@ -64,6 +67,9 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
                   {sub.code}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                  {sub?.credits ?? "N/A"}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-navy-900">
                   {sub.name}
@@ -88,7 +94,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
-                  {sub.class_room?.length} Classes
+                  {sub.class_rooms?.length} Classes
                 </td>
               </tr>
             ))}
@@ -102,7 +108,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
   const subject = subjects.find((s) => s.id === selectedId);
   if (!subject) return null;
 
-  const takingClasses = classRooms.filter((c) => subject.class_room?.includes(c.id));
+  const takingClasses = classRooms.filter((c) => subject.class_rooms?.includes(c.id));
   const assignedTeachers = teachers.filter((t) => subject.teacher?.includes(t.id));
 
   return (
@@ -123,7 +129,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
         <div className="relative z-10 flex gap-2">
           <Button
             variant="outline"
-            className="w-auto px-4 bg-white/50 text-white border-white/20 hover:bg-white/20"
+            className="w-auto px-4 bg-white/50 text-white border-white/20 hover:bg-white/20" 
             onClick={() => onEditSubject(subject)}
           >
             Edit Subject
@@ -164,7 +170,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">
-                    {students.filter((s) => s.class_room?.includes(c.id)).length} Students
+                    {students.filter((s) => s.class_rooms?.includes(c.id)).length} Students
                   </span>
                 </div>
               );

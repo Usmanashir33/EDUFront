@@ -1,7 +1,7 @@
 
-import React, { useState ,useContext} from 'react';
+import React, { useState ,useContext, useRef, useEffect} from 'react';
 import { Teacher, SchoolSection, Subject, ClassRoom, DisciplinaryRecord, KYCInfo, KYCDocument } from '../../types';
-import { Button, Input, ImageViewer } from '../UI';
+import { Button, Input, ImageViewer, Modal } from '../UI';
 import { safeParseFloat } from './TeacherFinance';
 import { uiContext } from '@/customContexts/UiContext';
 import urls from '@/customHooks/ServerUrls';
@@ -20,10 +20,10 @@ interface TeacherDetailProps {
     onTriggerSuspend: () => void;
     onTriggerDelete: () => void;
     onOpenBankModal: () => void;
-    onLogActivity: (action: any, module: any, desc: string) => void;
     onSetToast: (t: any) => void;
     onViewDoc: (doc: KYCDocument) => void;
     onVerifyDoc: (doc: KYCDocument) => void;
+    triggerRecord: (form:any , type:any ) => void ;
 }
 
 type Tab = 'OVERVIEW' | 'ACADEMIC' | 'FINANCE' | 'ADMIN';
@@ -31,11 +31,12 @@ type Tab = 'OVERVIEW' | 'ACADEMIC' | 'FINANCE' | 'ADMIN';
 export const TeacherDetail: React.FC<TeacherDetailProps> = ({ 
     id, teacher, sections, subjects, classRooms, 
     onBack, onEdit, onUpdateTeacher, onTriggerSalary, onViewReceipt, 
-    onTriggerSuspend, onTriggerDelete, onOpenBankModal, onLogActivity, onSetToast, onViewDoc, onVerifyDoc 
+    onTriggerSuspend, onTriggerDelete, onOpenBankModal,onSetToast, onViewDoc, onVerifyDoc ,triggerRecord
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW');
     const [showImage, setShowImage] = useState(false);
-    const {selectedSchool,teachers,} = useContext(uiContext)
+    const {selectedSchool,teachers,isLoading} = useContext(uiContext)
+    const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false); 
     
     // Admin Form States
     const [disciplinaryForm, setDisciplinaryForm] = useState({ title: '', description: '', severity: 'Low' as 'Low'|'Medium'|'High' });
@@ -55,29 +56,39 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
     const handleAddDisciplinary = () => {
          if (!disciplinaryForm.title || !disciplinaryForm.description) return;
          const newRecord: DisciplinaryRecord = {
-             id: Date.now().toString(),
-             date: new Date().toISOString(),
              title: disciplinaryForm.title,
              description: disciplinaryForm.description,
-             severity: disciplinaryForm.severity
+             severity: disciplinaryForm.severity,
+             school : selectedSchool.id,
+             teacher : teacher?.id 
          };
-         const updated = { ...teacher, disciplinaryRecords: [newRecord, ...(teacher.disciplinaryRecords || [])] };
-         onUpdateTeacher(updated);
-         onLogActivity('UPDATE', 'TEACHERS', `Added disciplinary record to ${teacher.firstName} ${teacher.lastName}`);
-         setDisciplinaryForm({ title: '', description: '', severity: 'Low' });
-         onSetToast({ message: "Disciplinary record added", type: 'success' });
+         
+        //  console.log('newRecord: ', newRecord);
+         triggerRecord(newRecord,'ADD-RECORD')
+         setDisciplinaryForm({ title: '', description: '', severity: 'Low' }); // clear the form
     };
+    const topRef = useRef(null)
+      useEffect(() => {
+          topRef.current?.scrollIntoView({
+               behavior: "smooth",
+              block: "start"
+                  })
+        }, [])
+    useEffect(() => {
+         setDisciplinaryForm({ title: '', description: '', severity: 'Low' }); // clear the form
+    },[teacher])
 
     return (
-        <div className="animate-fadeIn space-y-6">
-            <button onClick={onBack} className="flex items-center text-gray-500 hover:text-navy-900 transition-colors">
-                <i className="fa-solid fa-arrow-left mr-2"></i> Back to Directory
-            </button>
-
+        <div className="animate-fadeIn space-y-2 -mt-2 ">
+            <div className="absolute bbd -top-10 " ref={topRef} >  </div>
             {/* Profile Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                  <div className="h-32 bg-gradient-to-r from-navy-800 to-navy-600 relative">
-                    <div className="absolute inset-0 bg-pattern opacity-10"></div>
+                     <button onClick={onBack} className="absolute left-2 top-0 flex items-center text-gold-400 hover:text-gold-700 transition-colors no-print animate-pulse">
+                        <i className="fa-solid fa-arrow-left mr-2 text-xl rounded-lg p-2 rounded-lg bg-gold-50"></i> Back 
+                    </button>
+                    {/* <div className="absolute inset-0 bg-pattern opacity-10"></div> */}
+
                  </div>
                  <div className="px-8 pb-8 relative">
                     <div className="flex flex-col md:flex-row justify-between items-end -mt-12 mb-6">
@@ -146,15 +157,15 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                         <div className="grid grid-cols-2 gap-y-4 text-sm">
                                             <div>
                                                 <p className="text-gray-500 text-xs uppercase font-bold">Full Name</p>
-                                                <p className="font-semibold text-navy-900">{teacher.title} {teacher.first_name} {teacher.last_name} {teacher.middle_name} </p>
+                                                <p className="font-semibold text-navy-900">{teacher?.title} {teacher?.first_name} {teacher?.last_name} {teacher?.middle_name} </p>
                                             </div>
                                             <div>
                                                 <p className="text-gray-500 text-xs uppercase font-bold">Gender</p>
-                                                <p className="font-semibold text-navy-900">{teacher.gender}</p>
+                                                <p className="font-semibold text-navy-900">{teacher?.gender}</p>
                                             </div>
                                             <div>
                                                 <p className="text-gray-500 text-xs uppercase font-bold">Date of Birth</p>
-                                                <p className="font-semibold text-navy-900">{teacher?.date_of_birt ? new Date(teacher?.date_of_birt).toLocaleDateString() : 'N/A'}</p>
+                                                <p className="font-semibold text-navy-900">{teacher?.date_of_birth ? new Date(teacher?.date_of_birth).toLocaleDateString() : 'N/A'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-gray-500 text-xs uppercase font-bold">Date Joined</p>
@@ -176,7 +187,7 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                             </h3>
                                         </div>
                                         <div className="p-4">
-                                            {(!teacher.disciplinaryRecords || teacher.disciplinaryRecords.length === 0) ? (
+                                            {(!teacher?.disciplinaryRecords || teacher?.disciplinaryRecords.length === 0) ? (
                                                  <div className="flex flex-col items-center justify-center py-6 text-green-600 bg-green-50 rounded border border-green-100 border-dashed">
                                                      <i className="fa-solid fa-certificate text-3xl mb-2"></i>
                                                      <span className="font-bold">Clean Record</span>
@@ -184,12 +195,12 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                                  </div>
                                             ) : (
                                                 <div className="space-y-3">
-                                                    {teacher.disciplinaryRecords.map(rec => (
+                                                    {teacher?.disciplinaryRecords.map(rec => (
                                                         <div key={rec.id} className={`flex gap-4 p-3 border-l-4 ${rec.severity === 'High' ? 'border-red-600 bg-red-50' : 'border-orange-500 bg-orange-50'} rounded`}>
                                                             <div className="flex-1">
                                                                 <div className="flex justify-between">
                                                                     <h4 className="font-bold text-navy-900 text-sm">{rec.title} <span className="text-xs uppercase px-1 rounded bg-white border ml-2">{rec.severity}</span></h4>
-                                                                    <span className="text-xs font-bold text-gray-500">{new Date(rec.date).toLocaleDateString()}</span>
+                                                                    <span className="text-xs font-bold text-gray-500">{new Date(rec.created_at).toLocaleDateString()}</span>
                                                                 </div>
                                                                 <p className="text-xs text-gray-700 mt-1">{rec.description}</p>
                                                             </div>
@@ -243,11 +254,11 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                         <div className="space-y-3">
                                             <div className="flex items-center text-sm text-navy-900">
                                                 <i className="fa-solid fa-phone w-6 text-gray-400"></i>
-                                                {teacher.phone}
+                                                {teacher?.phone}
                                             </div>
                                             <div className="flex items-center text-sm text-navy-900">
                                                 <i className="fa-solid fa-envelope w-6 text-gray-400"></i>
-                                                <span className="truncate">{teacher.email}</span>
+                                                <span className="truncate">{teacher?.email}</span>
                                             </div>
                                             <div className="flex items-center text-sm text-navy-900">
                                                 <i className="fa-solid fa-location-dot w-6 text-gray-400"></i>
@@ -323,13 +334,13 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Base Salary (₦)</label>
                                                 <div className="flex">
                                                     <div className="p-3 border rounded-md font-mono font-bold text-lg bg-gray-50 text-gray-600 border-gray-200 flex-1">
-                                                        ₦{teacher.salary}
+                                                        ₦{teacher?.salary}
                                                     </div>
                                                 </div>
                                             </div>
                                             <Button 
                                                 onClick={() => onTriggerSalary({
-                                                    baseSalary: teacher.salary || '0',
+                                                    baseSalary: teacher?.salary || '0',
                                                     bonus: '0', bonusRemark: '',
                                                     deductions: '0', deductionRemark: '',
                                                     tax: '0',
@@ -358,7 +369,7 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
-                                                    {teacher.paymentHistory?.map(p => (
+                                                    {teacher?.paymentHistory?.map(p => (
                                                         <tr key={p.id}>
                                                             <td className="px-6 py-4 text-sm text-navy-900 font-medium">{p.month}</td>
                                                             <td className="px-6 py-4 text-sm text-navy-900 font-bold">{new Date(p.date).toLocaleDateString()}</td>
@@ -373,7 +384,7 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                    {(!teacher.paymentHistory || teacher.paymentHistory.length === 0) && (
+                                                    {(!teacher?.paymentHistory || teacher?.paymentHistory.length === 0) && (
                                                         <tr><td colSpan={4} className="p-4 text-center text-gray-500 text-sm">No payment history found.</td></tr>
                                                     )}
                                                 </tbody>
@@ -401,15 +412,15 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                         <div className="space-y-4">
                                             <div>
                                                 <p className="text-navy-300 text-xs uppercase">Bank Name</p>
-                                                <p className="font-bold text-lg">{teacher.bank_details?.bank_name || 'Not Provided'}</p>
+                                                <p className="font-bold text-lg">{teacher?.bank_details?.bank_name || 'Not Provided'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-navy-300 text-xs uppercase">Account Number</p>
-                                                <p className="font-mono text-xl tracking-widest">{teacher.bank_details?.account_number || '**** ****'}</p>
+                                                <p className="font-mono text-xl tracking-widest">{teacher?.bank_details?.account_number || '**** ****'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-navy-300 text-xs uppercase">Account Name</p>
-                                                <p className="font-medium text-sm">{teacher.bank_details?.account_name || 'Not Provided'}</p>
+                                                <p className="font-medium text-sm">{teacher?.bank_details?.account_name || 'Not Provided'}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -425,13 +436,13 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                         <h3 className="font-bold text-navy-900 flex items-center">
                                             <i className="fa-solid fa-file-contract mr-2 text-navy-600"></i> KYC & Verification
                                         </h3>
-                                        {teacher.kyc?.isVerified && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">Verified</span>}
+                                        {teacher?.kyc?.isVerified && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">Verified</span>}
                                      </div>
                                      
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                          <div className="space-y-3">
                                              <p className="text-sm text-gray-600 mb-2">Submitted Documents</p>
-                                             {teacher.kyc?.documents.map((doc, idx) => (
+                                             {teacher?.kyc?.documents.map((doc, idx) => (
                                                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
                                                      <div className="flex items-center gap-3">
                                                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs ${doc.status === 'Verified' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
@@ -479,6 +490,7 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                          <Input 
                                             label="Infraction Title" 
+                                            placeholder='Title'
                                             value={disciplinaryForm.title} 
                                             onChange={e => setDisciplinaryForm({...disciplinaryForm, title: e.target.value})} 
                                             iconClass="fa-solid fa-heading"
@@ -513,11 +525,11 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                      </div>
 
                                       {/* History List */}
-                                     {teacher.disciplinaryRecords && teacher.disciplinaryRecords.length > 0 && (
+                                     {teacher?.disciplinaryRecords && teacher?.disciplinaryRecords.length > 0 && (
                                          <div className="mt-8 pt-6 border-t border-gray-100">
                                              <h4 className="font-bold text-gray-700 text-sm uppercase mb-4">History Log</h4>
                                              <div className="space-y-3">
-                                                 {teacher.disciplinaryRecords.map(rec => (
+                                                 {teacher?.disciplinaryRecords.map(rec => (
                                                      <div key={rec.id} className="bg-gray-50 border border-gray-200 p-4 rounded-lg flex justify-between items-start">
                                                          <div>
                                                              <div className="flex items-center gap-2 mb-1">
@@ -532,7 +544,7 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                                              </div>
                                                              <p className="text-xs text-gray-600">{rec.description}</p>
                                                          </div>
-                                                         <span className="text-xs font-mono text-gray-400">{new Date(rec.date).toLocaleDateString()}</span>
+                                                         <span className="text-xs font-mono text-gray-400">{new Date(rec.created_at).toLocaleDateString()}</span>
                                                      </div>
                                                  ))}
                                              </div>
@@ -545,9 +557,9 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                     <h3 className="text-lg font-bold text-red-800 mb-4">Account Control</h3>
                                     <div className="flex gap-4">
                                         <Button variant="secondary" className="w-auto px-4" onClick={onTriggerSuspend}>
-                                            {teacher.status === 'Suspended' ? 'Activate Account' : 'Suspend Account'}
+                                            {!teacher?.user?.is_active ? 'Activate Account' : 'Suspend Account'}
                                         </Button>
-                                        <Button variant="danger" className="w-auto px-4" onClick={onTriggerDelete}>Delete Teacher</Button>
+                                        <Button variant="danger" className="w-auto px-4" onClick={() => {setIsDeletingModalOpen(true)}}>Delete Teacher</Button>
                                     </div>
                                 </div>
                             </div>
@@ -555,10 +567,30 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                     </div>
                  </div>
             </div>
+            {/* Rejection Note Modal */}
+                              <Modal isOpen={isDeletingModalOpen} onClose={() => {setIsDeletingModalOpen(false);  }} title="Teacher Deletion" size="md">
+                                  <div className="space-y-4">
+                                      <p className=" bg-red-50 p-2 text-sm text-red-600 rounded-md ">Please confirm teacher deleting. This action is irreversible and all the student related data will also be deleted!</p>
+                                      <div className="flex justify-end gap-3">
+                                          <Button isLoading={isLoading}  variant="secondary" onClick={() => setIsDeletingModalOpen(false)}>Cancel</Button>
+                                          <Button 
+                                              isLoading={isLoading}
+                                              onClick={() => {
+                                                onTriggerDelete() ;
+                                                setIsDeletingModalOpen(false);
+                                              }}
+                                              className="bg-red-600 text-white"
+            
+                                          >
+                                              Confirm Deleting
+                                          </Button>
+                                      </div>
+                                  </div>
+                              </Modal>
             
             <ImageViewer 
                 isOpen={showImage} 
-                imageUrl={teacher.picture} 
+                imageUrl={teacher?.picture} 
                 onClose={() => setShowImage(false)} 
             />
         </div>

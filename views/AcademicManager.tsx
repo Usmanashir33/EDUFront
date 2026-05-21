@@ -8,17 +8,9 @@ import {SubjectView} from "../components/academics/SubjectView";
 import {uiContext} from "@/customContexts/UiContext";
 import { authContext } from "@/customContexts/AuthContext";
 import useRequest from "@/customHooks/RequestHook";
+import urls from "@/customHooks/ServerUrls";
 
 interface AcademicManagerProps {
-  // sections: SchoolSection[];
-  // classRooms: ClassRoom[];
-  // subjects: Subject[];
-  // students: Student[];
-  // teachers: Teacher[];
-  // setSections: (sections: SchoolSection[]) => void;
-  // setClassRooms: (classes: ClassRoom[]) => void;
-  // onUpdateSubjects: (subjects: Subject[]) => void;
-  onUpdateStudents: (students: Student[]) => void;
   onLogActivity: (
     action: ActivityLog["action"],
     module: ActivityLog["module"],
@@ -29,18 +21,9 @@ interface AcademicManagerProps {
 
 type Tab = "SECTIONS" | "CLASSROOMS" | "SUBJECTS";
 type ViewMode = "LIST" | "DETAIL";
-type OperationMode = "POST" | "DELETE" | "PUT" | "GET";
+type OperationMode = "POST" | "DELETE" | "PUT" | "GET" | "TRANSFER";
 
 export const AcademicManager: React.FC<AcademicManagerProps> = ({
-  // sections,
-  // classRooms,
-  // subjects,
-  // students,
-  // teachers,
-  // setSections,
-  // setClassRooms,
-  // onUpdateSubjects,
-  onUpdateStudents,
   onLogActivity,
   onNavigateToStudent,
 }) => {
@@ -55,6 +38,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const [currentTerm] = useState("2nd Term");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingClass, setEditingClass] = useState(false);
 
   const {
     students,
@@ -134,6 +118,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const [showAddSubjectToClassModal, setShowAddSubjectToClassModal] = useState(false);
   const [selectedSubjectToAdd, setSelectedSubjectToAdd] = useState<Subject | null>(null);
   const [selectedTeacherForSubject, setSelectedTeacherForSubject] = useState<string>("");
+  const [subjectTeacherIds,setSubjectTeacherIds] = useState([])
   const [serverForm,setServerform] = useState({})
   const {sendRequest} = useRequest()
 
@@ -148,7 +133,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   useEffect(() => {
     if (showClassSelectModal && selectedSubjectForClass) {
       const initial = classRooms.map((c) => {
-        const isSelected = selectedSubjectForClass.classRoomIds.includes(c.id);
+        const isSelected = selectedSubjectForClass.class_rooms?.includes(c.id);
         const assignment = selectedSubjectForClass.assignments?.find((a) => a.classId === c.id);
         return {
           classId: c.id,
@@ -167,7 +152,8 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     setSubjectForm({name: "", code: "", classRoomIds: []});
     setServerform({});
   };
-  const TriggeredFunc = (data) => {
+
+  const TriggeredFunc = (data) => { // 
     console.log('data: ', data);
     if (data?.new_section){ // process new section 
       setSections([data?.new_section , ...sections ]);
@@ -187,8 +173,6 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       resetForms();
       setShowAddModal(false);
       setToast({message: "New Subject added", type: "success"});
-
-
     }else if (data?.updated_section){ // update new section 
       setSections(
       sections.map((s) => (s.id === editSectionTarget.id ? data?.updated_section : s)),
@@ -217,9 +201,26 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     );
     onLogActivity("UPDATE", "ACADEMICS", `Updated subject: ${editSubjectForm.name}`);
     setEditSubjectTarget(null);
+    setShowClassSelectModal(false);   // for managing subjects data 
+    setSelectedSubjectForClass(null); // for managing subjects data 
+    setShowTeacherSelectModal(false); // for managing subjects data 
     setToast({message: "Subject updated", type: "success"});
+  }else if (data?.trans_students){ // students Transferred 
+    setStudents(
+      students.map((s) =>
+        data?.trans_students?.map(stu => stu.id).includes(s.id)? data?.trans_students.find(id=> id = s.id) : s,
+      ),
+    );
+    onLogActivity("UPDATE", "ACADEMICS", `Transferred students`);
+    setShowTransferModal(false); // ffor transfering students between classes
+    setShowAddStudentModal(false); // for add students to class
+    setTransferTargetClassId("");
+    setSelectedStudentIds([]);
+    setStudentSearch("");
+    setToast({message: "Transferred/Enrolled successfully", type: "success"});
   }
   }
+
   const handlePinSuccess = (pins:string) => {
     let form = serverForm
     console.log('form: ', form);
@@ -230,10 +231,13 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     if (methode === "POST"){
       sendRequest(`/director/academics/${activeTab?.toLowerCase()}/`,"POST",form,TriggeredFunc,true,false)
     } else if (methode === 'PUT'){
+      console.log('activeTab: ', activeTab);
       let item_id = activeTab === "SECTIONS" ? editSectionTarget.id :
                     activeTab === "CLASSROOMS"? editClassTarget?.id :
                     activeTab === "SUBJECTS"? editSubjectTarget?.id : null 
       sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${item_id}/`,"PUT",form,TriggeredFunc,true,false)
+    }else if (methode === "TRANSFER"){ // transfering students between classes
+        sendRequest(`/director/class/transfer/`,"PUT",form,TriggeredFunc,true,false)
     }
     return 
   }
@@ -298,9 +302,9 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       name   : subjectForm.name,
       code   : subjectForm.code,
       credits : subjectForm.credits,
-      class_rooms : subjectForm.classRoomIds,
+      class_room_ids : subjectForm.classRoomIds,
       pin : ''})
-    if (!currentUser?.user?.pin_set){
+    if (!currentUser?.user?.pin_set){ 
       // Make the api call here  when user  need no pin to talk to server 
       setShowAddModal(false);
       sendRequest(`/director/academics/${activeTab?.toLowerCase()}/`,"POST",serverForm,TriggeredFunc,true,false)
@@ -318,46 +322,45 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       pin : ''}) 
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editSectionTarget?.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
+      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editSubjectTarget?.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
     }
     setShowPinModal(true)
   };
 
   const handleAddStudentsToClass = () => {
     if (!selectedItemId || selectedStudentIds.length === 0) return;
-    onUpdateStudents(
-      students.map((s) =>
-        selectedStudentIds.includes(s.id) && !s.class_room?.includes(selectedItemId)
-          ? {...s, classRoomIds: [...s.class_room, selectedItemId]}
-          : s,
-      ),
-    );
-    onLogActivity("UPDATE", "ACADEMICS", `Enrolled students to class ${selectedItemId}`);
-    setShowAddStudentModal(false);
-    setSelectedStudentIds([]);
-    setStudentSearch("");
+    setMethode("TRANSFER"),
+    setServerform({
+      school : selectedSchool.id,
+      target_class_id   : selectedItemId,
+      // current_class_id   : selectedItemId,
+      transfer_students_ids : selectedStudentIds , 
+      pin : ''})
+
+    if (!currentUser?.user?.pin_set){
+      // Make the api call here  when user  need no pin to talk to server 
+      sendRequest(`/director/class/transfer/`,"PUT",serverForm,TriggeredFunc,true,false)
+    }
+    setShowPinModal(true)
+    return     
   };
 
   const handleTransferStudents = () => {
     if (!selectedItemId || !transferTargetClassId || selectedStudentIds.length === 0) return;
-    onUpdateStudents(
-      students.map((s) =>
-        selectedStudentIds.includes(s.id)
-          ? {
-              ...s,
-              classRoomIds: [
-                ...s.class_room?.filter((id) => id !== selectedItemId),
-                transferTargetClassId,
-              ],
-            }
-          : s,
-      ),
-    );
-    onLogActivity("UPDATE", "ACADEMICS", `Transferred students`);
-    setShowTransferModal(false);
-    setTransferTargetClassId("");
-    setSelectedStudentIds([]);
-    setToast({message: "Transferred successfully", type: "success"});
+    setMethode("TRANSFER"),
+    setServerform({
+      school : selectedSchool.id                  ,
+      target_class_id   : transferTargetClassId   ,
+      current_class_id   : selectedItemId         ,
+      transfer_students_ids : selectedStudentIds  , 
+      pin : ''})
+
+    if (!currentUser?.user?.pin_set){
+      // Make the api call here  when user  need no pin to talk to server 
+      sendRequest(`/director/class/transfer/`,"PUT",serverForm,TriggeredFunc,true,false)
+    }
+    setShowPinModal(true)
+    return     
   };
 
   const handleSubstituteSubject = () => {
@@ -373,7 +376,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
         s.id === oldSubjectId
           ? {
               ...s,
-              classRoomIds: s.class_room?.filter((id) => id !== classId),
+              classRoomIds: s.class_rooms.map((cls) => cls.class_room)?.filter((id) => id !== classId),
             }
           : s,
       );
@@ -381,9 +384,9 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
 
     updatedSubjects = updatedSubjects.map((s) => {
       if (s.id === newSubjectId) {
-        const newClassIds = s.class_room?.includes(classId)
-          ? s.class_room
-          : [...s.class_room, classId];
+        const newClassIds = s.class_rooms.map((cls) => cls.class_room)?.includes(classId)
+          ? s.class_rooms.map((cls) => cls.class_room)
+          : [...s.class_rooms.map((cls) => cls.class_room), classId];
         const newAssignments = s.assignments
           ? [...s.assignments].filter((a) => a.classId !== classId)
           : [];
@@ -443,35 +446,66 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
 
   const handleManageSubjectTeachers = (ids: string[]) => {
     if (!currentContextData?.subjectId) return;
-    setSubjects(
-      subjects.map((s) => (s.id === currentContextData.subjectId ? {...s, teacherIds: ids} : s)),
-    );
-    setShowTeacherSelectModal(false);
-    setToast({message: "Teacher list updated.", type: "success"});
+    setCurrentContextData({
+    ...currentContextData,
+    selectedIds: ids
+      });
+    // setSubjects(
+    //   subjects.map((s) => (s.id === currentContextData.subjectId ? {...s, teacherIds: ids} : s)),
+    // );
+    // setShowTeacherSelectModal(false);
+    // setToast({message: "Teacher list updated.", type: "success"});
+  };
+  
+  const saveManageSubjectTeachers = (ids: string[]) => {
+    if (!currentContextData?.subjectId) return;
+    setMethode("PUT");
+    const newClassIds = classSelectState.filter((s) => s.isSelected).map((s) => s.classId);
+    console.log('newClassIds: ', newClassIds);
+    setServerform({
+      school : selectedSchool.id ,
+      teachers   : ids ,
+      pin : ''}) 
+    if (!currentUser?.user?.pin_set){
+      // Make the api call here  when user  need no pin to talk to server 
+      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editSectionTarget?.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
+    }
+    setShowPinModal(true)
+  
   };
 
   const handleSaveClassAssignments = () => {
     if (!selectedSubjectForClass) return;
+    setMethode("PUT");
     const newClassIds = classSelectState.filter((s) => s.isSelected).map((s) => s.classId);
-    const newAssignments = classSelectState
-      .filter((s) => s.isSelected && s.teacherId)
-      .map((s) => ({classId: s.classId, teacherId: s.teacherId}));
+    setServerform({
+      school : selectedSchool.id ,
+      class_room_ids   : newClassIds,
+      pin : ''}) 
+    if (!currentUser?.user?.pin_set){
+      // Make the api call here  when user  need no pin to talk to server 
+      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editSectionTarget?.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
+    }
+    setShowPinModal(true)
+    // const newAssignments = classSelectState
+    //   .filter((s) => s.isSelected && s.teacherId)
+    //   .map((s) => ({classId: s.classId, teacherId: s.teacherId}));
 
-    setSubjects(
-      subjects.map((s) =>
-        s.id === selectedSubjectForClass.id
-          ? {...s, classRoomIds: newClassIds, assignments: newAssignments}
-          : s,
-      ),
-    );
-    onLogActivity(
-      "UPDATE",
-      "ACADEMICS",
-      `Updated enrolled classes/teachers for ${selectedSubjectForClass.name}`,
-    );
-    setShowClassSelectModal(false);
-    setSelectedSubjectForClass(null);
-    setToast({message: "Assignments saved.", type: "success"});
+    // setSubjects(
+    //   subjects.map((s) =>
+    //     s.id  ===  selectedSubjectForClass.id
+    //       ? {...s, classRoomIds: newClassIds, assignments: newAssignments}
+    //       : s,
+    //   ),
+    // );
+    // onLogActivity(
+    //   "UPDATE",
+    //   "ACADEMICS",
+    //   `Updated enrolled classes/teachers for ${selectedSubjectForClass.name}`,
+    // );
+    // setShowClassSelectModal(false);
+    // setSelectedSubjectForClass(null);
+    // setToast({message: "Assignments saved.", type: "success"});
   };
 
   return (
@@ -501,7 +535,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
                 {
                   id: "CLASSROOMS",
                   label: "Classes",
-                  count: classRooms.length,
+                  count: classRooms.length, 
                 },
                 {id: "SUBJECTS", label: "Subjects", count: subjects.length},
               ].map((tab) => (
@@ -658,18 +692,23 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               setViewMode(view);
             }}
             onEditSubject={(s) => {
+              setEditingClass(true);
               setEditSubjectTarget(s);
               setEditSubjectForm({name: s.name, code: s.code});
             }}
             onAssignClass={(s) => {
               setSelectedSubjectForClass(s);
+              setEditingClass(false);
+              setEditSubjectTarget(s);
               setShowClassSelectModal(true);
             }}
             onAssignTeacher={(s) => {
               setTeacherSelectMode("ADD_TO_SUBJECT");
+              setEditSubjectTarget(s);
+              setEditingClass(false);
               setCurrentContextData({
                 subjectId: s.id,
-                selectedIds: s.teacherIds,
+                selectedIds: s.teacher,
               });
               setShowTeacherSelectModal(true);
             }}
@@ -803,11 +842,11 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               {!isLoading && <Button onClick={handleUpdateSectionName} className="w-auto">
                 Update
               </Button>}
-            </div>
+            </div> 
           </div>
         </Modal>
       )}
-      {editSubjectTarget && (
+      {(editSubjectTarget && editingClass) && (
         <Modal
           isOpen={!!editSubjectTarget}
           onClose={() => setEditSubjectTarget(null)}
@@ -816,7 +855,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
         >
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input
+              <Input 
                 label="Subject Name"
                 value={editSubjectForm.name}
                 onChange={(e) =>
@@ -1016,8 +1055,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
             />
             <div className="flex justify-end">
               <Button
-                onClick={() => handleManageSubjectTeachers(currentContextData?.selectedIds || [])}
-              >
+                onClick={() => saveManageSubjectTeachers(currentContextData?.selectedIds || [])}>
                 Save Teachers
               </Button>
             </div>
@@ -1168,28 +1206,53 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
             {students
               .filter(
                 (s) =>
-                  !s.class_room?.includes(selectedItemId || "") &&
-                  (s.first_name + " " + s.last_name)
+                  !s.class_rooms.map((cls) => cls.class_room)?.includes(selectedItemId || "") &&
+                  (s.first_name + " " + s.last_name + "" + s.admission_number)
                     .toLowerCase()
                     .includes(studentSearch.toLowerCase()),
               )
               .map((student) => (
                 <div
-                  key={student.id}
-                  onClick={() => {
-                    if (selectedStudentIds?.includes(student.id))
-                      setSelectedStudentIds(selectedStudentIds?.filter((id) => id !== student.id));
-                    else setSelectedStudentIds([...selectedStudentIds, student.id]);
-                  }}
-                  className={`flex items-center justify-between p-2 rounded cursor-pointer ${selectedStudentIds.includes(student.id) ? "bg-navy-50" : "hover:bg-gray-50"}`}
-                >
-                  <span>
-                    {student.first_name} {student.last_name}
-                  </span>
-                  {selectedStudentIds?.includes(student.id) && (
-                    <i className="fa-solid fa-check text-navy-900"></i>
-                  )}
+                key={student.id}
+                onClick={() => {
+                  if (selectedStudentIds?.includes(student.id))
+                    setSelectedStudentIds(
+                      selectedStudentIds?.filter((id) => id !== student.id)
+                    );
+                  else setSelectedStudentIds([...selectedStudentIds, student.id]);
+                }}
+                className={`flex items-center justify-between px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-200
+                  ${
+                    selectedStudentIds.includes(student.id)
+                      ? "bg-navy-100 border border-navy-300"
+                      : "hover:bg-gray-50"
+                  }`}
+              >
+                {/* Left Section */}
+                <div className="flex items-center gap-2">
+                  {/* Student Image */}
+                  <img
+                    src={urls.BASE_URL + student?.picture}
+                    alt="student"
+                    className="w-8 h-8 rounded-full object-cover border"
+                  />
+
+                  {/* Name + Admission */}
+                  <div className="leading-tight">
+                    <p className="text-sm font-medium text-gray-800">
+                      {student.first_name} {student.last_name} {student.middle_name}
+                    </p>
+                    <p className="text-[10px] text-gray-500">
+                      {student.admission_number}
+                    </p>
+                  </div>
                 </div>
+
+                {/* Right Check Icon */}
+                {selectedStudentIds?.includes(student.id) && (
+                  <i className="fa-solid fa-check text-navy-900 text-xs"></i>
+                )}
+              </div>
               ))}
           </div>
           <Button onClick={handleAddStudentsToClass} disabled={selectedStudentIds.length === 0}>
@@ -1210,12 +1273,12 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       >
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-600">Select students to move.</p>
-            {students.filter((s) => s.class_room.includes(selectedItemId || "")).length > 0 && (
+            <p className="text-sm text-gray-600">Select students to move. <b>( {selectedStudentIds.length} Selected )  </b></p>
+            {students.filter((s) => s.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map((cls) => cls.class_room).includes(selectedItemId || "")).length > 0 && (
               <button
                 onClick={() => {
                   const candidates = students.filter((s) =>
-                    s.class_room?.includes(selectedItemId || ""),
+                    s.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map((cls) => cls.class_room)?.includes(selectedItemId || ""),
                   );
                   if (selectedStudentIds.length === candidates.length) {
                     setSelectedStudentIds([]);
@@ -1226,34 +1289,59 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
                 className="text-xs font-bold text-navy-600 hover:text-gold-600 transition-colors"
               >
                 {selectedStudentIds.length ===
-                students.filter((s) => s.class_room?.includes(selectedItemId || "")).length
+                students.filter((s) => s.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map((cls) => cls.class_room)?.includes(selectedItemId || "")).length
                   ? "Deselect All"
-                  : "Select All"}
+                  : ` Select All`}
               </button>
             )}
           </div>
           <div className="border border-gray-200 rounded-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
             {students
-              .filter((s) => s.class_room?.includes(selectedItemId || ""))
+              .filter((s) => s.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map((cls) => cls.class_room)?.includes(selectedItemId || ""))
               .map((student) => (
                 <div
                   key={student.id}
                   onClick={() => {
-                    if (selectedStudentIds.includes(student.id))
-                      setSelectedStudentIds(selectedStudentIds.filter((id) => id !== student.id));
+                    if (selectedStudentIds?.includes(student.id))
+                      setSelectedStudentIds(
+                        selectedStudentIds?.filter((id) => id !== student.id)
+                      );
                     else setSelectedStudentIds([...selectedStudentIds, student.id]);
                   }}
-                  className={`flex items-center justify-between p-2 rounded cursor-pointer ${selectedStudentIds.includes(student.id) ? "bg-navy-50" : "hover:bg-gray-50"}`}
+                  className={`flex items-center justify-between px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-200
+                    ${
+                      selectedStudentIds.includes(student.id)
+                        ? "bg-navy-100 border border-navy-300"
+                        : "hover:bg-gray-50"
+                    }`}
                 >
-                  <span>
-                    {student.first_name} {student.last_name}
-                  </span>
-                  {selectedStudentIds.includes(student.id) && (
-                    <i className="fa-solid fa-check text-navy-900"></i>
+                  {/* Left Section */}
+                  <div className="flex items-center gap-2">
+                    {/* Student Image */}
+                    <img
+                      src={student.picture ? urls.BASE_URL + student.picture : "/default-profile.png"}
+                      alt="student"
+                      className="w-8 h-8 rounded-full object-cover border"
+                    />
+
+                    {/* Name + Admission */}
+                    <div className="leading-tight">
+                      <p className="text-sm font-medium text-gray-800">
+                        {student.first_name} {student.last_name} {student.middle_name}
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        {student.admission_number}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right Check Icon */}
+                  {selectedStudentIds?.includes(student.id) && (
+                    <i className="fa-solid fa-check text-navy-900 text-xs"></i>
                   )}
                 </div>
               ))}
-            {students.filter((s) => s.class_room?.includes(selectedItemId || "")).length === 0 && (
+            {students.filter((s) => s.class_rooms.map((cls) => cls.class_room)?.includes(selectedItemId || "")).length === 0 && (
               <p className="text-center text-sm text-gray-500 italic p-2">
                 No students in this class.
               </p>
@@ -1270,7 +1358,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               {classRooms
                 .filter((c) => c.id !== selectedItemId)
                 .map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.id} value={c.id}> 
                     {c.name}
                   </option>
                 ))}

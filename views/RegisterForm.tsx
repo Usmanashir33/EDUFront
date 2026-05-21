@@ -11,9 +11,8 @@ interface RegisterFormProps {
 type LoginProps = 'CREDENTIALS' | 'OTP' 
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin}) => {
+  const [step,setStep] = useState<LoginProps>("CREDENTIALS");
   const [loading, setLoading] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [step,setStep] = useState<LoginProps>("CREDENTIALS")
   const [url, setUrl] = useState('/school/register-new-school/');
   const {sendAuthRequest} = useRequest() ;
   const [oldResent, setOldResent] = useState<number>(20); // initial 20 seconds
@@ -136,45 +135,31 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin})
     return isValid;
   };
 
-  const TriggeredFunc = (data) => {
-    console.log('data: ', data);
-    // {"success":"otp_sent",} "success":"school_created",
-    const loginstatus =["school_created"]
-    const preloginstatus =["otp_sent",]
+  const TriggeredFunc = (data :any ) => {
+    // console.log('data: ', data) ;
     // check if data is success or error and proceed accordingly
-    if (preloginstatus.includes(data.success)) {
-        if (data.success === preloginstatus[1]) { // users email is not verified on his account
-            setToast({message: 'Incomplete Registration / Unverified Email. Please complete your registration.', type: 'info'});
-        }else{
-            setToast({message: 'OTP has been sent to your email ', type: 'success'});
-        }
-        setResent(oldResent);
-        if (step === 'CREDENTIALS') {
-            setStep('OTP');
-            // setUrl(data?.redirect_to);
-        }
+    if (data?.otp_sent || data?.success === 'otp_sent' ) { 
+      setToast({message: data?.success, type: 'success'});
+      setResent(oldResent);
+      setStep('OTP');
+      return ;
+    }else if (data?.school_created){
+      let userRole = data?.school_created?.role.toLowerCase()
+      // check user role and redirect accordingly
+      if (userRole === 'director') {
+            setToast({message: data?.success, type: 'success'}) ;
+            return onLogin('director',data?.school_created) ;
+          }
     }
-    else if (loginstatus.includes(data?.success?.toLowerCase().replace(/\s+/g, ''))) {
-        setToast({message: 'Login successful', type: 'success'});
-        // check user role and redirect accordingly
-        if (data?.role?.toLowerCase() === 'director') {
-            return onLogin('director',data) ;
-        }
-        onLogin('director',data) ;
-    }
-    else {
-        // Handle error (for simplicity, setting a generic error)
-        setToast({ message: data.error || 'An error occurred. Please try again.', type: 'error' });
-    }
-    
   }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validate()) {
-      const firstError = document.querySelector('.text-red-600');
-      if (firstError) {
-        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const firstError = document.querySelector('.text-red-600') ;
+
+      if (firstError) { 
+        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' }) ;
       }
       return;
     }
@@ -199,7 +184,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin})
     fd.append('director_password2', formData.directorPassword2 ?? '');
     fd.append('otp', otp.join('') ?? '');
 
-    // console.log(Object.fromEntries(fd.entries()));
     // call the API HERE 
       sendAuthRequest(url,"POST",fd,TriggeredFunc,true,true); // true because i use formdata object as a form 
   };
@@ -301,7 +285,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin})
                   name="directorTitle"
                   label="Title"
                   type="text"
-                  maxLength = '6'
+                  maxLength = '10'
                   iconClass="fa-regular fa-user"
                   placeholder="Dr. / Mr. / Ms. / Mrs."
                   value={formData.directorTitle}
@@ -309,7 +293,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin})
                   error={errors.directorTitle}
                 />
                 <div className='flex gap-1 flex-col'>
-                <label HtmlFor="directorGender" className='text-gray-600 text-sm font-semibold' >Gender
+                <label htmlFor="directorGender" className='text-gray-600 text-sm font-semibold' >Gender
                 </label>
                   <select name="directorGender"  error={errors.directorGender}
                     className="border border-gray-300 rounded-md px-3 py-2 bg-white" value={formData.directorGender} onChange={handleChange}>
@@ -344,7 +328,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin})
                 label="Middle Name (optional)"
                 type="text"
                 iconClass="fa-regular fa-envelope"
-                placeholder="Muhammad"
+                placeholder="Muhd"
                 value={formData.directorMiddleName}
                 onChange={handleChange}
                 error={errors.directorMiddleName}
@@ -433,7 +417,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin})
                                 type="button"
                                 className="text-sm text-navy-600 font-medium hover:text-navy-800"
                                 onClick={() => {
-                                    // Resend OTP Logic
                                     let formDetails:any = { // data to be sent to backend as the view requested 
                                         username_field : formData.directorEmail,
                                     }

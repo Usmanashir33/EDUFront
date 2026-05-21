@@ -14,7 +14,7 @@ export const downloadFile = (content: string, mimeType: string, filename: string
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url); 
 };
 
 export const generateCSV = (data: any[], fields: { key: string, label: string }[]) => {

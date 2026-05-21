@@ -5,6 +5,7 @@ import UiContextProvider from './customContexts/UiContext';
 import AuthContextProvider from './customContexts/AuthContext';
 import LiveContextProvider from './customContexts/LiveContext';
 import './index.css'
+import { BrowserRouter } from 'react-router-dom';
 
 
 const rootElement = document.getElementById('root');
@@ -26,7 +27,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ContextsLayout>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </ContextsLayout> 
   </React.StrictMode>
 );

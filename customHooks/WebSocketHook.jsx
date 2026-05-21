@@ -1,98 +1,101 @@
-import { useContext, useEffect, useRef, useState } from 'react';
-import { authContext } from '../customContexts/AuthContext';
+import { useContext, useEffect, useRef } from 'react';
 import { uiContext } from '../customContexts/UiContext';
-import config from './ServerUrls';
+import urls from './ServerUrls';
+import { authContext } from '@/customContexts/AuthContext';
 
-const  useWebSocketHook = () => {
-    // useRef to hold the WebSocket instance
-    const webSocketRef = useRef(null);
-    const {setError} = useContext(uiContext) ;
-    const {getToken} = useContext(authContext) ;
-    
+const useWebSocketHook = () => {
+  // useRef to hold the WebSocket instance
+  const schoolSocketRef = useRef(null);
+  const appSocketRef = useRef(null);
+  const { selectedSchool, } = useContext(uiContext);
+  const { currentUser, getToken } = useContext(authContext)
 
-    const connectSecket = async () => {
-        // Initialize the WebSocket connection and assign it to webSocketRef.current
-        const token = await getToken()
-        if (token) {
-            webSocketRef.current = new WebSocket(`${config.WS_URL}/live-server/?token=${token}`,);
-            webSocketRef.current.binaryType = 'arraybuffer'; // to handle media data as binary array
-    
-            webSocketRef.current.onopen = () => {
-              console.log('WebSocket connection opened');
-            //   readUnreads();
-            };
-    
-            webSocketRef.current.onclose = () => {
-              console.log('WebSocket connection closed');
-            };
-    
-            webSocketRef.current.onerror = (error) => {
-              console.log(`WebSocket error:${error.message}`);
-            };
-        }
+  const connectSchoolSocket = async (s) => {
+    // Initialize the WebSocket connection and assign it to schoolSocketRef.current
+    if (selectedSchool?.id) {
+      schoolSocketRef.current = new WebSocket(`${urls.WS_URL}/live-server/${selectedSchool?.id}/`,);
+      schoolSocketRef.current.binaryType = 'arraybuffer'; // to handle media data as binary array
+
+      schoolSocketRef.current.onopen = () => {
+        console.log('School Socket connection opened');
+      };
+
+      schoolSocketRef.current.onclose = () => {
+        console.log('School Socket connection closed');
+      };
+
+      schoolSocketRef.current.onerror = (error) => {
+        console.log(`School Socket error:${error.message}`);
+      };
     }
+  }
+  const connectAppSecket = async () => {
+    // Initialize the WebSocket connection and assign it to appSocketRef.current
+    const token = await getToken()
+    if (token) {
+      appSocketRef.current = new WebSocket(`${urls.WS_URL}/live-server/?token=${token}`,);
+      appSocketRef.current.binaryType = 'arraybuffer'; // to handle media data as binary array
 
-    useEffect(() => {
-        connectSecket()
-        // when the file demounted 
-        return () => {
-            if (webSocketRef.current) {
-                // webSocketRef.current.close();
-            }}
-    },[]); // Empty dependency array means this effect runs only once
+      appSocketRef.current.onopen = () => {
+        console.log('appSocket connection opened');
+      };
 
+      appSocketRef.current.onclose = () => {
+        console.log('appSocket connection closed');
+      };
 
-  if (webSocketRef.current) {
-    webSocketRef.current.onmessage = async (e) => {
-        let data = JSON.parse(e.data)
-        if (data?.signal_name === 'money_trx'){
-          return ;
-        }
-        if (data?.signal_name === 'money_notif'){
-          return ;
-        }
-        if (data?.signal_name === 'approval_request'){
-          return ;
-        }
-        
+      appSocketRef.current.onerror = (error) => {
+        console.log(`appSocket error:${error.message}`);
+      };
     }
   }
 
-//   const sendMessage = (message,file,filename) => {
-//     // Use webSocketRef.current to send a message if the connection is open
-//     if (webSocketRef.current && webSocketRef.current.readyState === WebSocket.OPEN) {
-//       const JsonData = JSON.stringify(message)
-//       const completeFile = JSON.stringify({
-//         status:"sent",
-//         withFile : false,
-//         filename:filename
-//       });
-//       console.log('JsonData: ', JsonData);
-//       webSocketRef.current.send(JsonData);
-//       if (file){
-//         webSocketRef.current.send(file);
-//         console.log('file: ', file);
-//         webSocketRef.current.send(completeFile);
-//       }
-//     } else {
-//       console.log('WebSocket is not open. ReadyState:', webSocketRef.current ? webSocketRef.current.readyState : 'N/A');
-//     }
-//   };
 
-//   const readUnreads = (() => {
-//     if (webSocketRef.current && webSocketRef.current.readyState === WebSocket.OPEN){
-//       const info = {
-//         status : "unreadMessages",
-//         user_from : frd_id
-//       }
-//       const JsonInfo = JSON.stringify(info)
-//       webSocketRef.current.send(JsonInfo);
-//     } else {
-//       console.log('WebSocket failed read unread messages. ReadyState:', webSocketRef.current ? webSocketRef.current.readyState : 'N/A');
-//     }
-//   });
+  // if (schoolSocketRef.current) {
+  //   schoolSocketRef.current.onmessage = async (e) => {
+  //     let data = JSON.parse(e.data)
+  //     console.log('data: ', data);
+  //     if (data?.signal_name === 'money_trx') {
+  //       return;
+  //     }
+  //   }
+  // }
 
-  return {};
+  //   const sendMessage = (message,file,filename) => {
+  //     // Use schoolSocketRef.current to send a message if the connection is open
+  //     if (schoolSocketRef.current && schoolSocketRef.current.readyState === WebSocket.OPEN) {
+  //       const JsonData = JSON.stringify(message)
+  //       const completeFile = JSON.stringify({
+  //         status:"sent",
+  //         withFile : false,
+  //         filename:filename
+  //       });
+  //       console.log('JsonData: ', JsonData);
+  //       schoolSocketRef.current.send(JsonData);
+  //       if (file){
+  //         schoolSocketRef.current.send(file);
+  //         console.log('file: ', file);
+  //         schoolSocketRef.current.send(completeFile);
+  //       }
+  //     } else {
+  //       console.log('WebSocket is not open. ReadyState:', schoolSocketRef.current ? schoolSocketRef.current.readyState : 'N/A');
+  //     }
+  //   };
+
+  //   const readUnreads = (() => {
+  //     if (schoolSocketRef.current && schoolSocketRef.current.readyState === WebSocket.OPEN){
+  //       const info = {
+  //         status : "unreadMessages",
+  //         user_from : frd_id
+  //       }
+  //       const JsonInfo = JSON.stringify(info)
+  //       schoolSocketRef.current.send(JsonInfo);
+  //     } else {
+  //       console.log('WebSocket failed read unread messages. ReadyState:', schoolSocketRef.current ? schoolSocketRef.current.readyState : 'N/A');
+  //     }
+  //   });
+
+  return { schoolSocketRef, appSocketRef, connectSchoolSocket, connectAppSecket };
 }
 
 export default useWebSocketHook;

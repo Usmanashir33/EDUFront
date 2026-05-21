@@ -12,14 +12,15 @@ interface TeacherFormProps {
     onCancel: () => void; 
 }
 
-export const TeacherForm: React.FC<TeacherFormProps> = ({ 
+export const TeacherForm: React.FC<TeacherFormProps> = ({  
     initialData, 
     onSubmit, 
     onCancel 
 }) => {
     const {
-              sections, // sections data
-              classRooms, // classRooms data
+        sections, // sections data
+        classRooms, // classRooms data
+        isLoading, // loading state for form submission
     } = useContext(uiContext)
     const {selectedSchool} = useContext(uiContext)
     let teacherSec = selectedSchool?.sections.filter(section => section.classrooms?.some(cls => initialData?.class_room?.includes(cls.id)))?.map((sec) => sec.id );
@@ -30,7 +31,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
         title: initialData?.title ||  '',
         email: initialData?.email || '', 
         phone: initialData?.phone || '',  
-        gender: initialData?.gender || "", 
+        gender: initialData?.gender || "male", 
         address: initialData?.address || '',
         dateOfBirth: initialData?.date_of_birth || '', 
         picture: initialData?.picture || '', 
@@ -92,18 +93,18 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div className="md:col-span-1">
-                                <Input label="Title" placeholder="Mr/Ms/Dr" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} iconClass="fa-solid fa-heading" />
+                                <Input label="Title" autoFocus  placeholder="Mr/Ms/Dr" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} iconClass="fa-solid fa-heading" />
                             </div>
                             <div className="md:col-span-3 grid grid-cols-3 gap-4">
-                                <Input required label="First Name" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} iconClass="fa-solid fa-user" />
-                                <Input label="Middle Name" value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} iconClass="fa-solid fa-user" />
-                                <Input required label="Last Name" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} iconClass="fa-solid fa-user" />
+                                <Input placeholder='First Name' required label="First Name" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} iconClass="fa-solid fa-user" />
+                                <Input placeholder='Last Name' required label="Last Name" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} iconClass="fa-solid fa-user" />
+                                <Input placeholder='Middle Name' label="Middle Name" value={formData.middleName} onChange={e => setFormData({...formData, middleName: e.target.value})} iconClass="fa-solid fa-user" />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <Input required type="email" label="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} iconClass="fa-regular fa-envelope" />
-                            <Input required type="tel" label="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} iconClass="fa-solid fa-phone" />
-                            <Input label="Address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} iconClass="fa-solid fa-map-pin" />
+                            <Input placeholder='Email' required type="email" label="Email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} iconClass="fa-regular fa-envelope" />
+                            <Input placeholder='Phone' required type="tel" label="Phone" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} iconClass="fa-solid fa-phone" />
+                            <Input placeholder='Address' label="Address" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} iconClass="fa-solid fa-map-pin" />
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-navy-800 mb-1.5">Gender</label>
@@ -112,14 +113,14 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
                                         value={formData.gender}
                                         onChange={e => setFormData({...formData, gender: e.target.value as any})}
                                     >
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                        <option value="other">Other</option>
                                     </select>
                                 </div>
                                 <Input type="date" label="Date of Birth" value={formData.dateOfBirth} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} iconClass="fa-solid fa-calendar" />
                             </div>
-                            <Input label="NIN / National ID" value={formData.nin} onChange={e => setFormData({...formData, nin: e.target.value})} iconClass="fa-solid fa-fingerprint" />
+                            <Input placeholder='NIN / National ID' label="NIN / National ID" value={formData.nin} onChange={e => setFormData({...formData, nin: e.target.value})} iconClass="fa-solid fa-fingerprint" />
                         </div>
                     </div>
                 </div>
@@ -130,7 +131,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
                             <span className="w-6 h-6 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center mr-2 text-xs"><i className="fa-solid fa-briefcase"></i></span>
                             Professional Assignment
                         </h3>
-                        <Input label="Job Role" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} iconClass="fa-solid fa-user-tag" />
+                        <Input disabled={true} placeholder='Job Role' label="Job Role" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} iconClass="fa-solid fa-user-tag" />
                         
                         <MultiSelectDropdown 
                             label="Assigned Sections (Generic)"
@@ -160,15 +161,15 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
                             <span className="w-6 h-6 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center mr-2 text-xs"><i className="fa-solid fa-building-columns"></i></span>
                             Financial
                         </h3>
-                        <Input label="Bank Name" value={formData.bankDetails?.bankName} onChange={e => updateBank('bankName', e.target.value)} iconClass="fa-solid fa-building-columns" />
-                        <Input label="Account Number" value={formData.bankDetails?.accountNumber} onChange={e => updateBank('accountNumber', e.target.value)} iconClass="fa-solid fa-hashtag" />
-                        <Input label="Account Name" value={formData.bankDetails?.accountName} onChange={e => updateBank('accountName', e.target.value)} iconClass="fa-solid fa-signature" />
+                        <Input placeholder='Bank Name' label="Bank Name" value={formData.bankDetails?.bankName} onChange={e => updateBank('bankName', e.target.value)} iconClass="fa-solid fa-building-columns" />
+                        <Input placeholder='Account Number' label="Account Number" value={formData.bankDetails?.accountNumber} onChange={e => updateBank('accountNumber', e.target.value)} iconClass="fa-solid fa-hashtag" />
+                        <Input placeholder='Account Name' label="Account Name" value={formData.bankDetails?.accountName} onChange={e => updateBank('accountName', e.target.value)} iconClass="fa-solid fa-signature" />
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
                     <Button type="button" variant="outline" className="w-auto px-8" onClick={onCancel}>Cancel</Button>
-                    <Button type="submit" className="w-auto px-8">{initialData ? 'Update Teacher' : 'Complete Onboarding'}</Button>
+                    <Button disabled={isLoading} type="submit" className="w-auto px-8">{initialData ? 'Update Teacher' : 'Complete Onboarding'}</Button>
                 </div>
             </form>
         </div>

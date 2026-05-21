@@ -8,7 +8,7 @@ export const safeParseFloat = (val: string | number | undefined): number => {
     if (val === undefined || val === null) return 0;
     if (typeof val === 'number') return val;
     const clean = val.toString().replace(/[^0-9.-]+/g, '');
-    const num = parseFloat(clean);
+    const num = parseFloat(clean); 
     return isNaN(num) ? 0 : num;
 };
 

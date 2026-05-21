@@ -16,7 +16,7 @@ export const formatInputCurrency = (value: string) => {
     if (!value) return '';
     const number = value.replace(/[^0-9]/g, '');
     return number ? '₦' + parseInt(number).toLocaleString() : '';
-};
+}; 
 
 export const cleanCurrencyInput = (value: string) => {
     return value.replace(/[^0-9]/g, '');

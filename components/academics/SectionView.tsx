@@ -47,7 +47,7 @@ export const SectionView: React.FC<SectionViewProps> = ({sections, classRooms, s
   if (!section) return null;
 
   const linkedClasses = classRooms.filter((c) => c.section === section.id);
-  const totalStudents = students.filter((s) => linkedClasses.some((c) => s.class_room?.includes(c.id))).length;
+  const totalStudents = students.filter((s) => linkedClasses.some((c) => s.class_rooms.map(c => c.class_room)?.includes(c.id))).length;
   //countteachers from theclassesthe teach
   const linkedClassIds = new Set(linkedClasses?.map(lc => lc.id));
 
@@ -110,8 +110,8 @@ export const SectionView: React.FC<SectionViewProps> = ({sections, classRooms, s
           </div>
           <div className="grid grid-cols-1 gap-4">
             {linkedClasses.map((cls) => {
-              const sCount = students.filter((s) => s.class_room?.includes(cls.id)).length;
-              const tName = teachers.find((t) => t.id === cls.classTeacherId)?.last_name;
+              const sCount = students.filter((s) => s.class_rooms.map(c => c.class_room)?.includes(cls.id)).length;
+              const tName = teachers.find((t) => t.id === cls?.form_teacher);
               return (
                 <div key={cls.id} onClick={() => onNavigateToClass(cls.id)} className="p-4 border border-gray-200 rounded-lg hover:shadow-md cursor-pointer group bg-gray-50 hover:bg-white transition-all">
                   <div className="flex justify-between items-center">
@@ -123,7 +123,7 @@ export const SectionView: React.FC<SectionViewProps> = ({sections, classRooms, s
                       <i className="fa-solid fa-users mr-1"></i> {sCount} Students
                     </span>
                     <span>
-                      <i className="fa-solid fa-chalkboard-user mr-1"></i> {tName ? `Tr. ${tName}` : "No Master"}
+                      <i className="fa-solid fa-chalkboard-user mr-1"></i> {tName ? ` ${tName?.title} ${tName?.first_name} ${tName?.last_name}` : "No Master"}
                     </span>
                   </div>
                 </div>

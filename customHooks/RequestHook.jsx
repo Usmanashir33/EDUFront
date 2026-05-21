@@ -40,12 +40,13 @@ const useRequest = () => {
             ).then((resp) => {
                 if (resp.ok) {
                     return resp.json();
+                } else {
+                    throw new Error(`Request failed with status ${resp.status}`);
                 }
-                setIsLoading(false);
             })
                 .then((data) => {
+                    setIsLoading(false);
                     if (data?.error) {
-                        setIsLoading(false);
                         // chek the format error 
                         let msg = typeof data?.error === 'string' ? data.error :
                             Object.entries(data?.error).map(([field, message]) => {
@@ -53,15 +54,56 @@ const useRequest = () => {
                             }).join(' ');
                         return setToast({ message: msg, type: 'error' });
                     }
-                    if (data?.success) {
-                        triggeredFunc(data)
-                        setIsLoading(false);
-                    }
+                    triggeredFunc(data)
                 }).catch((err) => {
                     //    show error here 
                     setToast({ message: err.message, type: 'error' });
                     setIsLoading(false);
                 })
+                .finally(() => {
+                })
+        }, 100);
+        return (() => { Aborter.abort() })
+    }
+    const sendFileRequest = async (url, method, formdata = "", triggeredFunc, fileName, load = false, is_formData = false) => {
+        if (!isAuthenticated) { return }
+        if (load) {
+            setIsLoading(true);
+        }
+        let token = await getToken()
+        if (!token) {
+            return setToast({ message: "Log out and login again", type: 'error' });
+        }
+        let options = {
+            signal: Aborter.signal,
+            method: method,
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            }
+        }
+        if (method !== "GET" && method !== "DELETE") {
+            if (!is_formData) { options.body = JSON.stringify(formdata) }
+            if (is_formData) {
+                options.headers = { Authorization: `Bearer ${token}` };
+                options.body = formdata
+            }
+        }
+        setTimeout(() => {
+            fetch(`${urls.BASE_URL}${url}`, options
+            ).then(async (resp) => {
+                if (!resp.ok) {
+                    throw new Error("Failed to download template");
+                }
+                triggeredFunc(resp, fileName);// send the response to the function to handle the file download
+                setIsLoading(false);
+                setToast({ message: "Template downloaded successfully", type: 'success' });
+
+            }).catch((err) => {
+                //    show error here 
+                setToast({ message: err.message, type: 'error' });
+                setIsLoading(false);
+            })
                 .finally(() => {
                 })
         }, 500);
@@ -117,7 +159,8 @@ const useRequest = () => {
         }, 500);
         return (() => { Aborter.abort() })
     }
-    return ({ sendRequest, sendAuthRequest });
+
+    return ({ sendRequest, sendAuthRequest, sendFileRequest });
 }
 
 export default useRequest;

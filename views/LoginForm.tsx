@@ -10,7 +10,7 @@ interface LoginFormProps {
   onLogin: (mode: 'director' | 'academic', response:any) => void;
 }
 interface formDataType {
-    username_field: string;
+    username_field : string; 
     password: string;
     otp: string | null ;
 }
@@ -107,30 +107,27 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
   };
 
   const TriggeredFunc = (data: any) => {
-    const loginstatus =["emailverified","loginsuccessfully"]
-    const preloginstatus =["otp_sent","incomplete_registration"]
-    // check if data is success or error and proceed accordingly
-    if (preloginstatus.includes(data.success)) {
-        if (data.success === preloginstatus[1]) { // users email is not verified on his account
-            setToast({message: 'Incomplete Registration / Unverified Email. Please complete your registration.', type: 'info'});
-        }else{
-            setToast({message: 'OTP has been sent to your email ', type: 'success'});
-        }
-        setResent(oldResent);
-        if (step === 'CREDENTIALS') {
+    // console.log('data: ', data);
+    if (data?.incomplete_registration) { // users email is not verified on his account
+            setToast({message:data?.success, type: 'info'});
+            setResent(oldResent);
             setStep('OTP');
-            setUrl(data?.redirect_to);
+            setUrl(data?.redirect_to) ;
+    }else if (data?.otp_sent || data?.success === 'otp_sent'){
+        setToast({message:data?.success, type: 'success'});
+        setResent(oldResent) ;
+        setStep('OTP') ;
+        if (data?.otp_sent) setUrl(data?.redirect_to) ;
+    }else if(data?.logged_user){ // log user in here
+        setToast({message: data?.success, type: 'success'});
+        let userRole = data?.logged_user?.role?.toLowerCase()
+        if (userRole === 'director'){
+            return onLogin('director',data?.logged_user) ;
+        }else{
+            return onLogin(loginMode,data?.logged_user) ;
         }
-    }
-    else if (loginstatus.includes(data?.success?.toLowerCase().replace(/\s+/g, ''))) {
-        setToast({message: 'Login successful', type: 'success'});
-        // check user role and redirect accordingly
-        if (data?.role?.toLowerCase() === 'director') {
-            return onLogin('director',data) ;
-        }
-        onLogin(loginMode,data) ;
-    }
-    else {
+
+    }else {
         // Handle error (for simplicity, setting a generic error)
         setToast({ message: data.error || 'An error occurred. Please try again.', type: 'error' });
     }
@@ -140,8 +137,8 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    let formDetails:React.FC<formDataType> = { // data to be sent to backend as the view requested 
-        username_field : formData.identifier,
+    let formDetails:formDataType = { // data to be sent to backend as the view requested 
+        username_field: formData.identifier,
         password : formData.password,
         otp : otp.join('')
     }
@@ -149,15 +146,13 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
     if (step === 'CREDENTIALS') {
         if (!validateCredentials()) return;
         // Simulate API Credential Check
-        sendAuthRequest(url,"POST",formDetails,TriggeredFunc,true,false);
-    } else {
-
-        // OTP Step
+        sendAuthRequest(url,"POST",formDetails as any ,TriggeredFunc,true,false);
+    } else { // OTP Step
         if (otp.some(d => d === '')) {
             setErrors({ otp: 'Please enter the complete 5-digit code.' });
             return;
         }
-        sendAuthRequest(url,"POST",formDetails,TriggeredFunc,true,false); 
+        sendAuthRequest(url,"POST",formDetails as any ,TriggeredFunc,true,false); 
     }
   };
 
@@ -244,12 +239,11 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
 
                 <div className="mt-8 pt-6 border-t border-gray-100 text-center">
                 <p className="text-sm text-gray-600">
-                    Need to register a new school?{' '}
+                    Need to register a new school?{'  '}
                     <button
                     onClick={() => onNavigate(ViewState.REGISTER)}
-                    className="font-bold text-navy-700 hover:text-navy-900 transition-colors underline decoration-2 decoration-gold-400 hover:decoration-gold-500"
-                    >
-                        Director Registration
+                    className="font-bold text-navy-700 hover:text-navy-900 transition-colors decoration-2 decoration-gold-400 hover:decoration-gold-500"
+                    >   Director Registration
                     </button>
                 </p>
                 </div>
@@ -261,6 +255,7 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
                 <div className="flex justify-center gap-3 mb-8">
                     {otp.map((data, index) => (
                     <input
+                        alt ='inp-ba'
                         key={index}
                         name="login-otp"
                         type="number"
@@ -288,7 +283,7 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
                         className="text-sm text-navy-600 font-medium hover:text-navy-800"
                         onClick={() => {
                             // Resend OTP Logic
-                            let formDetails:React.FC<formDataType> = { // data to be sent to backend as the view requested 
+                            let formDetails: any  = { // data to be sent to backend as the view requested 
                                 username_field : formData.identifier,
                             }
                             setOtp(['','','','','']);
@@ -310,7 +305,7 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
                             className="text-xs text-gray-400 hover:text-gray-600"
                             onClick={() => { 
                                 setStep('CREDENTIALS'); setOtp(['','','','','']); 
-
+                                setUrl("/authuser/loginRequest/")
                             }}
                         >
                             <i className="fa-solid fa-arrow-left mr-1"></i> Back to Credentials

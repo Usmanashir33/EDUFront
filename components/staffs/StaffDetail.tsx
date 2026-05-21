@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Staff, PaymentRecord, KYCDocument } from '../../types';
-import { Button, ImageViewer } from '../UI';
+import { Button, ImageViewer, Modal } from '../UI';
 import { safeParseFloat } from './StaffFinance';
 import urls from '@/customHooks/ServerUrls';
+import { uiContext } from '@/customContexts/UiContext';
+import { StaffRoles } from './StaffRoles';
 
 interface StaffDetailProps { 
     id: string;
@@ -22,7 +24,7 @@ interface StaffDetailProps {
     onVerifyDoc: (doc: KYCDocument) => void;
 }
 
-type Tab = 'OVERVIEW' | 'FINANCE' | 'ADMIN';
+type Tab = 'OVERVIEW' | 'FINANCE' | 'ADMIN' | 'ROLES';
 
 export const StaffDetail: React.FC<StaffDetailProps> = ({ 
     id, staff, 
@@ -31,42 +33,51 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW'); 
     const [showImage, setShowImage] = useState(false);
+    const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false); 
+    const {isLoading} = useContext(uiContext);
+    
     
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
-    const isPaidThisMonth = staff.paymentHistory?.some(p => p.month === currentMonth && p.status === 'Paid');
-
+    const isPaidThisMonth = staff?.paymentHistory?.some(p => p.month === currentMonth && p.status === 'Paid');
+    const topRef = useRef<null|any>(null)
+          useEffect(() => {
+              topRef?.current?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start"
+              })
+          }, [])
     return (
-        <div className="animate-fadeIn space-y-6">
-            <button onClick={onBack} className="flex items-center text-gray-500 hover:text-navy-900 transition-colors">
-                <i className="fa-solid fa-arrow-left mr-2"></i> Back to Directory
-            </button>
-
+        <div className="animate-fadeIn space-y-2 relative -mt-2" >
+            <div className="absolute bbd -top-10 " ref={topRef} > </div>
             {/* Profile Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                  <div className="h-32 bg-gradient-to-r from-navy-800 to-navy-600 relative">
-                    <div className="absolute inset-0 bg-pattern opacity-10"></div>
-                 </div>
+                    {/* <div className="absolute inset-0 bg-pattern opacity-0"></div> */}
+                     <button onClick={onBack} className="absolute left-2 top-0 flex items-center text-gold-400 hover:text-gold-700 transition-colors no-print animate-pulse">
+                        <i className="fa-solid fa-arrow-left mr-2 text-xl rounded-lg p-2 rounded-lg bg-gold-50"></i> Back 
+                    </button>
+                 </div> 
                  <div className="px-8 pb-8 relative">
                     <div className="flex flex-col md:flex-row justify-between items-end -mt-12 mb-6">
                         <div className="flex items-end">
                             <div 
-                                className={`w-28 h-28 rounded-xl bg-white p-1.5 shadow-lg relative shrink-0 ${staff.picture ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
-                                onClick={() => staff.picture && setShowImage(true)}
-                                title={staff.picture ? "Click to view full image" : ""}
+                                className={`w-28 h-28 rounded-xl bg-white p-1.5 shadow-lg relative shrink-0 ${staff?.picture ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
+                                onClick={() => staff?.picture && setShowImage(true)}
+                                title={staff?.picture ? "Click to view full image" : ""}
                             >
                                 <div className="w-full h-full bg-navy-50 rounded-lg flex items-center justify-center text-4xl text-navy-300 font-bold border border-gray-100 overflow-hidden">
-                                    {staff.picture ? <img src={urls.BASE_URL +  staff.picture} alt="" className="w-full h-full object-cover"/> : `${staff.first_name[0]}${staff.last_name[0]}`}
+                                    {staff?.picture ? <img src={urls.BASE_URL +  staff?.picture} alt="" className="w-full h-full object-cover"/> : `${staff?.first_name[0]}${staff?.last_name[0]}`}
                                 </div>
-                                <span className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white ${staff.user?.is_active ? 'bg-green-500' : 'bg-red-500'}`}>
-                                    <i className={`fa-solid ${staff.user?.is_active ? 'fa-check' : 'fa-ban'}`}></i>
+                                <span className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white ${staff?.user?.is_active ? 'bg-green-500' : 'bg-red-500'}`}>
+                                    <i className={`fa-solid ${staff?.user?.is_active ? 'fa-check' : 'fa-ban'}`}></i>
                                 </span>
                             </div>
                             <div className="ml-5 mb-1">
-                                <h1 className="text-3xl font-bold text-navy-900 leading-tight">{staff.title} {staff.first_name} {staff.last_name}</h1>
+                                <h1 className="text-3xl font-bold text-navy-900 leading-tight">{staff?.title} {staff?.first_name} {staff?.last_name}</h1>
                                 <div className="flex items-center gap-3 mt-1">
                                     <p className="text-gray-500 font-medium text-sm flex items-center">
-                                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200 mr-2">{staff.staff_id}</span>
-                                        {staff.role}
+                                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200 mr-2">{staff?.staff_id}</span>
+                                        {staff?.role}
                                     </p>
                                     {staff.kyc?.isVerified ? (
                                         <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded flex items-center"><i className="fa-solid fa-shield-halved mr-1"></i> Verified</span>
@@ -88,7 +99,8 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                         {[
                             { id: 'OVERVIEW', label: 'Overview', icon: 'fa-solid fa-chart-pie' },
                             { id: 'FINANCE', label: 'Finance', icon: 'fa-solid fa-file-invoice-dollar' },
-                            { id: 'ADMIN', label: 'Admin', icon: 'fa-solid fa-shield-halved' }
+                            { id: 'ADMIN', label: 'Admin', icon: 'fa-solid fa-shield-halved' },
+                            { id: 'ROLES', label: 'Roles', icon: 'fa-solid fa-user-lock' }
                         ].map(t => (
                             <button key={t.id} onClick={() => setActiveTab(t.id as Tab)} className={`pb-4 text-sm font-bold flex items-center transition-all ${activeTab === t.id ? 'text-navy-900 border-b-2 border-navy-900' : 'text-gray-400 hover:text-navy-600'}`}>
                                 <i className={`${t.icon} mr-2`}></i>
@@ -108,14 +120,14 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                             Personal Information
                                         </h3>
                                         <div className="grid grid-cols-2 gap-y-4 text-sm">
-                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Full Name</p><p className="font-semibold text-navy-900">{staff.title} {staff.first_name} {staff.last_name} {staff.middle_name}</p></div>
-                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Gender</p><p className="font-semibold text-navy-900">{staff.gender}</p></div>
-                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Date of Birth</p><p className="font-semibold text-navy-900">{staff.date_of_birth ? new Date(staff.date_of_birth).toLocaleDateString() : 'N/A'}</p></div>
-                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Date Joined</p><p className="font-semibold text-navy-900">{new Date(staff.joined_at).toLocaleDateString()}</p></div>
-                                            <div><p className="text-gray-500 text-xs uppercase font-bold">NIN</p><p className="font-semibold text-navy-900">{staff.nin || 'Not Provided'}</p></div>
-                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Phone</p><p className="font-semibold text-navy-900">{staff.phone}</p></div>
-                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Email</p><p className="font-semibold text-navy-900">{staff.email}</p></div>
-                                            <div className="col-span-2"><p className="text-gray-500 text-xs uppercase font-bold">Address</p><p className="font-semibold text-navy-900">{staff.address}</p></div>
+                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Full Name</p><p className="font-semibold text-navy-900">{staff?.title} {staff?.first_name} {staff?.last_name} {staff?.middle_name}</p></div>
+                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Gender</p><p className="font-semibold text-navy-900">{staff?.gender}</p></div>
+                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Date of Birth</p><p className="font-semibold text-navy-900">{staff?.date_of_birth ? new Date(staff?.date_of_birth).toLocaleDateString() : 'N/A'}</p></div>
+                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Date Joined</p><p className="font-semibold text-navy-900">{new Date(staff?.joined_at).toLocaleDateString()}</p></div>
+                                            <div><p className="text-gray-500 text-xs uppercase font-bold">NIN</p><p className="font-semibold text-navy-900">{staff?.nin || 'Not Provided'}</p></div>
+                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Phone</p><p className="font-semibold text-navy-900">{staff?.phone}</p></div>
+                                            <div><p className="text-gray-500 text-xs uppercase font-bold">Email</p><p className="font-semibold text-navy-900">{staff?.email}</p></div>
+                                            <div className="col-span-2"><p className="text-gray-500 text-xs uppercase font-bold">Address</p><p className="font-semibold text-navy-900">{staff?.address}</p></div>
                                         </div>
                                     </div>
                                 </div>
@@ -127,16 +139,16 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                         </h3>
                                         <div className="space-y-4 text-sm">
                                             <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">General Role</span><span className="font-semibold text-navy-900">{staff?.role?.toUpperCase()}</span></div>
-                                            <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Assigned NSA Role</span><span className="font-semibold text-navy-900 capitalize">{staff.activity_role?.role || 'N/A'}</span></div>
-                                            <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Rank</span><span className="font-semibold text-navy-900 capitalize">{staff.activity_role?.rank || 'N/A'}</span></div>
-                                            <div><span className="text-gray-500 uppercase text-xs font-bold block mb-1">Description</span><p className="text-gray-700 bg-gray-50 p-2 rounded">{staff.activity_role?.description || 'No description provided.'}</p></div>
+                                            <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Assigned NSA Role</span><span className="font-semibold text-navy-900 capitalize">{staff?.activity_role?.role || 'N/A'}</span></div>
+                                            <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Rank</span><span className="font-semibold text-navy-900 capitalize">{staff?.activity_role?.rank || 'N/A'}</span></div>
+                                            <div><span className="text-gray-500 uppercase text-xs font-bold block mb-1">Description</span><p className="text-gray-700 bg-gray-50 p-2 rounded">{staff?.activity_role?.description || 'No description provided.'}</p></div>
                                         </div>
                                     </div>
                                     
                                     <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm text-center">
                                         <h4 className="text-xs font-bold text-gray-500 uppercase">Current Status</h4>
-                                        <div className={`text-xl font-bold my-2 ${staff.user?.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                                            {staff.user?.is_active? "Active" : "Inactive"}
+                                        <div className={`text-xl font-bold my-2 ${staff?.user?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                                            {staff?.user?.is_active? "Active" : "Inactive"}
                                         </div>
                                     </div>
                                 </div>
@@ -163,13 +175,13 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Base Salary (₦)</label>
                                                 <div className="flex">
                                                     <div className="p-3 border rounded-md font-mono font-bold text-lg bg-gray-50 text-gray-600 border-gray-200 flex-1">
-                                                        ₦{safeParseFloat(staff.salary).toLocaleString()}
+                                                        ₦{safeParseFloat(staff?.salary).toLocaleString()}
                                                     </div>
                                                 </div>
                                             </div>
                                             <Button 
                                                 onClick={() => onTriggerSalary({
-                                                    baseSalary: staff.salary || '0',
+                                                    baseSalary: staff?.salary || '0',
                                                     bonus: '0', bonusRemark: '',
                                                     deductions: '0', deductionRemark: '',
                                                     tax: '0',
@@ -198,7 +210,7 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
-                                                    {staff.paymentHistory?.map(p => (
+                                                    {staff?.paymentHistory?.map(p => (
                                                         <tr key={p.id}>
                                                             <td className="px-6 py-4 text-sm text-navy-900 font-medium">{p.month}</td>
                                                             <td className="px-6 py-4 text-sm text-navy-900 font-bold">{new Date(p.date).toLocaleDateString()}</td>
@@ -213,7 +225,7 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                    {(!staff.paymentHistory || staff.paymentHistory.length === 0) && (
+                                                    {(!staff?.paymentHistory || staff?.paymentHistory.length === 0) && (
                                                         <tr><td colSpan={4} className="p-4 text-center text-gray-500 text-sm">No payment history found.</td></tr>
                                                     )}
                                                 </tbody>
@@ -241,15 +253,15 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                         <div className="space-y-4">
                                             <div>
                                                 <p className="text-navy-300 text-xs uppercase">Bank Name</p>
-                                                <p className="font-bold text-lg">{staff.bank_details?.bank_name || 'Not Provided'}</p>
+                                                <p className="font-bold text-lg">{staff?.bank_details?.bank_name || 'Not Provided'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-navy-300 text-xs uppercase">Account Number</p>
-                                                <p className="font-mono text-xl tracking-widest">{staff.bank_details?.account_number || '**** ****'}</p>
+                                                <p className="font-mono text-xl tracking-widest">{staff?.bank_details?.account_number || '**** ****'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-navy-300 text-xs uppercase">Account Name</p>
-                                                <p className="font-medium text-sm">{staff.bank_details?.account_name || 'Not Provided'}</p>
+                                                <p className="font-medium text-sm">{staff?.bank_details?.account_name || 'Not Provided'}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -257,6 +269,9 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                             </div>
                         )}
 
+                        {activeTab === 'ROLES' && (
+                            <StaffRoles staff={staff} />
+                        )}
                         {activeTab === 'ADMIN' && (
                             <div className="space-y-8">
                                 {/* KYC Management */}
@@ -265,13 +280,13 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                         <h3 className="font-bold text-navy-900 flex items-center">
                                             <i className="fa-solid fa-file-contract mr-2 text-navy-600"></i> KYC & Verification
                                         </h3>
-                                        {staff.kyc?.isVerified && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">Verified</span>}
+                                        {staff?.kyc?.isVerified && <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">Verified</span>}
                                      </div>
                                      
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                          <div className="space-y-3">
                                              <p className="text-sm text-gray-600 mb-2">Submitted Documents</p>
-                                             {staff.kyc?.documents.map((doc, idx) => (
+                                             {staff?.kyc?.documents.map((doc, idx) => (
                                                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
                                                      <div className="flex items-center gap-3">
                                                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs ${doc.status === 'Verified' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
@@ -316,9 +331,9 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                     <h3 className="text-lg font-bold text-red-800 mb-4">Account Control</h3>
                                     <div className="flex gap-4">
                                         <Button variant="secondary" className="w-auto px-4" onClick={onTriggerSuspend}>
-                                            {staff.status === 'Suspended' ? 'Activate Account' : 'Suspend Account'}
+                                            {!staff?.user?.is_active ? 'Activate Account' : 'Suspend Account'}
                                         </Button>
-                                        <Button variant="danger" className="w-auto px-4" onClick={onTriggerDelete}>Delete Staff</Button>
+                                        <Button variant="danger" className="w-auto px-4" onClick={() => setIsDeletingModalOpen(true)}>Delete Staff</Button>
                                     </div>
                                 </div>
                             </div>
@@ -326,10 +341,29 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                     </div>
                  </div>
             </div>
+             <Modal isOpen={isDeletingModalOpen} onClose={() => {setIsDeletingModalOpen(false);  }} title="Staff Deletion" size="md">
+                  <div className="space-y-4">
+                      <p className=" bg-red-50 p-2 text-sm text-red-600 rounded-md ">Please confirm staff deleting. This action is irreversible and all the staff related data will also be deleted!</p>
+                      <div className="flex justify-end gap-3">
+                          <Button isLoading={isLoading}  variant="secondary" onClick={() => setIsDeletingModalOpen(false)}>Cancel</Button>
+                          <Button 
+                              isLoading={isLoading}
+                              onClick={() => {
+                                onTriggerDelete() ;
+                                setIsDeletingModalOpen(false);
+                              }}
+                              className="bg-red-600 text-white"
+                          >
+                              Confirm Deleting
+                          </Button>
+                      </div>
+                  </div>
+              </Modal>
+                        
             
             <ImageViewer 
                 isOpen={showImage} 
-                imageUrl={urls.BASE_URL + staff.picture} 
+                imageUrl={urls.BASE_URL + staff?.picture} 
                 onClose={() => setShowImage(false)} 
             />
         </div>
