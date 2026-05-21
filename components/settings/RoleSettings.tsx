@@ -89,9 +89,9 @@ export const RoleSettings: React.FC<RoleSettingsProps> = ({
                 </div>
             </div>
 
-            {view === 'ROLES' ? (
+            {view === 'ROLES'? (
                 <div className="space-y-4">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end"> 
                         <Button className="w-auto px-4" onClick={() => setRoleModal({ isOpen: true, data: { permissionIds: [] } })}>
                             <i className="fa-solid fa-plus mr-2"></i> Create New Role
                         </Button>
