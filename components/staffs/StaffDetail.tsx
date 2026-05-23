@@ -9,19 +9,17 @@ import { StaffRoles } from './StaffRoles';
 
 interface StaffDetailProps { 
     id: string;
-    staff: Staff;
-    onBack: () => void;
-    onEdit: () => void;
-    onUpdateStaff: (s: Staff) => void;
+    staff: any;
+    onBack: () => void ;
+    onEdit: () => void ;
     onTriggerSalary: (data: any) => void;
     onViewReceipt: (data: any) => void;
     onTriggerSuspend: () => void;
     onTriggerDelete: () => void;
     onOpenBankModal: () => void;
-    onLogActivity: (action: any, module: any, desc: string) => void;
-    onSetToast: (t: any) => void;
     onViewDoc: (doc: KYCDocument) => void;
-    onVerifyDoc: (doc: KYCDocument) => void;
+    onVerifyDoc: (doc: KYCDocument) => void ;
+    onServerSave: (name: any,method:'ADD'|'EDIT'|'DELETE',form?:any) => void ;
 }
 
 type Tab = 'OVERVIEW' | 'FINANCE' | 'ADMIN' | 'ROLES';
@@ -29,16 +27,31 @@ type Tab = 'OVERVIEW' | 'FINANCE' | 'ADMIN' | 'ROLES';
 export const StaffDetail: React.FC<StaffDetailProps> = ({ 
     id, staff, 
     onBack, onEdit, onTriggerSalary, onViewReceipt, 
-    onTriggerSuspend, onTriggerDelete, onOpenBankModal, onLogActivity, onSetToast, onViewDoc, onVerifyDoc 
+    onTriggerSuspend, onTriggerDelete, onOpenBankModal,  onViewDoc, onVerifyDoc ,
+    onServerSave
 }) => {
+
     const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW'); 
     const [showImage, setShowImage] = useState(false);
     const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false); 
-    const {isLoading} = useContext(uiContext);
+    const {isLoading,selectedSchool,roles} = useContext(uiContext);
     
     
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
     const isPaidThisMonth = staff?.paymentHistory?.some(p => p.month === currentMonth && p.status === 'Paid');
+    const schoolRole = roles.filter(r => r.id === staff?.user?.school_role) || [];
+
+    const handleManageRoles = (staffId: string, roleIds: string[]) => {
+        // Call API to update roles
+        let form = {
+            school:selectedSchool?.id,
+            staffId,
+            roleIds
+        }
+        onServerSave('ROLE_USER', 'EDIT', form);
+        return ;
+    }
+
     const topRef = useRef<null|any>(null)
           useEffect(() => {
               topRef?.current?.scrollIntoView({
@@ -139,6 +152,13 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                         </h3>
                                         <div className="space-y-4 text-sm">
                                             <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">General Role</span><span className="font-semibold text-navy-900">{staff?.role?.toUpperCase()}</span></div>
+                                            <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Assigned School Role</span>
+                                                {schoolRole.map(r => {return (
+                                                    <span key={r.id} className="bg-navy-100 text-navy-800 text-sm font-bold px-3 py-1.5 rounded-md border border-navy-200">
+                                                        <i className="fa-solid fa-shield-cat mr-1 opacity-50"></i> {r.name}
+                                                    </span>
+                                                )})}
+                                            </div>
                                             <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Assigned NSA Role</span><span className="font-semibold text-navy-900 capitalize">{staff?.activity_role?.role || 'N/A'}</span></div>
                                             <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Rank</span><span className="font-semibold text-navy-900 capitalize">{staff?.activity_role?.rank || 'N/A'}</span></div>
                                             <div><span className="text-gray-500 uppercase text-xs font-bold block mb-1">Description</span><p className="text-gray-700 bg-gray-50 p-2 rounded">{staff?.activity_role?.description || 'No description provided.'}</p></div>
@@ -270,7 +290,7 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                         )}
 
                         {activeTab === 'ROLES' && (
-                            <StaffRoles staff={staff} />
+                            <StaffRoles staff={staff} handleManageRoles={handleManageRoles} />
                         )}
                         {activeTab === 'ADMIN' && (
                             <div className="space-y-8">

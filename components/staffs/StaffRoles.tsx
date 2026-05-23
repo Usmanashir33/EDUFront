@@ -1,38 +1,51 @@
 
-import React, { useContext, useState } from 'react';
-import { Staff, KYCDocument, SchoolRole, SchoolPermission } from '../../types';
-import { Button, ImageViewer } from '../UI';
+import React, { useContext, useEffect, useState } from 'react';
+import { Button } from '../UI';
 import { uiContext } from '@/customContexts/UiContext';
 
 interface StaffRolesProps { 
-    // id: string;
-    staff: Staff;
-    
+    staff: any;
+    handleManageRoles: (staffId: string, roleIds: string[]) => void;
 }
 
-type Tab = 'OVERVIEW' | 'FINANCE' | 'ADMIN';
-
-export const StaffRoles: React.FC<StaffRolesProps> = ({ staff }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW');
-    const [showImage, setShowImage] = useState(false); 
-    const {roles:systemRoles, permissions:systemPermissions} = useContext(uiContext);
-    
+export const StaffRoles: React.FC<StaffRolesProps> = ({ staff, handleManageRoles }) => {
+    const {roles:systemRoles, permissions:systemPermissions,staffs} = useContext(uiContext);
 
     // Roles & Perms Logic
     const [isEditingRoles, setIsEditingRoles] = useState(false);
-    const assignedRoles = systemRoles.filter(r => staff.schoolRoleIds?.includes(r.id));
+    const [roleChanged,setRoleChanged] = useState(false);
+    const [assignedRoles,setAssignedRoles] = useState(systemRoles.filter(r => r.id === staff?.user?.school_role) || []);
     const effectivePermissionIds = Array.from(new Set(assignedRoles.flatMap(r => r.permissionIds)));
     const effectivePermissions = systemPermissions.filter(p => effectivePermissionIds.includes(p.id));
 
     const toggleRole = (roleId: string) => {
-        const current = staff.schoolRoleIds || [];
-        const next = current.includes(roleId) ? current.filter(id => id !== roleId) : [...current, roleId];
-        // onUpdateStaff({ ...staff, schoolRoleIds: next });
+        if (assignedRoles.find(r => r.id === roleId)) {
+            setAssignedRoles(prev => prev.filter(r => r.id !== roleId));
+        }else{
+            const roleToAdd = systemRoles.find(r => r.id === roleId);
+            if(roleToAdd) setAssignedRoles(prev => [roleToAdd]);
+        }
     };
+
+    // check role change pls 
+    useEffect(() => {
+        if (!assignedRoles?.length) return ;
+        const ass = (systemRoles.filter(r => r.id === staff?.user?.school_role) || [])?.map(a => a?.id)
+        const assignedRoleIds = assignedRoles.map(r => r.id) ;
+
+        setRoleChanged(
+            assignedRoleIds.sort().every((value, index) => value !== ass.sort()[index])
+        )
+    }, [assignedRoles]);
+
+    useEffect(() => {
+        if (!isEditingRoles) return ; // close the edit mode if systemRoles changed (e.g. after saving changes) by server response 
+        setIsEditingRoles(false);
+    }, [staffs]);
 
     return (
                 
-        <div className="px-8 pb-8 relative">
+        <div className="px-8 pb-8 relative"> 
             <div className="space-y-8">
                 {/* Roles & Permissions Management */}
                 <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
@@ -43,8 +56,16 @@ export const StaffRoles: React.FC<StaffRolesProps> = ({ staff }) => {
                                             </h3>
                                             <p className="text-sm text-gray-500 mt-1">Manage system access for this staff member</p>
                                         </div>
-                                        <Button variant="outline" className="w-auto px-4" onClick={() => setIsEditingRoles(!isEditingRoles)}>
-                                            <i className={`fa-solid ${isEditingRoles ? 'fa-check' : 'fa-pen'} mr-2`}></i> {isEditingRoles ? 'Done' : 'Manage Roles'}
+                                        <Button variant="outline" className="w-auto max-w-fit  px-4" onClick={() => {
+                                            if(isEditingRoles && roleChanged){
+                                                // save changes
+                                                handleManageRoles(staff.id, assignedRoles.map(r => r.id));
+                                                return ;
+                                            }
+                                            setIsEditingRoles(!isEditingRoles);
+
+                                        }}>
+                                            <i className={`fa-solid ${isEditingRoles ? 'fa-check' : 'fa-pen'} mr-2`}></i> {isEditingRoles ? roleChanged?"Save Changes":"Done" : 'Manage Roles'}
                                         </Button>
                                     </div>
                                      
@@ -58,7 +79,7 @@ export const StaffRoles: React.FC<StaffRolesProps> = ({ staff }) => {
                                                             <input 
                                                                 type="checkbox" 
                                                                 className="mt-1"
-                                                                checked={staff.schoolRoleIds?.includes(r.id) || false}
+                                                                checked={assignedRoles.some(role => role.id === r.id)}
                                                                 onChange={() => toggleRole(r.id)}
                                                             />
                                                             <div>

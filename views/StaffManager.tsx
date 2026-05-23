@@ -33,18 +33,20 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   let [serverForm,setServerForm]= useState(new FormData()) // form to handle server data 
-  let [admForm,setAdmForm] = useState({})
+  let [admForm,setAdmForm] = useState({});
   
-  const {currentUser} = useContext(authContext);
-  const {     selectedSchool,
-              staffs, setStaffs, // staff data
-          } = useContext(uiContext)
-  const {sendRequest} = useRequest();
+  const {currentUser} = useContext(authContext) ;
+  const { 
+      selectedSchool,
+      staffs, setStaffs, // staff data
+      setToast,roles
+  } = useContext(uiContext) ;
+  const {sendRequest} = useRequest() ;
   
   // Filters
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterMonth, setFilterMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
-  const [filterDept, setFilterDept] = useState('All');
+  const [filterDept, setFilterDept] = useState<"All" | any >('All');
   const [filterGender, setFilterGender] = useState<'All' | 'male' | "other"|'female'>('All');
   const [filterStatus, setFilterStatus] = useState<'All' | "Active" | "Inactive">('All');
   
@@ -54,8 +56,8 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
 
   // Security & Toast
   const [showPinModal, setShowPinModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<{ type: 'SUSPEND' | 'DELETE' | 'PAY_SALARY' | 'VERIFY_DOC', payload?: any } | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  type PTYPES = 'SUSPEND' | 'DELETE' | 'PAY_SALARY' | 'VERIFY_DOC' | "EDIT_USER_ROLE"
+  const [pendingAction, setPendingAction] = useState<{ type: PTYPES, payload?: any } | null>(null);
 
   // Modal States
   const [showPayrollModal, setShowPayrollModal] = useState(false);
@@ -66,7 +68,9 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
   const [bankForm, setBankForm] = useState({ bankName: '', accountNumber: '', accountName: '' });
   const [viewDoc, setViewDoc] = useState<KYCDocument | null>(null);
 
-  const departments = ['All', ...Array.from(new Set(staffs.map(s => s.activity_role?.role || 'academic')))];
+  const dep = ['All', ...Array.from(new Set(staffs.map(s => s.activity_role?.role || 'academic')))];
+  const rols = ['All', ...Array.from(new Set(roles.map(s => s.name)))];
+  let departments =[...dep,...rols] ;
 
   // Date Navigation
   const handleDateChange = (offset: number) => {
@@ -98,32 +102,43 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
   const TriggeredFunc = (data:any) => {
     // console.log('data: ', data);
     if (data?.success){
+        setToast({ message: data?.success, type: "success" });
         if (data?.success === "searchResults"){
             // only students not already in the list of the students 
             let searched = data?.results.filter((res) => staffs.find(s => s.id !== res.id))
             setStaffs((prev) => [...searched,...prev])
             return;
         }
-        if (viewMode === "ADD"){
+        if (data?.new_staff){
             setStaffs([ data?.new_staff,...staffs]);
-            setToast({ message: "New staff member added", type: "success" });
-            setViewMode('LIST');
-        }else if (viewMode === "EDIT"){
+            setViewMode('LIST') ;
+
+        }else if (data?.updated_staff){
             setStaffs(staffs.map(x => x.id === selectedStaffId ? data?.updated_staff : x));
-            setToast({ message: "Profile updated", type: "success" });
             setViewMode('DETAIL');
 
         }else if (data?.sus_staff){
           const updated = staffs.map(s => s.id === selectedStaffId ? data?.sus_staff : s);
           setStaffs(updated);
-          setToast({ message: "Status updated", type: 'success' });
         }else if (data?.del_staff){
           setStaffs(staffs.filter(s => s.id !== selectedStaffId));
           setViewMode('LIST');
           setSelectedStaffId(null);
-          setToast({ message: "Staff deleted", type: 'success' });
         }
     }
+  }
+  const onServerSave = (name:string, action:string, formData:any) => {
+    // console.log('formData: ', formData);
+      if (name === 'ROLE_USER' && action === 'EDIT') {
+        if (!currentUser?.user?.pin_set){
+      // Make the api call here  when user  need no pin to talk to server  
+          sendRequest(`/staff/manage-staff-role/${formData.staffId}/`,"PUT",formData as any,TriggeredFunc,true,false)
+          return ;
+        }
+      }
+      setPendingAction({type:"EDIT_USER_ROLE",payload:formData.staffId})
+      setServerForm(formData)
+      setShowPinModal(true) ;
   }
     const handleApiCall = (data:any) => {
     let form = new FormData() 
@@ -174,7 +189,12 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
   }
   // Actions
   const handlePinSuccess = (pins:any) => {
-    serverForm.append("pin", pins );
+    try {
+      serverForm.append("pin", pins );
+    }catch{
+
+    }
+
         setShowPinModal(false);
         // Make the api call here  when user  need no pin to talk to server 
         if (viewMode === "ADD") { 
@@ -189,7 +209,14 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
         admF.pin = pins
       const requestAction = pendingAction.type?.toLowerCase()
       sendRequest(`/staff/manage-staff/${selectedStaffId}/${requestAction}/`,"POST",admF as any,TriggeredFunc,true,false)
+      return ;
     } 
+    if (pendingAction.type === "EDIT_USER_ROLE"){
+      let f:any = {...serverForm,pin:pins}
+      sendRequest(`/staff/manage-staff-role/${f.staffId}/`,"PUT",f as any,TriggeredFunc,true,false);
+      return ;
+    }
+
   };
   // ACTIONS
     const triggerSuspend = () => { 
@@ -223,17 +250,15 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
               let status = ( filterStatus  == "Active") ? true :false
               const matchSearch = (t.title + t.first_name + t.last_name + t.middle_name + t.phone + t.staff_id + t.email).toLowerCase().includes(searchTerm.toLowerCase());
               const matchGender = filterGender === 'All' || t.gender?.toLowerCase() === filterGender?.toLowerCase() ;
-              const matchActivity = filterDept  === 'All' || t?.activity_role?.role === filterDept ;
+              const matchActivity = filterDept  === 'All' || t?.activity_role?.role === filterDept || roles.find((r:any) => r.name === filterDept && r.id === t.user.school_role) ;
               const matchStatus = filterStatus === 'All' || t.user.is_active === status ;
-            //   const matchClass = filterClassIds.length === 0 || s.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map((cls) => cls.class_room).some(cid => filterClassIds.includes(cid));
-            //   return matchSearch && matchStatus && matchClass;
               return matchSearch && matchActivity  && matchGender && matchStatus ;
           });
         
       const allowSearch = useRef(true);
       useEffect(() => {
             if (searchTerm.length && !filteredStaffs.length && allowSearch.current) {
-              sendRequest(`/staff/search/staff/${selectedSchool?.id}/${searchTerm}/`, "GET", null, TriggeredFunc, true, false)
+              sendRequest(`/staff/search/staff/${selectedSchool?.id}/${searchTerm}/`, "GET", null as any, TriggeredFunc, true, false)
               allowSearch.current = false;
               setTimeout(() => {
                 allowSearch.current = true;
@@ -285,7 +310,7 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
                 onTriggerSuspend={triggerSuspend}
                 onTriggerDelete={triggerDelete}
                 onOpenBankModal={() => { setBankForm(selectedStaff?.bank_details || { bankName:'',accountNumber:'',accountName:'' }); setShowBankModal(true); }}
-                onSetToast={setToast}
+                onServerSave={onServerSave}
                 onViewDoc={(doc) => setViewDoc(doc)}
                 onVerifyDoc={(doc) => { setPendingAction({ type: 'VERIFY_DOC', payload: { docName: doc.name } }); setShowPinModal(true); }}
             />
@@ -317,7 +342,7 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
           sendRequest={sendRequest}
       /> 
       <div className="animate-fadeIn space-y-6">
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        {/* {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />} */}
         
         {/* Header & Filters */}
         <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200 gap-4">
@@ -349,8 +374,8 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
               <div className="relative flex-1 md:w-64"><i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i><input type="text" placeholder="Search staff..." className="w-full pl-9 pr-3 py-2 border rounded-md focus:outline-none focus:border-navy-900" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/></div>
               <select className="border rounded-md px-3 py-2 bg-white" value={filterDept} onChange={e => {setFilterDept(e.target.value)}}>{
               departments.map(
-                (d: any) => 
-                <option key={d} value={d}>{d === 'All' ? 'All Roles' : d.charAt(0).toUpperCase() + d.slice(1)}</option>
+                (d: any,index) => 
+                <option key={`dep${index}`} value={d}>{d === 'All' ? 'All Roles' : d.charAt(0).toUpperCase() + d.slice(1)}</option>
                 )}</select>
               <select value={filterGender} onChange={(e) => setFilterGender(e.target.value as any)} className="border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-sm font-semibold"><option value="All">All Genders</option><option value="Male">Male</option><option value="Female">Female</option></select>
               <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-sm font-semibold"><option value="All">All Statuses</option><option value={true}>Active</option><option value={false}>Inactive</option></select>
@@ -366,7 +391,9 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
               <div className="w-100 px-6 py-8 text-center text-md text-gray-500">No staff found matching filters.</div>
           </div>
           }
-          {(filteredStaffs.length !== 0) && filteredStaffs?.map(s => (
+          {(filteredStaffs.length !== 0) && filteredStaffs?.map(s => {
+            let schoolRole = roles.filter(r => r.id === s.user.school_role) || [] ;
+            return (
             <div key={s.id} onClick={() => { setSelectedStaffId(s.id); setViewMode('DETAIL'); }} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all group cursor-pointer hover:-translate-y-1">
               <div className="p-6 flex items-start gap-4">
                 <div className="w-12 h-12 rounded-full bg-navy-100 flex items-center justify-center text-navy-700 font-bold text-lg border border-white shadow-sm overflow-hidden">{s.picture ? <img src={urls.BASE_URL + s.picture} alt="" className="w-full h-full object-cover"/> : `${s.first_name[0]}${s.last_name[0]}`}</div>
@@ -375,11 +402,18 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
                     <p className="text-xs text-navy-500 font-bold uppercase mb-1">{s.role}</p>
                     <p className="text-xs text-gray-500 flex items-center gap-2 capitalize"><i className="fa-solid fa-layer-group"></i> {s.activity_role?.role || 'Staff'}</p>
                     <p className="text-xs text-gray-500 flex items-center gap-2 mt-1"><i className="fa-solid fa-phone"></i> {s.phone}</p>
+                    <div  className="flex gap-2 mt-2 flex-wrap ">
+                      {schoolRole.map(r => {return (
+                          <span key={r.id} className="bg-navy-100 text-navy-800 text-xs font-bold px-1 py-1  rounded-md border border-navy-200 ">
+                              <i className="fa-solid fa-shield-cat mr-1 opacity-50"></i> {r.name}
+                          </span>
+                      )})}
+                    </div>
                 </div>
               </div>
               <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center text-xs"><span className="font-mono text-gray-400">{s.staff_id}</span><span className="text-navy-600 font-bold hover:underline">View Profile <i className="fa-solid fa-arrow-right ml-1"></i></span></div>
             </div>
-          ))}
+          )})}
           
         </div>
 
