@@ -1,6 +1,6 @@
 
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Staff, PaymentRecord, KYCDocument } from '../../types';
+import { KYCDocument } from '../../types';
 import { Button, ImageViewer, Modal } from '../UI';
 import { safeParseFloat } from './StaffFinance';
 import urls from '@/customHooks/ServerUrls';

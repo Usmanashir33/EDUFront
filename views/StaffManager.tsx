@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo ,useContext,useRef,useEffect} from 'react';
-import { Staff, PaymentRecord, KYCDocument, KYCInfo, ActivityLog } from '../types';
-import { Button, PinModal, Toast, Modal, ImageUpload, ImageViewer, Paginator } from '../components/UI';
+import { Staff, PaymentRecord, KYCDocument, KYCInfo,  } from '../types';
+import { Button, PinModal, Modal, Paginator } from '../components/UI';
 import { StaffForm } from '@/components/staffs/StaffForm';
 import { StaffDetail } from '../components/staffs/StaffDetail';
 import { PayrollCalculator, PaymentReceipt, BankDetailsModal, safeParseFloat } from '../components/staffs/StaffFinance';
@@ -48,8 +48,13 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
   const [filterMonth, setFilterMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
   const [filterDept, setFilterDept] = useState<"All" | any >('All');
   const [filterGender, setFilterGender] = useState<'All' | 'male' | "other"|'female'>('All');
-  const [filterStatus, setFilterStatus] = useState<'All' | "Active" | "Inactive">('All');
+  const [filterStatus, setFilterStatus] = useState<'All' | "active" | "inactive">('All');
   
+  const resetFilter = () => {
+    setFilterDept("All");
+    setFilterGender("All");
+    setFilterStatus("All");
+  }
   
   // DrillDown
   const [drillDownType, setDrillDownType] = useState<DrillDownType>(null);
@@ -69,7 +74,7 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
   const [viewDoc, setViewDoc] = useState<KYCDocument | null>(null);
 
   const dep = ['All', ...Array.from(new Set(staffs.map(s => s.activity_role?.role || 'academic')))];
-  const rols = ['All', ...Array.from(new Set(roles.map(s => s.name)))];
+  const rols = [...Array.from(new Set(roles.map(s => s.name)))];
   let departments =[...dep,...rols] ;
 
   // Date Navigation
@@ -247,7 +252,7 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
     };
 
     const filteredStaffs = staffs.filter(t => {
-              let status = ( filterStatus  == "Active") ? true :false
+              let status = ( filterStatus  == "active") ? true :false
               const matchSearch = (t.title + t.first_name + t.last_name + t.middle_name + t.phone + t.staff_id + t.email).toLowerCase().includes(searchTerm.toLowerCase());
               const matchGender = filterGender === 'All' || t.gender?.toLowerCase() === filterGender?.toLowerCase() ;
               const matchActivity = filterDept  === 'All' || t?.activity_role?.role === filterDept || roles.find((r:any) => r.name === filterDept && r.id === t.user.school_role) ;
@@ -378,7 +383,7 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
                 <option key={`dep${index}`} value={d}>{d === 'All' ? 'All Roles' : d.charAt(0).toUpperCase() + d.slice(1)}</option>
                 )}</select>
               <select value={filterGender} onChange={(e) => setFilterGender(e.target.value as any)} className="border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-sm font-semibold"><option value="All">All Genders</option><option value="Male">Male</option><option value="Female">Female</option></select>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-sm font-semibold"><option value="All">All Statuses</option><option value={true}>Active</option><option value={false}>Inactive</option></select>
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-sm font-semibold"><option value="All">All Statuses</option><option value={'active'}>Active</option><option value={'inactive'}>Inactive</option></select>
 
           </div>
           <Button className="w-auto px-6" onClick={() => setViewMode('ADD')}><i className="fa-solid fa-plus mr-2"></i> Add Staff</Button>

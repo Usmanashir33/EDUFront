@@ -11,11 +11,6 @@ import useRequest from "@/customHooks/RequestHook";
 import urls from "@/customHooks/ServerUrls";
 
 interface AcademicManagerProps {
-  onLogActivity: (
-    action: ActivityLog["action"],
-    module: ActivityLog["module"],
-    description: string,
-  ) => void;
   onNavigateToStudent?: (studentId: string) => void;
 }
 
@@ -24,7 +19,6 @@ type ViewMode = "LIST" | "DETAIL";
 type OperationMode = "POST" | "DELETE" | "PUT" | "GET" | "TRANSFER";
 
 export const AcademicManager: React.FC<AcademicManagerProps> = ({
-  onLogActivity,
   onNavigateToStudent,
 }) => {
   // --- STATE ---
@@ -53,7 +47,8 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     setClassRooms, // classRooms data
     subjects,
     setSubjects, // subjects data
-    selectedSchool,isLoading, setToast
+    selectedSchool,
+    isLoading, setToast
   } = useContext(uiContext);
   const {currentUser} = useContext(authContext);
 
@@ -66,18 +61,22 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     credits : "",
     classRoomIds: [] as string[],
   });
+  // delete target 
+  const [deleteAcademicTarget, setDeleteAcademicTarget] = useState<SchoolSection | null | any>(null);
 
   // Edit Targets
-  const [editSectionTarget, setEditSectionTarget] = useState<SchoolSection | null>(null);
+  const [editSectionTarget, setEditSectionTarget] = useState<ClassRoom | null>(null);
   const [editClassTarget, setEditClassTarget] = useState<ClassRoom | null>(null);
   const [editClassForm, setEditClassForm] = useState({
     name: "",
     classTeacherId: "",
+    sectionId: '',
   });
   const [editSubjectTarget, setEditSubjectTarget] = useState<Subject | null>(null);
   const [editSubjectForm, setEditSubjectForm] = useState({
     name: "",
     code: "",
+    credits:''
   });
 
   // Modals
@@ -110,7 +109,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const [currentContextData, setCurrentContextData] = useState<any>(null);
 
   const [showClassSelectModal, setShowClassSelectModal] = useState(false);
-  const [selectedSubjectForClass, setSelectedSubjectForClass] = useState<Subject | null>(null);
+  const [selectedSubjectForClass, setSelectedSubjectForClass] = useState<any | null>(null);
   const [classSelectState, setClassSelectState] = useState<
     {classId: string; teacherId: string; isSelected: boolean}[]
   >([]);
@@ -118,7 +117,8 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const [showAddSubjectToClassModal, setShowAddSubjectToClassModal] = useState(false);
   const [selectedSubjectToAdd, setSelectedSubjectToAdd] = useState<Subject | null>(null);
   const [selectedTeacherForSubject, setSelectedTeacherForSubject] = useState<string>("");
-  const [subjectTeacherIds,setSubjectTeacherIds] = useState([])
+  const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false);
+  // const [subjectTeacherIds,setSubjectTeacherIds] = useState([])
   const [serverForm,setServerform] = useState({})
   const {sendRequest} = useRequest()
 
@@ -149,217 +149,281 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const resetForms = () => {
     setSectionForm({name: ""});
     setClassForm({name: "", sectionId: ""});
-    setSubjectForm({name: "", code: "", classRoomIds: []});
+    setSubjectForm({
+    name: "",
+    code: "",
+    credits : "",
+    classRoomIds: [] as string[],
+  });
     setServerform({});
   };
 
   const TriggeredFunc = (data) => { // 
     console.log('data: ', data);
+    if (data?.success){
+      setToast({message:data?.success, type: "success"});
+
+    }
     if (data?.new_section){ // process new section 
+      setShowAddModal(false) ;
       setSections([data?.new_section , ...sections ]);
-      onLogActivity("CREATE", "ACADEMICS", `Created section: ${sectionForm.name}`);
       resetForms();
-      setToast({message: "Section Added", type: "success"});
-    }else if (data?.new_classroom){ // process new classroom 
-      setClassRooms([data?.new_classroom, ...classRooms]);
-      onLogActivity("CREATE", "ACADEMICS", `Created class: ${classForm.name}`);
-      resetForms();
-      setShowAddModal(false);
-      resetForms();
-      setToast({message: "New Classroom dded", type: "success"});
+
+    }else if (data?.new_classroom){ // process new classroom
+      setShowAddModal(false) ;
+      setClassRooms([data?.new_classroom, ...classRooms]) ;
+      setShowAddModal(false) ;
+      resetForms() ;
+
     }else if (data?.new_subject){ // process new subject 
+      setShowAddModal(false) ;
       setSubjects([data?.new_subject,...subjects]);
-      onLogActivity("CREATE", "ACADEMICS", `Created subject: ${subjectForm.name}`);
       resetForms();
       setShowAddModal(false);
-      setToast({message: "New Subject added", type: "success"});
+
     }else if (data?.updated_section){ // update new section 
+      setShowAddModal(false) ;
       setSections(
-      sections.map((s) => (s.id === editSectionTarget.id ? data?.updated_section : s)),
+      sections.map((s) => (s.id === editSectionTarget?.id ? data?.updated_section : s)),
       );
-      onLogActivity("UPDATE", "ACADEMICS", `Renamed section to: ${sectionForm.name}`);
       setEditSectionTarget(null);
       resetForms();
-      setToast({message: "Section renamed", type: "success"});
+
+    }else if (data?.deleted_section){ // update new section 
+      setSections(
+      sections.filter((s) => (s.id !== data?.deleted_section?.id)),
+      );
+      setDeleteAcademicTarget(null);
+
+    }else if (data?.deleted_classroom){ // update new section 
+      setClassRooms(
+      classRooms.filter((s) => (s.id !== data?.deleted_classroom?.id)),
+      );
+      setDeleteAcademicTarget(null);
+
+    }else if (data?.deleted_subject){ // update new section 
+      setSubjects(
+      subjects.filter((s) => (s.id !== data?.deleted_subject?.id)),
+      );
+      setDeleteAcademicTarget(null);
+
     }else if (data?.updated_classroom){ // update classroom 
+      setShowAddModal(false)
       setClassRooms(
       classRooms.map((c) =>
-        c.id === editClassTarget.id
+        c.id === editClassTarget?.id
           ? data?.updated_classroom
           : c,
       ),
     );
-    onLogActivity("UPDATE", "ACADEMICS", `Updated class: ${editClassForm.name}`);
     setEditClassTarget(null);
-    setToast({message: "Class updated", type: "success"});
+
     }else if (data?.updated_subject){ // update subject
+      setShowAddModal(false)
       setSubjects(
-      subjects.map((s) =>
-        s.id === editSubjectTarget.id
-          ? data?.updated_subject          : s,
+      subjects.map((s) => s.id === editSubjectTarget?.id ? data?.updated_subject  : s,
       ),
     );
-    onLogActivity("UPDATE", "ACADEMICS", `Updated subject: ${editSubjectForm.name}`);
     setEditSubjectTarget(null);
     setShowClassSelectModal(false);   // for managing subjects data 
     setSelectedSubjectForClass(null); // for managing subjects data 
     setShowTeacherSelectModal(false); // for managing subjects data 
-    setToast({message: "Subject updated", type: "success"});
+    
   }else if (data?.trans_students){ // students Transferred 
     setStudents(
       students.map((s) =>
         data?.trans_students?.map(stu => stu.id).includes(s.id)? data?.trans_students.find(id=> id = s.id) : s,
       ),
     );
-    onLogActivity("UPDATE", "ACADEMICS", `Transferred students`);
     setShowTransferModal(false); // ffor transfering students between classes
     setShowAddStudentModal(false); // for add students to class
     setTransferTargetClassId("");
     setSelectedStudentIds([]);
     setStudentSearch("");
-    setToast({message: "Transferred/Enrolled successfully", type: "success"});
   }
   }
 
   const handlePinSuccess = (pins:string) => {
-    let form = serverForm
-    console.log('form: ', form);
-    form.pin = pins
+    let form = {...serverForm,pin : pins}
     setShowAddModal(false);
     setShowPinModal(false); 
+
     // call the api here 
     if (methode === "POST"){
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/`,"POST",form,TriggeredFunc,true,false)
+      sendRequest(`/academics/create/${activeTab?.toLowerCase()}/`,"POST",form as any ,TriggeredFunc,true,false)
+
     } else if (methode === 'PUT'){
-      console.log('activeTab: ', activeTab);
-      let item_id = activeTab === "SECTIONS" ? editSectionTarget.id :
+      let item_id = activeTab === "SECTIONS" ? editSectionTarget?.id :
                     activeTab === "CLASSROOMS"? editClassTarget?.id :
                     activeTab === "SUBJECTS"? editSubjectTarget?.id : null 
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${item_id}/`,"PUT",form,TriggeredFunc,true,false)
+      sendRequest(`/academics/update/${activeTab?.toLowerCase()}/${item_id}/`,"PUT",form as any ,TriggeredFunc,true,false);
+
+    }else if (methode === "DELETE"){ // deleting academic 
+      sendRequest(`/academics/delete/${selectedSchool?.id}/${activeTab?.toLowerCase()}/${deleteAcademicTarget?.id}/${pins}/`,"DELETE",null as any ,TriggeredFunc,true,false);
     }else if (methode === "TRANSFER"){ // transfering students between classes
-        sendRequest(`/director/class/transfer/`,"PUT",form,TriggeredFunc,true,false)
+        sendRequest(`/academics/class/transfer/`,"PUT",form as any ,TriggeredFunc,true,false);
     }
-    return 
+    return ;
   }
+  const deleteAcademics = (Tab:"SECTIONS"|"CLASSROOMS"|"SUBJECTS",item:any)=> {
+    setIsDeletingModalOpen(true);
+    setDeleteAcademicTarget(item);
+    return ;
+
+  }
+  const onTriggerDeleteAcademics = () => {
+      if (!currentUser?.user?.pin_set){
+      // Make the api call here  when user  need no pin to talk to server 
+      sendRequest(`/academics/delete/${selectedSchool?.id}/${activeTab?.toLowerCase()}/${deleteAcademicTarget?.id}/${'null'}/`,"DELETE",null as any ,TriggeredFunc,true,false);
+      return ;
+    }
+    setMethode("DELETE"),
+    setShowPinModal(true);
+  }
+
   const handleAddSection = () => {
     if (!sectionForm.name) return;
-    setMethode("POST"),
-    setServerform({school : selectedSchool.id ,name   : sectionForm.name,pin : ''})
+    let f = {school : selectedSchool.id ,name : sectionForm.name,pin : ''}
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      setShowAddModal(false);
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/`,"POST",serverForm,TriggeredFunc,true,false)
+      // setShowAddModal(false);
+      sendRequest(`/academics/create/${activeTab?.toLowerCase()}/`,"POST",f as any ,TriggeredFunc,true,false);
+      return ;
     }
+    setServerform(f);
+    setMethode("POST"),
     setShowPinModal(true)
   }
   const handleUpdateSectionName = () => {
     if (!editSectionTarget || !sectionForm.name) return;
-    setMethode("PUT"),
-    setServerform({school : selectedSchool.id ,name   : sectionForm.name,pin : ''})
+    let f = {school : selectedSchool.id ,name   : sectionForm.name,pin : ''}
+    
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editSectionTarget.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
+      sendRequest(`/academics/update/${activeTab?.toLowerCase()}/${editSectionTarget.id}/`,"PUT",f as any ,TriggeredFunc,true,false);
+      return ;
     }
+    setServerform(f)
+    setMethode("PUT"),
     setShowPinModal(true)
   };
 
   const handleAddClass = () => {
     if (!classForm.name || !classForm.sectionId) return;
-    setMethode("POST"),
-    setServerform({
+    let f = {
       school : selectedSchool.id ,
       name   : classForm.name,
       section : classForm?.sectionId,
-      pin : ''})
+      pin : ''}
+    
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      setShowAddModal(false);
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/`,"POST",serverForm,TriggeredFunc,true,false)
+      // setShowAddModal(false);
+      sendRequest(`/academics/create/${activeTab?.toLowerCase()}/`,"POST",f as any ,TriggeredFunc,true,false);
+      return ;
     }
+    setMethode("POST");
+    setServerform(f);
     setShowPinModal(true)
   };
 
   const handleUpdateClass = () => {
     if (!editClassTarget || !editClassForm.name) return;
-    setMethode("PUT"),
-    setServerform({
+    let f= {
       school : selectedSchool.id ,
       name   : editClassForm.name,
       form_teacher : editClassForm?.classTeacherId,
-      pin : ''}) 
+      pin : ''
+    }
+    
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editClassTarget.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
+      sendRequest(`/academics/update/${activeTab?.toLowerCase()}/${editClassTarget.id}/`,"PUT",f as any ,TriggeredFunc,true,false);
+      return ;
     }
+    setServerform(f);
+    setMethode("PUT");
     setShowPinModal(true)
   };
 
   const handleAddSubject = () => {
     if (!subjectForm.name || !subjectForm.code) return;
-    setMethode("POST"),
-    setServerform({
+    let f ={
       school : selectedSchool.id ,
       name   : subjectForm.name,
       code   : subjectForm.code,
-      credits : subjectForm.credits,
+      credits : Number(subjectForm.credits),
       class_room_ids : subjectForm.classRoomIds,
-      pin : ''})
+      pin : ''
+    };
     if (!currentUser?.user?.pin_set){ 
       // Make the api call here  when user  need no pin to talk to server 
-      setShowAddModal(false);
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/`,"POST",serverForm,TriggeredFunc,true,false)
+      // setShowAddModal(false);
+      sendRequest(`/academics/create/${activeTab?.toLowerCase()}/`,"POST",f as any ,TriggeredFunc,true,false);
+      return ;
     }
-    setShowPinModal(true)
+    setServerform(f);
+    setMethode("POST");
+    setShowPinModal(true);
   };
 
   const handleUpdateSubject = () => {
     if (!editSubjectTarget || !editSubjectForm.name) return;
-    setMethode("PUT"),
-    setServerform({
+    let f = {
       school : selectedSchool.id ,
       name   : editSubjectForm.name,
       code   : editSubjectForm.code,
-      pin : ''}) 
+      pin : ''
+    }
+    
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editSubjectTarget?.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
+      sendRequest(`/academics/update/${activeTab?.toLowerCase()}/${editSubjectTarget?.id}/`,"PUT",f as any ,TriggeredFunc,true,false);
+      return ;
     }
-    setShowPinModal(true)
+    setServerform(f);
+    setMethode("PUT");
+    setShowPinModal(true);
   };
 
   const handleAddStudentsToClass = () => {
     if (!selectedItemId || selectedStudentIds.length === 0) return;
-    setMethode("TRANSFER"),
-    setServerform({
+    let f= {
       school : selectedSchool.id,
       target_class_id   : selectedItemId,
-      // current_class_id   : selectedItemId,
       transfer_students_ids : selectedStudentIds , 
-      pin : ''})
+      pin : ''
+    }
 
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      sendRequest(`/director/class/transfer/`,"PUT",serverForm,TriggeredFunc,true,false)
+      sendRequest(`/academics/class/transfer/`,"PUT",f as any,TriggeredFunc,true,false);
+      return ;
     }
-    setShowPinModal(true)
-    return     
+    setMethode("TRANSFER");
+    setServerform(f);
+    setShowPinModal(true);
+    return   ;
   };
 
   const handleTransferStudents = () => {
     if (!selectedItemId || !transferTargetClassId || selectedStudentIds.length === 0) return;
-    setMethode("TRANSFER"),
-    setServerform({
+    let f={
       school : selectedSchool.id                  ,
       target_class_id   : transferTargetClassId   ,
       current_class_id   : selectedItemId         ,
       transfer_students_ids : selectedStudentIds  , 
-      pin : ''})
+      pin : ''
+    }
 
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      sendRequest(`/director/class/transfer/`,"PUT",serverForm,TriggeredFunc,true,false)
+      sendRequest(`/academics/class/transfer/`,"PUT",f as any ,TriggeredFunc,true,false);
+      return ;
     }
-    setShowPinModal(true)
+    setServerform(f);
+    setMethode("TRANSFER");
+    setShowPinModal(true);
     return     
   };
 
@@ -411,7 +475,6 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     });
 
     setSubjects(updatedSubjects);
-    onLogActivity("UPDATE", "ACADEMICS", `Updated subject assignment for class ${classId}`);
     setShowAddSubjectToClassModal(false);
     setSelectedSubjectToAdd(null);
     setSelectedTeacherForSubject("");
@@ -450,67 +513,46 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     ...currentContextData,
     selectedIds: ids
       });
-    // setSubjects(
-    //   subjects.map((s) => (s.id === currentContextData.subjectId ? {...s, teacherIds: ids} : s)),
-    // );
-    // setShowTeacherSelectModal(false);
-    // setToast({message: "Teacher list updated.", type: "success"});
   };
   
   const saveManageSubjectTeachers = (ids: string[]) => {
     if (!currentContextData?.subjectId) return;
-    setMethode("PUT");
     const newClassIds = classSelectState.filter((s) => s.isSelected).map((s) => s.classId);
-    console.log('newClassIds: ', newClassIds);
-    setServerform({
+    let f= {
       school : selectedSchool.id ,
       teachers   : ids ,
-      pin : ''}) 
+      pin : ''
+    }
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editSectionTarget?.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
+      sendRequest(`/academics/update/${activeTab?.toLowerCase()}/${editSectionTarget?.id}/`,"PUT",f as any,TriggeredFunc,true,false);
+      return ;
     }
+    setServerform(f) ;
+    setMethode("PUT");
     setShowPinModal(true)
-  
   };
 
   const handleSaveClassAssignments = () => {
     if (!selectedSubjectForClass) return;
-    setMethode("PUT");
     const newClassIds = classSelectState.filter((s) => s.isSelected).map((s) => s.classId);
-    setServerform({
+    let f= {
       school : selectedSchool.id ,
       class_room_ids   : newClassIds,
-      pin : ''}) 
+      pin : ''
+    }
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
-      sendRequest(`/director/academics/${activeTab?.toLowerCase()}/${editSectionTarget?.id}/`,"PUT",serverForm,TriggeredFunc,true,false)
+      sendRequest(`academics/update/${activeTab?.toLowerCase()}/${editSectionTarget?.id}/`,"PUT",f as any,TriggeredFunc,true,false);
+      return ;
     }
-    setShowPinModal(true)
-    // const newAssignments = classSelectState
-    //   .filter((s) => s.isSelected && s.teacherId)
-    //   .map((s) => ({classId: s.classId, teacherId: s.teacherId}));
-
-    // setSubjects(
-    //   subjects.map((s) =>
-    //     s.id  ===  selectedSubjectForClass.id
-    //       ? {...s, classRoomIds: newClassIds, assignments: newAssignments}
-    //       : s,
-    //   ),
-    // );
-    // onLogActivity(
-    //   "UPDATE",
-    //   "ACADEMICS",
-    //   `Updated enrolled classes/teachers for ${selectedSubjectForClass.name}`,
-    // );
-    // setShowClassSelectModal(false);
-    // setSelectedSubjectForClass(null);
-    // setToast({message: "Assignments saved.", type: "success"});
-  };
+    setServerform(f) ;
+    setMethode("PUT");
+    setShowPinModal(true);
+  }
 
   return (
     <div className="animate-fadeIn space-y-6">
-      {/* {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />} */}
 
       {/* Header */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
@@ -563,7 +605,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Button className="w-auto px-6 py-3" onClick={() => setShowAddModal(true)}>
+            <Button className="w-auto max-w-fit px-6 py-3" disabled={isLoading}  onClick={() => setShowAddModal(true)}>
               <i className="fa-solid fa-plus mr-2"></i> Add New
             </Button>
           </div>
@@ -614,6 +656,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               setSelectedItemId(id);
               setViewMode("DETAIL");
             }}
+            onDeleteAcademics={deleteAcademics}
           />
         )}
 
@@ -654,11 +697,11 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               setShowAddSubjectToClassModal(true);
             }}
             onNavigateToStudent={onNavigateToStudent}
-            onManageMaster={(c) => {
+            onManageMaster={(c:any) => {
               setTeacherSelectMode("CLASS_MASTER");
               setCurrentContextData({classId: c.id});
               setShowTeacherSelectModal(true);
-              let tcr = teachers.find(teacher => teacher.id == c.form_teacher)
+              let tcr = teachers.find(teacher => teacher.id == c?.form_teacher)
               setTeacherSearch(tcr? `${tcr.first_name} ${tcr.last_name}` : "")
             }}
             onInitiateSubstitute={(sub, cId) => {
@@ -675,6 +718,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               setSelectedItemId(id);
               setViewMode("DETAIL");
             }}
+            onDeleteAcademics={deleteAcademics}
           />
         )}
 
@@ -691,10 +735,10 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               setSelectedItemId(id);
               setViewMode(view);
             }}
-            onEditSubject={(s) => {
+            onEditSubject={(s : any ) => {
               setEditingClass(true);
               setEditSubjectTarget(s);
-              setEditSubjectForm({name: s.name, code: s.code});
+              setEditSubjectForm({name: s.name, code: s.code,credits:s?.credits});
             }}
             onAssignClass={(s) => {
               setSelectedSubjectForClass(s);
@@ -702,16 +746,17 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               setEditSubjectTarget(s);
               setShowClassSelectModal(true);
             }}
-            onAssignTeacher={(s) => {
+            onAssignTeacher={(s  : any) => {
               setTeacherSelectMode("ADD_TO_SUBJECT");
               setEditSubjectTarget(s);
               setEditingClass(false);
               setCurrentContextData({
                 subjectId: s.id,
-                selectedIds: s.teacher,
+                selectedIds: s?.teachers,
               });
               setShowTeacherSelectModal(true);
             }}
+            onDeleteAcademics={deleteAcademics}
           />
         )}
       </div>
@@ -729,15 +774,16 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
           <div className="space-y-4">
             <Input
               label="Section Name"
+              placeholder="section name (e.g Primary)"
               value={sectionForm.name}
               onChange={(e) => setSectionForm({name: e.target.value})}
               iconClass="fa-solid fa-layer-group"
             />
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setShowAddModal(false)} className="w-auto">
+              <Button variant="outline" disabled={isLoading} onClick={() => setShowAddModal(false)} className="w-auto">
                 Cancel
               </Button>
-              {!isLoading && <Button onClick={handleAddSection} className="w-auto">
+              {<Button disabled={isLoading} onClick={handleAddSection} className="w-auto">
                 Add
               </Button>}
             </div>
@@ -747,6 +793,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
           <div className="space-y-4">
             <Input
               label="Class Name"
+              placeholder="e.g Primary 1"
               value={classForm.name}
               onChange={(e) => setClassForm({...classForm, name: e.target.value})}
               iconClass="fa-solid fa-chalkboard"
@@ -770,7 +817,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               <Button variant="outline" onClick={() => setShowAddModal(false)} className="w-auto">
                 Cancel
               </Button>
-              {!isLoading && <Button onClick={handleAddClass} className="w-auto">
+              { <Button disabled={isLoading} onClick={handleAddClass} className="w-auto">
                 Add
               </Button>}
             </div>
@@ -781,18 +828,21 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Name"
+                placeholder="subject name (e.g English)"
                 value={subjectForm.name}
                 onChange={(e) => setSubjectForm({...subjectForm, name: e.target.value})}
                 iconClass="fa-solid fa-book"
               />
               <Input
                 label="Code"
+                placeholder="subject code (e.g ENG1)"
                 value={subjectForm.code}
                 onChange={(e) => setSubjectForm({...subjectForm, code: e.target.value})}
                 iconClass="fa-solid fa-barcode"
               />
               <Input
-                label="Credits (e.g 3/W)"
+                label="Credits (e.g 3hours/Week)"
+                placeholder="subject teaching duration in a week (e.g periods per week)"
                 value={subjectForm.credits}
                 onChange={(e) => setSubjectForm({...subjectForm, credits: e.target.value})}
                 iconClass="fa-solid fa-barcode"
@@ -808,7 +858,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               <Button variant="outline" onClick={() => setShowAddModal(false)} className="w-auto">
                 Cancel
               </Button>
-              {!isLoading && <Button onClick={handleAddSubject} className="w-auto">
+              { <Button disabled={isLoading}  onClick={handleAddSubject} className="w-auto">
                 Add
               </Button>}
             </div>
@@ -827,6 +877,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
           <div className="space-y-4">
             <Input
               label="Section Name"
+              placeholder="section name (e.g primary)"
               value={sectionForm.name}
               onChange={(e) => setSectionForm({name: e.target.value})}
               iconClass="fa-solid fa-layer-group"
@@ -839,13 +890,14 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               >
                 Cancel
               </Button>
-              {!isLoading && <Button onClick={handleUpdateSectionName} className="w-auto">
+              { <Button disabled={isLoading} onClick={handleUpdateSectionName} className="w-auto">
                 Update
               </Button>}
             </div> 
           </div>
         </Modal>
       )}
+
       {(editSubjectTarget && editingClass) && (
         <Modal
           isOpen={!!editSubjectTarget}
@@ -857,6 +909,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <Input 
                 label="Subject Name"
+                placeholder="(e.g English))"
                 value={editSubjectForm.name}
                 onChange={(e) =>
                   setEditSubjectForm({
@@ -868,6 +921,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               />
               <Input
                 label="Subject Code"
+                placeholder="e.g ENG1"
                 value={editSubjectForm.code}
                 onChange={(e) =>
                   setEditSubjectForm({
@@ -876,6 +930,13 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
                   })
                 }
                 iconClass="fa-solid fa-barcode"
+              />
+              <Input
+                label="Credits (e.g 3hours/Week)"
+                placeholder="subject teaching duration in a week (e.g periods per week)"
+                onChange={(e) => setEditSubjectForm({...subjectForm, credits: e.target.value})}
+                iconClass="fa-solid fa-barcode"
+                value={editSubjectForm?.credits}
               />
             </div>
             <div className="flex justify-end gap-2 mt-4">
@@ -886,13 +947,14 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               >
                 Cancel
               </Button>
-              {!isLoading && <Button onClick={handleUpdateSubject} className="w-auto">
+              {<Button disabled={isLoading} onClick={handleUpdateSubject} className="w-auto">
                 Update Subject
               </Button>}
             </div>
           </div>
         </Modal>
       )}
+
       {editClassTarget && (
         <Modal
           isOpen={!!editClassTarget}
@@ -903,6 +965,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
           <div className="space-y-4">
             <Input
               label="Class Name"
+              placeholder="e.g Primary 1"
               value={editClassForm.name}
               onChange={(e) => setEditClassForm({...editClassForm, name: e.target.value})}
               iconClass="fa-solid fa-chalkboard"
@@ -933,7 +996,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               <Button variant="outline" onClick={() => setEditClassTarget(null)} className="w-auto">
                 Cancel
               </Button>
-              {!isLoading && <Button onClick={handleUpdateClass} className="w-auto">
+              {<Button disabled={isLoading} onClick={handleUpdateClass} className="w-auto">
                 Update Class
               </Button>}
             </div>
@@ -961,7 +1024,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
                 different one to substitute.
               </p>
               <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
-                {subjects.map((sub) => (
+                {(subjects.length !== 0) && subjects.map((sub) => (
                   <div
                     key={sub.id}
                     onClick={() => setSelectedSubjectToAdd(sub)}
@@ -1022,7 +1085,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
                 </p>
               </div>
               <div className="flex justify-end pt-4">
-                <Button onClick={handleSubstituteSubject}>Confirm Assignment</Button>
+                <Button disabled={isLoading}  onClick={handleSubstituteSubject}>Confirm Assignment</Button>
               </div>
             </div>
           )}
@@ -1055,6 +1118,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
             />
             <div className="flex justify-end">
               <Button
+                disabled={isLoading}
                 onClick={() => saveManageSubjectTeachers(currentContextData?.selectedIds || [])}>
                 Save Teachers
               </Button>
@@ -1178,7 +1242,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               <Button variant="outline" onClick={() => setShowClassSelectModal(false)}>
                 Cancel
               </Button>
-              {!isLoading && <Button onClick={handleSaveClassAssignments}>Save Assignments</Button>}
+              {<Button disabled={isLoading}  onClick={handleSaveClassAssignments}>Save Assignments</Button>}
             </div>
           </div>
         )}
@@ -1255,10 +1319,31 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               </div>
               ))}
           </div>
-          <Button onClick={handleAddStudentsToClass} disabled={selectedStudentIds.length === 0}>
+          <Button onClick={handleAddStudentsToClass} disabled={selectedStudentIds.length === 0 || isLoading }>
             Enroll Selected
           </Button>
         </div>
+      </Modal>
+              {/* Deleting Academics Modal  */}
+      <Modal isOpen={isDeletingModalOpen} onClose={() => {setIsDeletingModalOpen(false);  }} title={`${activeTab} Deletion`} size="md">
+            <div className="space-y-4">
+                <p className=" bg-red-50 p-2 text-sm text-red-600 rounded-md ">{
+                  `Please confirm ${activeTab?.toLocaleLowerCase()} delete action.This action is irreversible and will disconnect all the connection from the deleted item.`
+              } </p>
+                <div className="flex justify-end gap-3">
+                    <Button isLoading={isLoading}  variant="secondary" onClick={() => setIsDeletingModalOpen(false)}>Cancel</Button>
+                    <Button 
+                        isLoading={isLoading}
+                        onClick={() => {
+                          onTriggerDeleteAcademics() ;
+                          setIsDeletingModalOpen(false);
+                        }}
+                        className="bg-red-600 text-white"
+                      >
+                        Confirm Deleting
+                    </Button>
+                 </div>
+            </div>
       </Modal>
 
       <Modal
@@ -1366,7 +1451,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
           </div>
           <Button
             onClick={handleTransferStudents}
-            disabled={selectedStudentIds.length === 0 || !transferTargetClassId}
+            disabled={selectedStudentIds.length === 0 || !transferTargetClassId || isLoading }
           >
             Transfer Selected
           </Button>

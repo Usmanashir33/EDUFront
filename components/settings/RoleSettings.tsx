@@ -5,7 +5,7 @@ import { uiContext } from '@/customContexts/UiContext';
 import urls from '@/customHooks/ServerUrls';
 
 interface RoleSettingsProps {
-    roles: SchoolRole[];
+    roles: any;
     permissions: SchoolPermission[];
     onUpdateRoles: (form: any ,action:"ADD"|"EDIT"|"DELETE") => void;
     onUpdatePermissions: (perms: SchoolPermission[],action:"ADD"|"EDIT"|"DELETE") => void;
@@ -212,7 +212,7 @@ export const RoleSettings: React.FC<RoleSettingsProps> = ({
                         </div>
                         
                         <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-gray-500 uppercase border-b pb-1">Included Permissions ({viewRoleModal.data.permissionIds.length})</h4>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase border-b pb-1">Included Permissions ({viewRoleModal?.data?.permissionIds?.length})</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2">
                                 {viewRoleModal?.data?.permissionIds?.map(pid => {
                                     const p = permissions.find(x => x.id === pid);

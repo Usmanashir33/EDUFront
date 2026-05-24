@@ -17,9 +17,15 @@ interface SectionViewProps {
   onSetTimetableTarget: (t: any) => void;
   onShowReportModal: (d: any, type: any, title: string) => void;
   onNavigateToClass: (classId: string) => void;
+  onDeleteAcademics: (a:"SECTIONS" ,s:Subject) => void;
+  
 }
 
-export const SectionView: React.FC<SectionViewProps> = ({sections, classRooms, students, teachers, subjects, searchQuery, onSelectItem, viewMode, selectedId, onEditSection, onSetTimetableTarget, onShowReportModal, onNavigateToClass}) => {
+export const SectionView: React.FC<SectionViewProps> = ({
+  sections, classRooms, students, teachers, subjects, searchQuery,
+  onSelectItem, viewMode, selectedId, onEditSection, onSetTimetableTarget,
+   onShowReportModal, onNavigateToClass,onDeleteAcademics
+  }) => {
   // --- LIST VIEW ---
   if (viewMode === "LIST") {
     const filteredSections = sections.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -35,6 +41,18 @@ export const SectionView: React.FC<SectionViewProps> = ({sections, classRooms, s
             </div>
             <h4 className="font-bold text-lg text-navy-900 group-hover:text-gold-600 transition-colors">{sec.name}</h4>
             <p className="text-xs text-gray-500 mt-1">{classRooms.filter((c) => c.section === sec.id).length} Linked Classes</p>
+            <div className="relative ">
+              <button
+                  onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteAcademics("SECTIONS",sec as any)
+                  }}
+                  className="absolute right-1 bottom-1 flex items-center  gap-2 bg-red-500 hover:bg-red-600 active:scale-95 text-white px-2 py-1 rounded-xl shadow-md transition-all duration-200"
+                >
+                  <i className="fa-solid fa-trash-can text-sm"></i>
+              </button>
+
+            </div>
           </div>
         ))}
         {filteredSections.length === 0 && <div className="col-span-3 text-center p-8 text-gray-400">No sections found.</div>}

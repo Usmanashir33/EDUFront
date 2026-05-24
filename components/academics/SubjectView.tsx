@@ -14,6 +14,7 @@ interface SubjectViewProps {
   onEditSubject: (s: Subject) => void;
   onAssignClass: (s: Subject) => void;
   onAssignTeacher: (s: Subject) => void;
+  onDeleteAcademics: (a:"SUBJECTS" ,s:Subject) => void;
 }
 
 export const SubjectView: React.FC<SubjectViewProps> = ({
@@ -28,6 +29,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
   onEditSubject,
   onAssignClass,
   onAssignTeacher,
+  onDeleteAcademics,
 }) => {
   // --- LIST VIEW ---
   if (viewMode === "LIST") {
@@ -56,6 +58,9 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
                 Classes
               </th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 bg-red-50 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -75,9 +80,9 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                   {sub.name}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
-                  {sub.teacher?.length > 0 ? (
+                  {sub.teachers?.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {sub.teacher?.map((tid) => {
+                      {sub.teachers?.map((tid) => {
                         const t = teachers.find((tea) => tea.id === tid);
                         return t ? (
                           <span
@@ -96,10 +101,27 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                 <td className="px-6 py-4 text-sm text-gray-600">
                   {sub.class_rooms?.length} Classes
                 </td>
+                <td  className="px-6 py-4 text-sm text-gray-600 flex ">
+                  <button
+                      className="flex justify-center rounded-lg text-red-500 hover:bg-red-500 hover:text-white p-1 px-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteAcademics("SUBJECTS",sub as any );
+                      }}
+                    >
+                      <i className="fa-solid fa-trash-can text-sm"></i>
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+          {filteredSubjects.length === 0 &&(
+             <div className="  w-full flex justify-center  p-8 text-gray-400">
+                  No Subject found.
+              </div>
+              )
+            }
       </div>
     );
   }
@@ -109,7 +131,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
   if (!subject) return null;
 
   const takingClasses = classRooms.filter((c) => subject.class_rooms?.includes(c.id));
-  const assignedTeachers = teachers.filter((t) => subject.teacher?.includes(t.id));
+  const assignedTeachers = teachers.filter((t) => subject.teachers?.includes(t.id));
 
   return (
     <div className="space-y-6 animate-fadeIn">

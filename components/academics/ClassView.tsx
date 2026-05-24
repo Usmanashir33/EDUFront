@@ -26,6 +26,8 @@ interface ClassViewProps {
   onInitiateSubstitute: (sub: Subject, classId: string) => void;
   onTransferStudents: (classId: string) => void;
   onNavigateToSubject: (id: string) => void;
+  onDeleteAcademics: (a:"CLASSROOMS" ,s:Subject) => void;
+
 }
 
 export const ClassView: React.FC<ClassViewProps> = ({
@@ -50,6 +52,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
   onInitiateSubstitute,
   onTransferStudents,
   onNavigateToSubject,
+  onDeleteAcademics
 }) => {
   const [sessionFilter, setSessionFilter] = useState(currentSession);
 
@@ -70,17 +73,17 @@ export const ClassView: React.FC<ClassViewProps> = ({
               {cls.name}
             </h4>
             <div className="flex justify-between text-xs text-gray-500 border-t border-gray-100 pt-2 cursor-pointer">
-              <span>{students.filter((s) => s.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map(c => c.class_room).includes(cls.id)).length} Students</span>
-              <span>{subjects.filter((s) => s.class_rooms?.includes(cls.id)).length} Subjects</span>
+              <span>{students.filter((s) => s?.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map(c => c.class_room).includes(cls.id)).length} Students</span>
+              <span>{subjects.filter((s) => s?.class_rooms?.includes(cls.id)).length} Subjects</span>
             </div>
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-navy-900 p-1"
+              className="absolute top-2 right-2 text-red-50 rounded-lg bg-red-400 hover:bg-red-500 p-1 px-2"
               onClick={(e) => {
                 e.stopPropagation();
-                onEditClass(cls);
+                onDeleteAcademics("CLASSROOMS",cls as any );
               }}
             >
-              <i className="fa-solid fa-pen-to-square"></i>
+              <i className="fa-solid fa-trash-can text-sm"></i>
             </button>
           </div>
         ))}
@@ -109,7 +112,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
   const getSubjectTeacher = (sub) => {
     const assignment = sub.assignments?.find((a) => a.classId === cls.id);
     if (assignment) return teachers.find((t) => t.id === assignment.teacherId);
-    const tId = sub.teacher[0];
+    const tId = sub.teachers[0];
     return teachers.find((t) => t.id === tId);
   };
 

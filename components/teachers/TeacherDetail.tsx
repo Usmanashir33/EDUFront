@@ -44,9 +44,9 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
     // Calculations
     let assignedSections = selectedSchool?.sections.filter(section => section.classrooms?.some(cls => teacher?.class_room?.includes(cls.id))) // ?.map((sec) => sec.id );
 
-    const assignedSubjects = subjects.filter(sub => sub.teacher.includes(teacher.id));
-    const formClasses = classRooms.filter(c => c.form_teacher === teacher.id);
-    const teachingClasses = Array.from(new Set(assignedSubjects.flatMap(s => s.class_room)))
+    const assignedSubjects = subjects.filter(sub => sub?.teacher?.includes(teacher.id));
+    const formClasses = classRooms.filter(c => c?.form_teacher === teacher.id);
+    const teachingClasses = Array.from(new Set(assignedSubjects?.flatMap(s => s.class_room)))
                                .map(cid => classRooms.find(c => c.id === cid))
                                .filter(c => c !== undefined) as ClassRoom[];
 

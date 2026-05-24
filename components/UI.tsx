@@ -55,7 +55,7 @@ export const PageLoader: React.FC = () => {
 // --- INPUT COMPONENT WITH ICON & PASSWORD TOGGLE ---
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
-  iconClass: string;
+  iconClass?: string;
   error?: string;
 }
 
@@ -481,6 +481,7 @@ interface ModalProps {
   children: React.ReactNode;
   icon?: string;
   className?:string
+  size?: 'sm' | 'md' | 'lg';
 }
 
 // export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon, className }) => {
@@ -516,7 +517,7 @@ interface ModalProps {
 // };
 
 // --- PIN MODAL ---
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon,size }) => {
   if (!isOpen) return null;
 
   const modalContent = (
