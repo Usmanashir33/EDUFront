@@ -59,7 +59,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     name: "",
     code: "",
     credits : "",
-    classRoomIds: [] as string[],
+    teachersIds: [] as string[],
   });
   // delete target 
   const [deleteAcademicTarget, setDeleteAcademicTarget] = useState<SchoolSection | null | any>(null);
@@ -69,7 +69,6 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const [editClassTarget, setEditClassTarget] = useState<ClassRoom | null>(null);
   const [editClassForm, setEditClassForm] = useState({
     name: "",
-    classTeacherId: "",
     sectionId: '',
   });
   const [editSubjectTarget, setEditSubjectTarget] = useState<Subject | null>(null);
@@ -353,7 +352,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       name   : subjectForm.name,
       code   : subjectForm.code,
       credits : Number(subjectForm.credits),
-      class_room_ids : subjectForm.classRoomIds,
+      teachersIds : subjectForm.teachersIds,
       pin : ''
     };
     if (!currentUser?.user?.pin_set){ 
@@ -373,6 +372,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       school : selectedSchool.id ,
       name   : editSubjectForm.name,
       code   : editSubjectForm.code,
+      credits : Number(editSubjectForm.credits),
       pin : ''
     }
     
@@ -640,7 +640,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               setSelectedItemId(id);
               setViewMode(view);
             }}
-            onEditSection={(s) => {
+            onEditSection={(s: any ) => {
               setEditSectionTarget(s);
               setSectionForm({name: s.name});
             }}
@@ -681,7 +681,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               setEditClassForm({
                 name: c.name,
                 sectionId: c.sectionId,
-                classTeacherId: c.classTeacherId || "",
+            
               });
             }}
             onSetTimetableTarget={(t) => {
@@ -849,10 +849,10 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               />
             </div>
             <MultiSelectGrid
-              label="Classes"
-              items={classRooms}
-              selectedIds={subjectForm.classRoomIds}
-              onChange={(ids) => setSubjectForm({...subjectForm, classRoomIds: ids})}
+              label="Teachers if available you can assign after saveing"
+              items={teachers}
+              selectedIds={subjectForm.teachersIds}
+              onChange={(ids) => setSubjectForm({...subjectForm, teachersIds: ids})}
             />
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setShowAddModal(false)} className="w-auto">
@@ -970,28 +970,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
               onChange={(e) => setEditClassForm({...editClassForm, name: e.target.value})}
               iconClass="fa-solid fa-chalkboard"
             />
-            <div>
-              <label className="block text-sm font-semibold text-navy-800 mb-1.5">
-                Form Teacher
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-md"
-                value={editClassForm.classTeacherId}
-                onChange={(e) =>
-                  setEditClassForm({
-                    ...editClassForm,
-                    classTeacherId: e.target.value,
-                  })
-                }
-              >
-                <option value="">Select Teacher</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title} {t.first_name} {t.last_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setEditClassTarget(null)} className="w-auto">
                 Cancel
@@ -1466,6 +1445,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
         currentSession={currentSession}
         currentTerm={currentTerm}
       />
+
       <UnifiedExportModal
         isOpen={reportModalData.isOpen}
         onClose={() => setReportModalData({...reportModalData, isOpen: false})}

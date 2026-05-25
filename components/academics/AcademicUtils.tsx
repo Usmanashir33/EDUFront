@@ -2,6 +2,9 @@
 import React, { useState } from 'react';
 import { Button, Modal } from '../UI';
 import { Teacher, Subject } from '../../types';
+import { createPortal } from 'react-dom';
+// how can i use it pls 
+
 
 // --- HELPERS ---
 
@@ -69,7 +72,7 @@ export const getCurrentPeriodInfo = (timetable: any[], subjects: Subject[], teac
     }
 
     let teacherName = 'No Teacher';
-    let subjectName = activePeriod.subject;
+    let subjectName = activePeriod.subject; 
 
     if (subjectName !== 'Free Period') {
         const sub = subjects.find(s => s.name.toLowerCase().includes(subjectName.toLowerCase()) || subjectName.toLowerCase().includes(s.name.toLowerCase()));
@@ -93,78 +96,82 @@ export const TimetableModal: React.FC<any> = ({ isOpen, onClose, target, current
 
     if (!target || !isOpen) return null;
     const schedule = generateMockTimetable(target.name);
+    const editorContent = (
+        <div className="fixed inset-0 z-[100] bg-gray-100 opacity-1 mx-auto  flex flex-col w-screen h-screen overflow-hidden">
+            {/* <Modal isOpen={isOpen} onClose={onClose} title={`${target.name} Timetable`} icon="fa-solid fa-calendar-days"> */}
+                <style>{`
+                    @media print {
+                        body * { visibility: hidden; }
+                        #printable-timetable, #printable-timetable * { visibility: visible; }
+                        #printable-timetable { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 5px; }
+                        .no-print { display: none !important; }
+                    }
+                `}</style>
 
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`${target.name} Timetable`} icon="fa-solid fa-calendar-days">
-            <style>{`
-                @media print {
-                    body * { visibility: hidden; }
-                    #printable-timetable, #printable-timetable * { visibility: visible; }
-                    #printable-timetable { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
-                    .no-print { display: none !important; }
-                }
-            `}</style>
-
-            <div className="bg-white p-4" id="printable-timetable">
-                <div className="flex items-center justify-between border-b-2 border-navy-900 pb-4 mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gold-500 rounded-full flex items-center justify-center text-navy-900 text-2xl font-bold print:border print:border-black">
-                            <i className="fa-solid fa-graduation-cap"></i>
+                <div className="bg-white p-5 max-h-fit " id="printable-timetable">
+                    <div className="flex items-center justify-between border-b-2 border-navy-900 pb-4 mb-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 bg-gold-500 rounded-full flex items-center justify-center text-navy-900 text-2xl font-bold print:border print:border-black">
+                                <i className="fa-solid fa-graduation-cap"></i>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-navy-900 uppercase tracking-wider">Springfield High Academy</h2>
+                                <p className="text-sm text-gray-600">Excellence in Education • {currentSession} Session</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-navy-900 uppercase tracking-wider">Springfield High Academy</h2>
-                            <p className="text-sm text-gray-600">Excellence in Education • {currentSession} Session</p>
+                        <div className="text-right">
+                                <h3 className="text-lg font-bold text-navy-800 uppercase">{target.name}</h3>
+                                <p className="text-xs font-bold bg-navy-100 text-navy-800 px-2 py-1 rounded inline-block print:border print:border-black">{currentTerm}</p>
                         </div>
                     </div>
-                    <div className="text-right">
-                            <h3 className="text-lg font-bold text-navy-800 uppercase">{target.name}</h3>
-                            <p className="text-xs font-bold bg-navy-100 text-navy-800 px-2 py-1 rounded inline-block print:border print:border-black">{currentTerm}</p>
-                    </div>
-                </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300 text-sm">
-                        <thead>
-                            <tr className="bg-navy-900 text-white print:bg-black print:text-white">
-                                <th className="border border-gray-600 p-2">Time / Day</th>
-                                {schedule.map(d => <th key={d.day} className="border border-gray-600 p-2 w-1/6">{d.day}</th>)}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {schedule[0].periods.map((p: any, pIdx: number) => (
-                                <tr key={pIdx} className="even:bg-gray-50 print:even:bg-gray-100">
-                                    <td className="border border-gray-300 p-2 font-bold text-gray-700 text-center">{p.time}</td>
-                                    {schedule.map((day: any, dIdx: number) => (
-                                        <td key={dIdx} className="border border-gray-300 p-2 text-center text-navy-800 font-medium">
-                                            {day.periods[pIdx].subject}
-                                        </td>
-                                    ))}
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse border border-gray-300 text-sm">
+                            <thead>
+                                <tr className="bg-navy-900 text-white print:bg-black print:text-white">
+                                    <th className="border border-gray-600 p-2">Time / Day</th>
+                                    {schedule.map(d => <th key={d.day} className="border border-gray-600 p-2 w-1/6">{d.day}</th>)}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {schedule[0].periods.map((p: any, pIdx: number) => (
+                                    <tr key={pIdx} className="even:bg-gray-50 print:even:bg-gray-100">
+                                        <td className="border border-gray-300 p-2 font-bold text-gray-700 text-center">{p.time}</td>
+                                        {schedule.map((day: any, dIdx: number) => (
+                                            <td key={dIdx} className="border border-gray-300 p-2 text-center text-navy-800 font-medium">
+                                                {day.periods[pIdx].subject}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            <div className="bg-gray-50 p-4 border-t border-gray-200 mt-4 rounded-b-lg no-print">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <label className="text-sm font-bold text-navy-900">Download As:</label>
-                        <select className="text-xs border border-gray-300 rounded p-2" value={downloadFormat} onChange={(e) => setDownloadFormat(e.target.value as 'PDF' | 'IMAGE')}>
-                            <option value="">Select Format</option>
-                            <option value="PDF">PDF (Print)</option>
-                            <option value="IMAGE">Image (PNG)</option>
-                        </select>
-                        <Button className="w-auto px-4 py-1.5 text-xs" disabled={!downloadFormat || isDownloading} onClick={() => { setIsDownloading(true); setTimeout(() => { window.print(); setIsDownloading(false); setDownloadFormat(''); }, 1000); }}>
-                            {isDownloading ? 'Processing...' : <><i className="fa-solid fa-download mr-1"></i> Download</>}
-                        </Button>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={onClose} className="w-auto">Close</Button>
+                <div className="bg-gray-50 p-4 border-t border-gray-200 mt-4 rounded-b-lg no-print">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <label className="text-sm font-bold text-navy-900">Download As:</label>
+                            <select className="text-xs border border-gray-300 rounded p-2" value={downloadFormat} onChange={(e) => setDownloadFormat(e.target.value as 'PDF' | 'IMAGE')}>
+                                <option value="">Select Format</option>
+                                <option value="PDF">PDF (Print)</option>
+                                <option value="IMAGE">Image (PNG)</option>
+                            </select>
+                            <Button className="w-auto px-4 py-1.5 text-xs" disabled={!downloadFormat || isDownloading} onClick={() => { setIsDownloading(true); setTimeout(() => { window.print(); setIsDownloading(false); setDownloadFormat(''); }, 1000); }}>
+                                {isDownloading ? 'Processing...' : <><i className="fa-solid fa-download mr-1"></i> Download</>}
+                            </Button>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={onClose} className="w-auto">Close</Button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </Modal>
+            {/* </Modal> */}
+            
+        </div>)
+    return (
+        createPortal(editorContent, document.body)
     );
 };
 

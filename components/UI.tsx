@@ -484,39 +484,6 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-// export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon, className }) => {
-//   if (!isOpen) return null;
-
-//   return (
-//     <div className={`fixed inset-0 z-50 overflow-y-auto ${className}`} aria-labelledby="modal-title" role="dialog" aria-modal="true">
-//       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-//         <div className="fixed inset-0 bg-navy-900 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onClose}></div>
-
-//         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-//         <div className="relative inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6 animate-fadeIn">
-//           <div>
-//             {icon && (
-//               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-navy-50 mb-4 border border-navy-100">
-//                 <i className={`${icon} text-navy-600 text-xl`}></i>
-//               </div>
-//             )}
-//             <div className="text-center sm:text-left w-full">
-//               <h3 className="text-lg leading-6 font-bold text-navy-900 text-center mb-6" id="modal-title">
-//                 {title}
-//               </h3>
-//               <div className="mt-2 w-full">
-//                 {children}
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// --- PIN MODAL ---
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, icon,size }) => {
   if (!isOpen) return null;
 

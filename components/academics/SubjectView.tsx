@@ -64,7 +64,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredSubjects.map((sub) => (
+            {filteredSubjects.map((sub :any ) => (
               <tr
                 key={sub.id}
                 className="hover:bg-gray-50 cursor-pointer"
@@ -79,17 +79,16 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-navy-900">
                   {sub.name}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
+                <td className="px-6 py-4 text-sm text-gray-600 max-cols-2">
                   {sub.teachers?.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {sub.teachers?.map((tid) => {
-                        const t = teachers.find((tea) => tea.id === tid);
+                      {sub.teachers?.map((t : any) => {
                         return t ? (
                           <span
-                            key={tid}
+                            key={t.id}
                             className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs border border-green-100"
                           >
-                            {t.first_name} {t.last_name}
+                            {t.title} {t.first_name} {t.last_name}
                           </span>
                         ) : null;
                       })}
@@ -99,7 +98,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
-                  {sub.class_rooms?.length} Classes
+                  {sub.classes?.length || 0 } Classes
                 </td>
                 <td  className="px-6 py-4 text-sm text-gray-600 flex ">
                   <button
@@ -127,11 +126,11 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
   }
 
   // --- DETAIL VIEW ---
-  const subject = subjects.find((s) => s.id === selectedId);
+  const subject:any = subjects.find((s) => s.id === selectedId);
   if (!subject) return null;
 
-  const takingClasses = classRooms.filter((c) => subject.class_rooms?.includes(c.id));
-  const assignedTeachers = teachers.filter((t) => subject.teachers?.includes(t.id));
+  const takingClasses = classRooms.filter((c) => subject?.classes?.includes(c.id));
+  const assignedTeachers = subject?.teachers;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -168,18 +167,16 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
             <h3 className="font-bold text-navy-900 flex items-center">
               <i className="fa-solid fa-chalkboard mr-2"></i> Enrolled Classes
             </h3>
-            <Button className="w-auto px-3 py-1 text-xs" onClick={() => onAssignClass(subject)}>
+            <Button className="w-auto px-3 max-w-fit py-1 text-xs" onClick={() => onAssignClass(subject)}>
               + Manage
             </Button>
           </div>
           <div className="space-y-2">
-            {takingClasses.map((c) => {
+            {takingClasses.map((c : any) => {
               const assignment = subject.assignments?.find(
                 (a: SubjectAssignment) => a.classId === c.id,
               );
-              const tName = assignment
-                ? teachers.find((t) => t.id === assignment.teacherId)?.last_name
-                : null;
+              const tName :any =  null;
               return (
                 <div
                   key={c.id}
@@ -192,7 +189,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">
-                    {students.filter((s) => s.class_rooms?.includes(c.id)).length} Students
+                    {c.studentsCount || 0} Students
                   </span>
                 </div>
               );
@@ -208,12 +205,12 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
             <h3 className="font-bold text-navy-900 flex items-center">
               <i className="fa-solid fa-chalkboard-user mr-2"></i> Teachers
             </h3>
-            <Button className="w-auto px-3 py-1 text-xs" onClick={() => onAssignTeacher(subject)}>
+            <Button className="w-auto max-w-fit px-3 py-1 text-xs" onClick={() => onAssignTeacher(subject)}>
               + Manage
             </Button>
           </div>
           <div className="space-y-2">
-            {assignedTeachers.map((t) => (
+            {assignedTeachers.map((t : any) => (
               <div
                 key={t.id}
                 className="p-3 bg-navy-50 rounded flex justify-between items-center border border-navy-100"
@@ -222,7 +219,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                   <span className="font-bold text-navy-800 block">
                     {t.title} {t.first_name} {t.last_name}
                   </span>
-                  <span className="text-xs text-navy-500">{t.email}</span>
+                  <span className="text-xs text-navy-500">{t.staff_id}</span>
                 </div>
                 <i className="fa-solid fa-check text-green-500"></i>
               </div>

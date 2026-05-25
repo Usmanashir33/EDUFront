@@ -47,7 +47,6 @@ export const ClassView: React.FC<ClassViewProps> = ({
   onShowReportModal,
   onShowAddStudent,
   onAddSubject,
-  onNavigateToStudent,
   onManageMaster,
   onInitiateSubstitute,
   onTransferStudents,
@@ -63,7 +62,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
     );
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {filteredClasses.map((cls) => (
+        {filteredClasses.map((cls : any ) => (
           <div
             key={cls.id}
             className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all group bg-white relative"
@@ -73,8 +72,8 @@ export const ClassView: React.FC<ClassViewProps> = ({
               {cls.name}
             </h4>
             <div className="flex justify-between text-xs text-gray-500 border-t border-gray-100 pt-2 cursor-pointer">
-              <span>{students.filter((s) => s?.class_rooms.filter(cls => cls.status === 'active' || cls.status === 'enrolled').map(c => c.class_room).includes(cls.id)).length} Students</span>
-              <span>{subjects.filter((s) => s?.class_rooms?.includes(cls.id)).length} Subjects</span>
+              <span>{cls?.studentsCount} Students</span>
+              <span>{cls?.subjects.length} Subjects</span>
             </div>
             <button
               className="absolute top-2 right-2 text-red-50 rounded-lg bg-red-400 hover:bg-red-500 p-1 px-2"
@@ -95,17 +94,15 @@ export const ClassView: React.FC<ClassViewProps> = ({
   }
 
   // --- DETAIL VIEW ---
-  const cls = classRooms.find((c) => c.id === selectedId);
+  const cls:any = classRooms.find((c) => c.id === selectedId);
   if (!cls) return null ;
 
-  const classStudents = students.filter((s) => s.class_rooms?.filter(
-    (cls) => ( cls.status === 'active' ||  cls.status === 'enrolled') 
-  ).map(cls => cls.class_room).includes(cls.id));
-  const classSubjects = subjects.filter((s) => s.class_rooms?.includes(cls.id)) ;
+  const classStudents = []
+  const classTeachers = []
 
-  // Get Teachers
-  const classTeachers = teachers.filter((teacher) => teacher.class_room.includes(cls.id))
-  const classMaster = teachers.find((t) => t.id === cls?.form_teacher);
+  const classSubjects = subjects.filter((s) => cls?.subjects.includes(s.id)) ;
+
+  // const classMaster = teachers.find((t) => t.id === cls?.form_teacher);
   const schedule = generateMockTimetable(cls.name);
   const currentPeriod = getCurrentPeriodInfo(schedule, subjects, teachers, currentTime);
 
@@ -155,25 +152,37 @@ export const ClassView: React.FC<ClassViewProps> = ({
               </span>
             </div>
             <h2 className="text-4xl font-bold mb-1">{cls.name}</h2>
-            <p className="text-navy-200 text-lg">{classStudents.length} Students Enrolled</p>
+            <p className="text-navy-200 text-lg">{cls.studentsCount} Students Enrolled</p>
             <div
               className="mt-4 flex items-center gap-2 cursor-pointer hover:bg-white/10 p-2 rounded w-fit transition-colors"
               onClick={() => onManageMaster(cls)}
             >
               <div className="w-8 h-8 rounded-full bg-white text-navy-900 flex items-center justify-center font-bold">
-                {classMaster ? (
-                    <img className="w-8 h-8 bg-navy-100 border border-navy-200 rounded-full" src={urls.BASE_URL + classMaster?.picture} alt="pic" />
+                {cls?.form_teacher ? (
+                    <img className="w-8 h-8 bg-navy-100 border border-navy-200 rounded-full" src={urls.BASE_URL + cls.form_teacher?.picture} alt="pic" />
                 ) : (
                   <i className="fa-solid fa-plus"></i>
                 )}
               </div>
-              <div>
-                <p className="text-xs uppercase font-bold text-navy-300">Form Teacher</p>
-                <p className="text-sm font-bold">
-                  {classMaster
-                    ? `${classMaster.title} ${classMaster.first_name} ${classMaster.last_name}`
-                    : "Assign Master"}
-                </p>
+              <div className="flex gap-5 ">
+                <div>
+                  <p className="text-xs uppercase font-bold text-navy-300">Form Teacher</p>
+                  <p className="text-sm font-bold">
+                    {cls?.form_teacher
+                      ? `${cls.form_teacher.title} ${cls.form_teacher.first_name} ${cls.form_teacher.last_name}`
+                      : "Assign Master"}
+                  </p>
+                </div>
+                <button
+                    className="flex gap-4 items-center text-red-50 rounded-lg bg-gray-600 hover:bg-gray-500 p-1 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditClass(cls as any );
+                    }}
+                  >
+                    <i className="fa-solid fa-pen-to-square text-sm"></i>
+                     Edit
+              </button>
               </div>
             </div>
           </div>
@@ -245,7 +254,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
             </div>
           </div>
           <div className="space-y-1 max-h-80 overflow-y-auto custom-scrollbar">
-            {classStudents.map((s) => ( 
+            {classStudents.map((s:any) => ( 
               <div
                 key={s.id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-navy-50 group transition-colors cursor-pointer"
@@ -263,9 +272,9 @@ export const ClassView: React.FC<ClassViewProps> = ({
                   </div>
                 </div>
                 <span
-                  className={`text-[10px] font-bold px-2 py-1 rounded ${s.user?.is_active? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                  className={`text-[10px] font-bold px-2 py-1 rounded ${s?.is_active? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
                 >
-                  {s.user?.is_active? "Active" : "Inactive"}
+                  {s?.is_active? "Active" : "Inactive"}
                 </span>
               </div>
             ))}
@@ -286,7 +295,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
             </button>
           </div>
           <div className="space-y-1 max-h-80 overflow-y-auto custom-scrollbar">
-            {classTeachers.map((t) => (
+            {classTeachers.map((t:any) => (
               <div
                 key={t.id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-navy-50 group transition-colors"
@@ -302,7 +311,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
                     <p className="text-xs text-gray-500">{t.staff_id}</p>
                   </div>
                 </div>
-                {t.id === cls.classTeacherId && (
+                {t.id === cls.form_teacher.id && (
                   <span className="text-[10px] font-bold px-2 py-1 rounded bg-gold-100 text-gold-800">
                     Master
                   </span>
@@ -321,8 +330,8 @@ export const ClassView: React.FC<ClassViewProps> = ({
             Subjects ({classSubjects.length})
           </h3>
           <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
-            {classSubjects.map((sub) => {
-              const teacher = getSubjectTeacher(sub);
+            {classSubjects.map((sub : any ) => {
+              const teacher :any = getSubjectTeacher(sub);
               const scheduleStr = getSubjectScheduleStr(sub.name, schedule);
               return (
                 <div
@@ -358,7 +367,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
                     <i className="fa-solid fa-chalkboard-user"></i>
                     {teacher ? (
                       <span className="font-medium text-navy-800">
-                        {teacher.title} {teacher.last_name}
+                        {teacher.title} {teacher?.last_name}
                       </span>
                     ) : (
                       <span className="text-orange-500 italic">No teacher assigned</span>

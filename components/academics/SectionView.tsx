@@ -22,13 +22,13 @@ interface SectionViewProps {
 }
 
 export const SectionView: React.FC<SectionViewProps> = ({
-  sections, classRooms, students, teachers, subjects, searchQuery,
+  sections, searchQuery,
   onSelectItem, viewMode, selectedId, onEditSection, onSetTimetableTarget,
    onShowReportModal, onNavigateToClass,onDeleteAcademics
   }) => {
   // --- LIST VIEW ---
   if (viewMode === "LIST") {
-    const filteredSections = sections.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredSections:any = sections.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredSections?.map((sec) => (
@@ -40,10 +40,10 @@ export const SectionView: React.FC<SectionViewProps> = ({
               <span className="text-xs font-bold bg-navy-100 text-navy-700 px-2 py-1 rounded">ID: {sec.id.slice(-4)}</span>
             </div>
             <h4 className="font-bold text-lg text-navy-900 group-hover:text-gold-600 transition-colors">{sec.name}</h4>
-            <p className="text-xs text-gray-500 mt-1">{classRooms.filter((c) => c.section === sec.id).length} Linked Classes</p>
+            <p className="text-xs text-gray-500 mt-1">{sec?.classesCount} Linked Classes</p>
             <div className="relative ">
               <button
-                  onClick={(e) => {
+                  onClick={(e) => { 
                       e.stopPropagation();
                       onDeleteAcademics("SECTIONS",sec as any)
                   }}
@@ -61,23 +61,9 @@ export const SectionView: React.FC<SectionViewProps> = ({
   }
 
   // --- DETAIL VIEW ---
-  const section = sections.find((s) => s.id === selectedId);
+  const section:any = sections.find((s) => s.id === selectedId);
   if (!section) return null;
 
-  const linkedClasses = classRooms.filter((c) => c.section === section.id);
-  const totalStudents = students.filter((s) => linkedClasses.some((c) => s.class_rooms.map(c => c.class_room)?.includes(c.id))).length;
-  //countteachers from theclassesthe teach
-  const linkedClassIds = new Set(linkedClasses?.map(lc => lc.id));
-
-  const sectionTeachers = teachers?.filter(teacher =>
-    teacher.class_room?.some(tc_id => linkedClassIds.has(tc_id))
-    );
-
-  const linkedClassesForReport = linkedClasses.map((c) => ({
-    ...c,
-    studentCount: students.filter((s) => s.class_room?.includes(c.id)).length,
-    teacherName: teachers.find((t) => t.id === c.classTeacherId)?.last_name || "Unassigned",
-  }));
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -90,18 +76,18 @@ export const SectionView: React.FC<SectionViewProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start">
           <div>
             <h2 className="text-4xl font-bold mb-1">{section.name}</h2>
-            <p className="text-navy-200 text-sm font-mono tracking-widest uppercase">Section ID: {section.id.toUpperCase().slice(0, 10)}</p>
+            <p className="text-navy-200 text-sm font-mono tracking-widest uppercase">Section ID: {section.id.toUpperCase()}</p>
             <div className="flex gap-6 mt-6">
               <div>
-                <p className="text-2xl font-bold">{linkedClasses.length}</p>
+                <p className="text-2xl font-bold">{section?.classesCount}</p>
                 <p className="text-xs uppercase text-gold-500 font-bold">Classes</p>
               </div>
               <div>
-                <p className="text-2xl font-bold">{totalStudents}</p>
+                <p className="text-2xl font-bold">{section?.studentsCount}</p>
                 <p className="text-xs uppercase text-gold-500 font-bold">Students</p>
               </div>
               <div>
-                <p className="text-2xl font-bold">{sectionTeachers.length}</p>
+                <p className="text-2xl font-bold">{section?.teachersCount}</p>
                 <p className="text-xs uppercase text-gold-500 font-bold">Teachers</p>
               </div>
             </div>
@@ -121,15 +107,14 @@ export const SectionView: React.FC<SectionViewProps> = ({
         {/* Classes Column */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
-            <h3 className="font-bold text-lg text-navy-900">Classes ({linkedClasses.length})</h3>
-            <button onClick={() => onShowReportModal(linkedClassesForReport, "CLASS", `${section.name} Classes`)} className="text-xs font-bold text-navy-600 hover:text-gold-600 flex items-center bg-navy-50 px-3 py-1 rounded">
+            <h3 className="font-bold text-lg text-navy-900">Classes ({section?.classesCount})</h3>
+            <button onClick={() => onShowReportModal(section?.classrooms, "CLASS", `${section.name} Classes`)} className="text-xs font-bold text-navy-600 hover:text-gold-600 flex items-center bg-navy-50 px-3 py-1 rounded">
               <i className="fa-solid fa-file-export mr-1"></i> Export
             </button>
           </div>
           <div className="grid grid-cols-1 gap-4">
-            {linkedClasses.map((cls) => {
-              const sCount = students.filter((s) => s.class_rooms.map(c => c.class_room)?.includes(cls.id)).length;
-              const tName = teachers.find((t) => t.id === cls?.form_teacher);
+            {section?.classrooms?.map((cls) => {
+              let formTeacher = cls?.form_teacher || null
               return (
                 <div key={cls.id} onClick={() => onNavigateToClass(cls.id)} className="p-4 border border-gray-200 rounded-lg hover:shadow-md cursor-pointer group bg-gray-50 hover:bg-white transition-all">
                   <div className="flex justify-between items-center">
@@ -138,10 +123,10 @@ export const SectionView: React.FC<SectionViewProps> = ({
                   </div>
                   <div className="flex justify-between mt-2 text-xs text-gray-500">
                     <span>
-                      <i className="fa-solid fa-users mr-1"></i> {sCount} Students
+                      <i className="fa-solid fa-users mr-1"></i> {cls.studentsCount} Students
                     </span>
                     <span>
-                      <i className="fa-solid fa-chalkboard-user mr-1"></i> {tName ? ` ${tName?.title} ${tName?.first_name} ${tName?.last_name}` : "No Master"}
+                      <i className="fa-solid fa-chalkboard-user mr-1"></i> {formTeacher ? ` ${formTeacher?.title} ${formTeacher?.first_name} ${formTeacher?.last_name}` : "No Master"}
                     </span>
                   </div>
                 </div>
@@ -152,13 +137,14 @@ export const SectionView: React.FC<SectionViewProps> = ({
         {/* Teachers Column */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
-            <h3 className="font-bold text-lg text-navy-900">Teachers ({sectionTeachers.length})</h3>
-            <button onClick={() => onShowReportModal(sectionTeachers, "TEACHER", `${section.name} Teachers`)} className="text-xs font-bold text-navy-600 hover:text-gold-600 flex items-center bg-navy-50 px-3 py-1 rounded">
+            <h3 className="font-bold text-lg text-navy-900">Teachers ({section?.teachersCount})</h3>
+            <button onClick={() => onShowReportModal(section?.teachers, "TEACHER", `${section.name} Teachers`)} className="text-xs font-bold text-navy-600 hover:text-gold-600 flex items-center bg-navy-50 px-3 py-1 rounded">
               <i className="fa-solid fa-file-export mr-1"></i> Export
             </button>
           </div>
           <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
-            {sectionTeachers.map((t) => (
+            {!section?.teachers?.length && <div className="text-center text-gray-400 py-8">No teachers assigned to this section.</div>}
+            {section?.teachers?.map((t) => (
               <div key={t.id} className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-navy-50 group transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-navy-700">
