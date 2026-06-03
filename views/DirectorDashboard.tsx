@@ -2,7 +2,7 @@
 import React, { useState, useEffect,useContext, useMemo } from 'react';
 import { School, Student, Teacher, Staff, ClassRoom, SchoolSection, Subject, Director, UserRole, ActivityLog, AttendanceRecord ,BiometricIdentity} from '../types';
 
-import { Button, Modal, Input, ImageUpload, Toast, ImageViewer } from '../components/UI';
+import { Button, Modal, Input, ImageUpload, Toast, ImageViewer, Paginator } from '../components/UI';
 import { StudentManager } from './StudentManager';
 import { AcademicManager } from './AcademicManager';
 import { TeacherManager } from './TeacherManager';
@@ -20,6 +20,7 @@ import { authContext } from '@/customContexts/AuthContext';
 import urls from '@/customHooks/ServerUrls';
 import { DirectorProfile } from '../components/director/DirectorProfile';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import useRequest from '@/customHooks/RequestHook';
 
 
 interface DashboardProps {
@@ -31,7 +32,7 @@ interface DashboardProps {
 type Module = 'OVERVIEW' | 'STUDENTS' | 'TEACHERS' | 'STAFFS' | 'ACADEMICS' | 'RESULTS' | 'FINANCE' | 'SETTINGS' | 'PROFILE' | 'MY_CLASSES' | 'MY_SUBJECTS' | 'ATTENDANCE' | 'DEVICES' | 'IDENTITY';
 
 export const Dashboard: React.FC<DashboardProps> = ({userRole, onLogout }) => {
-    const {selectedSchool:school} = useContext(uiContext)
+const {selectedSchool:school} = useContext(uiContext)
   const [activeModule, setActiveModule] = useState<Module>('OVERVIEW');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
@@ -45,6 +46,7 @@ export const Dashboard: React.FC<DashboardProps> = ({userRole, onLogout }) => {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
   const [identities, setIdentities] = useState<BiometricIdentity[]>([]);
+const {sendRequest} = useRequest() ;
 
 
   // --- DATA INITIALIZATION ---
@@ -55,7 +57,7 @@ export const Dashboard: React.FC<DashboardProps> = ({userRole, onLogout }) => {
         sections, setSections, // sections data
         classRooms, setClassRooms, // classRooms data
         subjects, setSubjects, // subjects data
-        activities, // activity logs 
+        activities, setActivities// activity logs 
     } = useContext(uiContext)
     const navigate = useNavigate()
 
@@ -422,7 +424,8 @@ export const Dashboard: React.FC<DashboardProps> = ({userRole, onLogout }) => {
               <i className="fa-solid fa-xmark text-lg"></i>
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-gray-300">
+          <div className="flex-1 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-gray-300 ">
+           
               {activities.length === 0 ? (
                   <div className="text-center py-10 mt-10">
                       <i className="fa-solid fa-clipboard-list text-5xl text-gray-200 mb-4 block"></i>
@@ -431,6 +434,15 @@ export const Dashboard: React.FC<DashboardProps> = ({userRole, onLogout }) => {
                   </div>
               ) : (
                   <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gray-200">
+                    {/* Pagination - Floating UI */}
+                                <Paginator 
+                                  data={activities}
+                                  setData={setActivities}
+                                  filteredData={activities}
+                                  schoolId = {selectedSchool?.id}
+                                  url={`/school/userlogs/${selectedSchool?.id}/`}
+                                  sendRequest={sendRequest}
+                                /> 
                     {activities.map((log: ActivityLog, index: number) => {
                         const getActionColor = (action: string) => {
                             switch(action) {

@@ -210,7 +210,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
     if (search.length && !filteredStudents.length && allowSearch.current) { 
 
       sendRequest(`/student/search/${selectedSchool?.id}/${search}/`, "GET", null as any , TriggeredFunc, true, false)
-
       allowSearch.current = false;
       setTimeout(() => {
         allowSearch.current = true;
@@ -237,6 +236,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
 
   return ( 
     <div className="w-full h-full overflow-y-auto max-h-100  relative " >
+          {/* Pagination - Floating UI */}
           <Paginator 
             data={students}
             setData={setStudents}
@@ -246,7 +246,6 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
             sendRequest={sendRequest}
           />
       <div className="animate-fadeIn space-y-6 relative">
-            {/* Pagination - Floating UI */}
           {viewMode === 'DETAIL' && selectedStudentId ? (
                 <>
                   <PinModal isOpen={showPinModal} onClose={() => { setShowPinModal(false); setPendingAction(null); }} onSuccess={handlePinSuccess} title={'Confirm/Authorise Action'} />

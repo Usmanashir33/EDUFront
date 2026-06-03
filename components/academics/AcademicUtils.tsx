@@ -75,10 +75,10 @@ export const getCurrentPeriodInfo = (timetable: any[], subjects: Subject[], teac
     let subjectName = activePeriod.subject; 
 
     if (subjectName !== 'Free Period') {
-        const sub = subjects.find(s => s.name.toLowerCase().includes(subjectName.toLowerCase()) || subjectName.toLowerCase().includes(s.name.toLowerCase()));
+        const sub:any = subjects.find(s => s.name.toLowerCase().includes(subjectName.toLowerCase()) || subjectName.toLowerCase().includes(s.name.toLowerCase()));
         if (sub) {
             subjectName = sub.name; 
-            if (sub.teacherIds.length > 0) {
+            if (sub?.teachers.length > 0) {
                 const t = teachers.find(tr => tr.id === sub.teacherIds[0]);
                 if (t) teacherName = `${t.title} ${t.lastName}`;
             }
@@ -181,23 +181,25 @@ export const UnifiedExportModal: React.FC<{ isOpen: boolean, onClose: () => void
     // Configs
     const configs = {
         STUDENT: [
-            { key: 'admissionNumber', label: 'Admission No.' },
-            { key: 'firstName', label: 'First Name' },
-            { key: 'lastName', label: 'Last Name' },
+            { key: 'admission_number', label: 'Admission No.' },
+            { key: 'first_name', label: 'First Name' },
+            { key: 'last_name', label: 'Last Name' },
             { key: 'gender', label: 'Gender' },
-            { key: 'guardian.phone', label: 'Parent Phone' }
+            { key: 'email', label: 'email'},
+            { key: 'phone', label: 'Phone'}
         ],
         TEACHER: [
-            { key: 'staffId', label: 'Staff ID' },
+            { key: 'staff_id', label: 'Staff ID' },
             { key: 'title', label: 'Title' },
-            { key: 'firstName', label: 'First Name' },
-            { key: 'lastName', label: 'Last Name' },
-            { key: 'phone', label: 'Phone' }
+            { key: 'first_name', label: 'First Name' },
+            { key: 'last_name', label: 'Last Name' },
+            { key: 'phone', label: 'Phone' },
+            { key: 'email', label: 'Email' }
         ],
         CLASS: [
             { key: 'name', label: 'Class Name' },
-            { key: 'studentCount', label: 'Students' },
-            { key: 'teacherName', label: 'Form Teacher' }
+            { key: 'studentsCount', label: 'Students' },
+            { key: 'form_teacher.first_name', label: 'Form Teacher' }
         ]
     };
 
@@ -209,6 +211,7 @@ export const UnifiedExportModal: React.FC<{ isOpen: boolean, onClose: () => void
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Export & Print" icon="fa-solid fa-file-export">
             <div id="printable-list-container">
+                
                 <style>{`
                     @media print {
                         body * { visibility: hidden; }
@@ -231,7 +234,8 @@ export const UnifiedExportModal: React.FC<{ isOpen: boolean, onClose: () => void
                         ))}
                     </div>
                 </div>
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        {/* make it full A4 size on ove  items the printable area  */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden ">
                     <div className="bg-navy-900 text-white p-3 text-center print:bg-white print:text-black print:border-b">
                         <h2 className="text-lg font-bold uppercase">{title}</h2>
                         <p className="text-xs">{new Date().toLocaleDateString()}</p>
@@ -257,6 +261,7 @@ export const UnifiedExportModal: React.FC<{ isOpen: boolean, onClose: () => void
                         </tbody>
                     </table>
                 </div>
+
                 <div className="flex justify-end gap-3 mt-4 pt-4 border-t no-print">
                     <Button variant="outline" onClick={onClose}>Close</Button>
                     <Button onClick={() => window.print()}><i className="fa-solid fa-print mr-2"></i> Print</Button>

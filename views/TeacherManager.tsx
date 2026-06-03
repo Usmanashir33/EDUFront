@@ -54,17 +54,15 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
     const [showBankModal, setShowBankModal] = useState(false);
     const [bankForm, setBankForm] = useState({ bankName: '', accountNumber: '', accountName: '' });
     const [viewDoc, setViewDoc] = useState<KYCDocument | null>(null);
-    let [serverForm,setServerForm]= useState(new FormData()) // form to handle server data 
-    let [admForm,setAdmForm] = useState({})
-    const [recordId,setRecordId] = useState(null)
+    let   [serverForm,setServerForm]= useState(new FormData()) // form to handle server data 
+    let   [admForm,setAdmForm] = useState({});
+    const [recordId,setRecordId] = useState(null);
     const {currentUser} = useContext(authContext);
-    const {     selectedSchool,
-              students,setStudents, // students data
+    const {   selectedSchool,
               teachers, setTeachers ,// teachers data
-              staff, setStaff, // staff data
-              sections, setSections, // sections data
-              classRooms, setClassRooms, // classRooms data
-              subjects, setSubjects, // subjects data
+              sections,  // sections data
+              classRooms, // classRooms data
+              subjects,// subjects data
               setToast ,
           } = useContext(uiContext)
     const {sendRequest} = useRequest();
@@ -97,7 +95,7 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
     };
     // /   this is react function
   const TriggeredFunc = (data:any) => { 
-    console.log('data: ', data);
+    // console.log('data: ', data);
     if (data?.success){
         setToast({ message: data?.success, type: 'success' });
 
@@ -185,7 +183,7 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
             return ;
         }
         setShowPinModal(true)
-  }
+  } 
 
     // Actions
     const handlePinSuccess = (pins:string) => {

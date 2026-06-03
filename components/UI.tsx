@@ -884,8 +884,8 @@ export const Paginator:React.FC<PaginatorProps> = ({ data, setData, filteredData
     const [totalData,setTotalData] = useState(0) ;
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages,setTotalPages] = useState(2);
-    // const dataPerPage = 2 ; // testinh
-    const dataPerPage = 50;
+    // const dataPerPage = 2 ; // testing
+    const dataPerPage = 15;
     
     
     const handlePageDataChange = (resp: any) => {
@@ -902,7 +902,7 @@ export const Paginator:React.FC<PaginatorProps> = ({ data, setData, filteredData
        {((data.length >= dataPerPage) || (totalData > 0 )) && (
                      <div className="fixed bottom-3 right-1 -translate-x-1/4 bg-white/90 backdrop-blur-md shadow-xl border border-gray-200 rounded-full px-4 py-2 flex items-center gap-6 z-10 transition-all">
                          <div className="text-sm text-gray-600 font-medium whitespace-nowrap">
-                             Showing <span className="font-bold text-navy-900">{filteredData.length}</span> to <span className="font-bold text-navy-900">{Math.min(dataPerPage, totalData)}</span> of <span className="font-bold text-navy-900">{totalData}</span> students
+                             Showing <span className="font-bold text-navy-900">{filteredData.length}</span> to <span className="font-bold text-navy-900">{Math.min(dataPerPage, totalData)}</span> of <span className="font-bold text-navy-900">{totalData}</span> total data
                          </div>
                          <div className="w-px h-6 bg-gray-300"></div>
                          <div className="flex items-center gap-2">
