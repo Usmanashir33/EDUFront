@@ -16,7 +16,7 @@ interface AcademicManagerProps {
 
 type Tab = "SECTIONS" | "CLASSROOMS" | "SUBJECTS";
 type ViewMode = "LIST" | "DETAIL";
-type OperationMode = "POST" | "DELETE" | "PUT" | "GET" | "TRANSFER" | "FORM_TEACHER" | 'ENROLLMENT';
+type OperationMode = "POST" | "DELETE" | "PUT" | "GET" | "TRANSFER" | "FORM_TEACHER" | 'ENROLLMENT'| "CLASS_SUBJECT_ASSIGNMENT" |"CLASS_SUBJECT_DELETION";
 
 export const AcademicManager: React.FC<AcademicManagerProps> = ({
   onNavigateToStudent,
@@ -34,7 +34,14 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingClass, setEditingClass] = useState(false);
   const [showClassMasterConfirmModal,setShowClassMasterConfirmModal] = useState(false);
-  const [classMasterPendingId,setClassMasterPendingId] = useState<string|null>(null)
+  const [classMasterPendingId,setClassMasterPendingId] = useState<string|null>(null);
+
+  const [subjectSearchQueue, setSubjectSearchQueue] = useState('');
+  const [teacherSearchQueue, setTeacherSearchQueue] = useState('');
+  const [subjectAssignmentsQueue, setSubjectAssignmentsQueue] = useState<{subject: Subject, teacherId: string}[]>([]);
+  const [classSubjectAssignmentType,setClassSubjectAssignmentType] = useState<"SUBSTITUTE"|"ASSIGNMENT">("ASSIGNMENT");
+  const [showConfirmClassSubDel,setShowConfirmClsSubDel] = useState(false);
+  const [classSubjectDelId,setClassSubjectDelId] = useState<string|null>('')
 
   const {
     students,
@@ -112,8 +119,10 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   >([]);
 
   const [showAddSubjectToClassModal, setShowAddSubjectToClassModal] = useState(false);
-  const [selectedSubjectToAdd, setSelectedSubjectToAdd] = useState<Subject | null>(null);
+
+  const [selectedSubjectToAdd, setSelectedSubjectToAdd] = useState<any|null>(null);
   const [selectedTeacherForSubject, setSelectedTeacherForSubject] = useState<string>("");
+
   const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false);
   const [serverForm,setServerform] = useState({})
   const {sendRequest} = useRequest()
@@ -156,6 +165,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   };
 
   const  TriggerClassFunc2 = (data) => {
+    // console.log('data: ', data);
     
     if (data?.success){setToast({message:data?.success, type: "success"})}
 
@@ -165,6 +175,31 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       setShowAddStudentModal(false);
       setSelectedStudentIds([]);
       setClassRooms((prev) => prev.map((c) => c.id === u?.id   ? {...c,studentsCount : u?.studentsCount}   : c ) );
+    
+    }else if (data?.assigned_subject_class){ // assigned subject class
+      let u = data?.assigned_subject_class
+      setSelectedCls(u);
+      setShowAddSubjectToClassModal(false);
+      setSelectedSubjectToAdd(null);
+      setSelectedTeacherForSubject('');
+      setSubjectAssignmentsQueue([]);
+      setClassRooms((prev) => prev.map((c) => c.id === u?.id   ? {...c,subjectsCount : u?.subjects?.length}   : c ) );
+    
+    }else if (data?.reassigned_subject_class){ // reassigned subject class
+      let u:any = data?.reassigned_subject_class
+      setSelectedCls(prev => ({...prev, subjects: u?.subjects,teachers: u?.teachers,teachersCount:u?.teachersCount}));
+      setShowAddSubjectToClassModal(false);
+      setSelectedSubjectToAdd(null);
+      setSelectedTeacherForSubject('');
+      setSubjectAssignmentsQueue([]);
+      setClassRooms((prev) => prev.map((c) => c.id === u?.id   ? {...c, subjectsCount : u?.subjects?.length ,teachersCount:u?.teachersCount}   : c ) );
+    
+    }else if (data?.delassigned_subject_class){ // reassigned subject class
+      let u:any = data?.delassigned_subject_class
+      setSelectedCls(prev => ({...prev, subjects: u?.subjects,teachers: u?.teachers,teachersCount:u?.teachersCount}));
+      setClassSubjectDelId('');
+      setClassRooms((prev) => prev.map((c) => c.id === u?.id   ? {...c, subjectsCount : u?.subjects?.length ,teachersCount:u?.teachersCount}   : c ) );
+    
     }else if (data?.from_class){ // students Transferred 
       let fromClass = data?.from_class;
       let toClass = data?.to_class ;
@@ -311,7 +346,7 @@ const filteredTeachers = useMemo(() => {
 
 
   const handlePinSuccess = (pins:string) => {
-    let form = {...serverForm,pin : pins}
+    let form:any = {...serverForm,pin : pins}
     setShowAddModal(false);
     setShowPinModal(false); 
     // ....................................................................................
@@ -328,17 +363,32 @@ const filteredTeachers = useMemo(() => {
 
     }else if (activeTab === 'CLASSROOMS'){
       if (methode === 'POST'){
-        sendRequest(`/academics/create/classrooms/`,"POST",form as any ,TriggerClassFunc,true,false);
-      }else if (methode === 'PUT'){
+        sendRequest(`/academics/create/classrooms/`,"POST",form as any ,
+          TriggerClassFunc,true,false);
+      
+        }else if (methode === 'PUT'){
         sendRequest(`/academics/update/classrooms/${editClassTarget?.id}/`,"PUT",form as any ,TriggerClassFunc,true,false);
+      
       }else if (methode === 'DELETE'){
         sendRequest(`/academics/delete/${selectedSchool?.id}/classrooms/${academicTarget?.id}/${pins}/`,"DELETE",null as any ,TriggerClassFunc,true,false);
+      
       }else if (methode === "TRANSFER"){ // transfering students between classes
         sendRequest(`/academics/class/transfer/`,"PUT",form as any ,TriggerClassFunc2,true,false);
+      
+      }else if (methode === "CLASS_SUBJECT_ASSIGNMENT"){ // assigning subjects to classes or updating it 
+        let url = classSubjectAssignmentType === "SUBSTITUTE" ? `/academics/class/subject-substitution/` : `/academics/class/subject-assignment/`;
+        let method = classSubjectAssignmentType === "SUBSTITUTE" ? "PUT" : "POST";
+        sendRequest(url,method,form as any ,TriggerClassFunc2,true,false);
+      
+      }else if (methode === "CLASS_SUBJECT_DELETION"){ // deletion subjects to classes or updating it 
+        let url =  `/academics/class/subject-deletion/${selectedSchool?.id}/${selectedItemId}/${form?.subjectId}/${pins}/`;
+        sendRequest(url,'DELETE',null as any ,TriggerClassFunc2,true,false);
+      
       }else if (methode === "ENROLLMENT"){ // ENROLLMENT students to the class
         sendRequest(`/academics/class/enrollment/`,"POST",form as any ,TriggerClassFunc2,true,false);
+      
       }else if (methode === "FORM_TEACHER"){ // changing form teacher
-        sendRequest(`/academics/update/form_teacher/${academicTarget?.id}/`,"PUT",serverForm as any ,TriggerClassFunc,true,false);
+        sendRequest(`/academics/update/form_teacher/${academicTarget?.id}/`,"PUT",form as any ,TriggerClassFunc,true,false);
       }
       return ;
 
@@ -532,62 +582,37 @@ const filteredTeachers = useMemo(() => {
     return     
   };
 
-  const handleSubstituteSubject = () => {
-    if (!selectedItemId || !selectedSubjectToAdd) return;
-
-    let updatedSubjects = [...subjects];
-    const oldSubjectId = currentContextData?.subjectId;
-    const newSubjectId = selectedSubjectToAdd.id;
-    const classId = selectedItemId;
-
-    if (oldSubjectId && oldSubjectId !== newSubjectId) {
-      updatedSubjects = updatedSubjects.map((s) =>
-        s.id === oldSubjectId
-          ? {
-              ...s,
-              classRoomIds: s.class_rooms.map((cls) => cls.class_room)?.filter((id) => id !== classId),
-            }
-          : s,
-      );
-    }
-
-    updatedSubjects = updatedSubjects.map((s) => {
-      if (s.id === newSubjectId) {
-        const newClassIds = s.class_rooms.map((cls) => cls.class_room)?.includes(classId)
-          ? s.class_rooms.map((cls) => cls.class_room)
-          : [...s.class_rooms.map((cls) => cls.class_room), classId];
-        const newAssignments = s.assignments
-          ? [...s.assignments].filter((a) => a.classId !== classId)
-          : [];
-        if (selectedTeacherForSubject) {
-          newAssignments.push({
-            classId,
-            teacherId: selectedTeacherForSubject,
-          });
+  const handleClassSubjectDeletion = (subjectId:string) => {
+        if (!selectedItemId) return;
+        let url =  `/academics/class/subject-deletion/${selectedSchool?.id}/${selectedItemId}/${subjectId}/${' '}/`;
+        if (!currentUser?.user?.pin_set){
+          // Make the api call here  when user  need no pin to talk to server
+            sendRequest(url,"DELETE",null as any ,TriggerClassFunc2,true,false);
+          return ;
         }
-        const newTeacherIds =
-          selectedTeacherForSubject && !s.teacherIds.includes(selectedTeacherForSubject)
-            ? [...s.teacherIds, selectedTeacherForSubject]
-            : s.teacherIds;
-        return {
-          ...s,
-          classRoomIds: newClassIds,
-          teacherIds: newTeacherIds,
-          assignments: newAssignments,
-        };
-      }
-      return s;
-    });
-
-    setSubjects(updatedSubjects);
-    setShowAddSubjectToClassModal(false);
-    setSelectedSubjectToAdd(null);
-    setSelectedTeacherForSubject("");
-    setToast({
-      message: "Subject assignment updated successfully.",
-      type: "success",
-    });
-  };
+        setServerform({subjectId});
+        setMethode("CLASS_SUBJECT_DELETION");
+        setShowPinModal(true);
+    };
+  const handleSubstituteSubject = () => {
+        if (!selectedItemId) return;
+        let form = {
+          school : selectedSchool.id ,
+          classId : selectedItemId ,
+          mappings : subjectAssignmentsQueue.map(a => ({subjectId: a.subject.id, teacherId: a.teacherId})),
+          pin : ''
+        } as any ;
+        let url = classSubjectAssignmentType === "SUBSTITUTE" ? `/academics/class/subject-substitution/` : `/academics/class/subject-assignment/`;
+        let method = classSubjectAssignmentType === "SUBSTITUTE" ? "PUT" : "POST";
+        if (!currentUser?.user?.pin_set){
+          // Make the api call here  when user  need no pin to talk to server
+            sendRequest(url,method,form as any ,TriggerClassFunc2,true,false);
+          return ;
+        }
+        setServerform(form);
+        setMethode("CLASS_SUBJECT_ASSIGNMENT");
+        setShowPinModal(true);
+    };
 
   const confirmTeacherSelection = (teacherId: string) => {
     let classId =currentContextData.classId;
@@ -769,6 +794,10 @@ const filteredTeachers = useMemo(() => {
             setTransferTargetClassId={setTransferTargetClassId}
             handleAddStudentsToClass={handleAddStudentsToClass}
             handleTransferStudents={handleTransferStudents}
+            handleDeleteClassSubject={(subjectId)=>{
+              setClassSubjectDelId(subjectId);
+              setShowConfirmClsSubDel(true);
+            }}
 
 
             searchQuery={searchQuery}
@@ -796,8 +825,10 @@ const filteredTeachers = useMemo(() => {
             }
             onShowAddStudent={setShowAddStudentModal}
             onAddSubject={() => {
+              setClassSubjectAssignmentType("ASSIGNMENT");
               setCurrentContextData(null);
               setShowAddSubjectToClassModal(true);
+
             }}
             onNavigateToStudent={onNavigateToStudent}
             onManageMaster={(c:any) => {
@@ -807,9 +838,12 @@ const filteredTeachers = useMemo(() => {
               let tcr = c?.form_teacher ;
               setTeacherSearch(tcr? `${tcr.title} ${tcr.first_name} ${tcr.last_name}` : "")
             }}
-            onInitiateSubstitute={(sub, cId) => {
+            onInitiateSubstitute={(sub, teacher, cId) => {
+              setClassSubjectAssignmentType("SUBSTITUTE");
               setCurrentContextData({subjectId: sub.id, classId: cId});
               setSelectedSubjectToAdd(sub);
+              setSelectedTeacherForSubject(teacher?.id || "");
+              setTeacherSearch(teacher?.name || "");
               setShowAddSubjectToClassModal(true);
             }}
             onTransferStudents={() => {
@@ -1084,93 +1118,146 @@ const filteredTeachers = useMemo(() => {
         </Modal>
       )}
 
-      {/* SUBSTITUTE / ASSIGN TEACHER MODAL (Combined Flow) */}
-      <Modal
-        isOpen={showAddSubjectToClassModal}
-        onClose={() => {
+      {/* MULTIPLE SUBJECTS ASSIGNMENT MODAL (Substitute / Assign Flow) */}
+      <Modal isOpen={showAddSubjectToClassModal} 
+      onClose={() => {
           setShowAddSubjectToClassModal(false);
           setSelectedSubjectToAdd(null);
-          setSelectedTeacherForSubject("");
-        }}
-        title="Substitute or Assign Subject"
-        icon="fa-solid fa-book-medical"
-      >
-        <div className="space-y-6">
-          {/* Step 1: Subject Selection */}
-          {!selectedSubjectToAdd ? (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Select a subject. You can choose the current subject to just assign a teacher, or a
-                different one to substitute.
-              </p>
-              <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
-                {(subjects.length !== 0) && subjects.map((sub) => (
-                  <div
-                    key={sub.id}
-                    onClick={() => setSelectedSubjectToAdd(sub)}
-                    className={`p-3 border rounded cursor-pointer flex justify-between items-center transition-all ${currentContextData?.subjectId === sub.id ? "border-navy-900 bg-navy-50 ring-1 ring-navy-900" : "border-gray-200 hover:bg-gray-50"}`}
-                  >
-                    <div>
-                      <p className="font-bold text-navy-900 text-sm">{sub.name}</p>
-                      <p className="text-xs text-gray-500 font-mono">{sub.code}</p>
+          setSelectedTeacherForSubject('');
+          setSubjectAssignmentsQueue([]);
+          setSubjectSearchQueue('');
+          setTeacherSearch('');
+          setClassSubjectAssignmentType("ASSIGNMENT");
+       }}
+       title={`${classSubjectAssignmentType === "SUBSTITUTE" ? "Substitute" : "Assign"} Subjects Assignments for ${currentContextData?.classId ? classRooms.find(c => c.id === currentContextData.classId)?.name : ""}`}
+       icon="fa-solid fa-list-check" size="xl">
+                <div className="flex flex-col md:flex-row gap-6 min-h-[60vh] max-h-[75vh] ">
+                    {/* Left Panel: Subject & Teacher Selection */}
+                    <div className="w-full md:w-2/3 flex flex-col space-y-4 border-r border-gray-100 pr-0 md:pr-6 overflow-y-auto custom-scrollbar relative ">
+                        {!selectedSubjectToAdd ? (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center bg-white sticky top-0 py-2 z-10 border-b border-gray-100">
+                                    <h4 className="text-sm font-bold text-navy-800 uppercase">1. Select Subject</h4>
+                                </div>
+                                <div>
+                                    <input type="text" autoFocus placeholder="Search by name or code..." className="w-full p-2.5 text-sm border border-gray-300 rounded-md focus:border-navy-500 focus:ring-1 focus:ring-navy-500" value={subjectSearchQueue} onChange={(e) => setSubjectSearchQueue(e.target.value)} />
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 p-1">
+                                    {subjects.filter(s => s.name.toLowerCase().includes(subjectSearchQueue.toLowerCase()) || s.code.toLowerCase().includes(subjectSearchQueue.toLowerCase())).map(sub => (
+                                        <div key={sub.id} onClick={() => setSelectedSubjectToAdd(sub)} className={`p-3 border rounded-lg cursor-pointer flex justify-between items-center transition-all hover:bg-gray-50 border-gray-200`}>
+                                            <div>
+                                                <p className="font-bold text-navy-900 text-sm">{sub.name}</p>
+                                                <p className="text-xs text-gray-500 font-mono">{sub.code}</p>
+                                            </div>
+                                            <i className="fa-solid fa-chevron-right text-gray-400 text-xs"></i>
+                                        </div>
+                                    ))}
+                                    {subjects.length > 0 && subjects.filter(s => s.name.toLowerCase().includes(subjectSearchQueue.toLowerCase()) || s.code.toLowerCase().includes(subjectSearchQueue.toLowerCase())).length === 0 && (
+                                        <div className="text-center p-4 text-sm text-gray-500 italic border border-dashed rounded bg-gray-50">No subjects found matching your search.</div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 animate-fadeIn">
+                                <div className="flex items-center gap-3 mb-2 sticky top-0 bg-white py-2 z-10 border-b border-gray-100">
+                                    <button onClick={() => { setSelectedSubjectToAdd(null); setSelectedTeacherForSubject(''); setTeacherSearchQueue(''); }} className="text-xs text-navy-600 hover:bg-navy-50 p-1.5 rounded"><i className="fa-solid fa-arrow-left"></i></button>
+                                    <h4 className="text-sm font-bold text-navy-800 uppercase">2. Assign Teacher</h4>
+                                </div>
+                                <div className="p-4 bg-navy-50 rounded-lg border border-navy-100">
+                                    <p className="text-xs font-bold text-navy-500 uppercase mb-1">Subject context</p>
+                                    <p className="text-base font-bold text-navy-900">{selectedSubjectToAdd.name} <span className="text-sm font-normal text-gray-600 ml-1">({selectedSubjectToAdd.code})</span></p>
+                                </div>
+                                <div>
+                                    <input type="text" autoFocus placeholder="Search teacher by name..." className="w-full p-2.5 text-sm border border-gray-300 rounded-md focus:border-navy-500 focus:ring-1 focus:ring-navy-500 mb-3"
+                                     value={teacherSearch} onChange={(e) => setTeacherSearch(e.target.value)}
+                                      />
+                                    <div className="max-h-64 overflow-y-auto custom-scrollbar border rounded-md">
+                                        <div onClick={() => setSelectedTeacherForSubject('')} className={`p-3 border-b border-gray-100 cursor-pointer flex items-center justify-between transition-colors ${selectedTeacherForSubject === '' ? 'bg-navy-50' : 'hover:bg-gray-50'}`}>
+                                            <span className="text-sm font-medium text-gray-700 italic">No Teacher (Unassigned)</span>
+                                            {selectedTeacherForSubject === '' && <i className="fa-solid fa-check text-navy-600"></i>}
+                                        </div>
+                                        {filteredTeachers?.map(t => (
+                                            <div key={t.id} onClick={() => setSelectedTeacherForSubject(t.id)} className={`p-3 border-b border-gray-100 cursor-pointer flex items-center justify-between transition-colors ${selectedTeacherForSubject === t.id ? 'bg-navy-50' : 'hover:bg-gray-50'}`}>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-navy-100 flex justify-center items-center text-[10px] text-navy-700 font-bold">{t.first_name[0]}</div>
+                                                    <span className="text-sm font-medium text-navy-900">{t.title} {t.first_name} {t.last_name}</span>
+                                                </div>
+                                                {selectedTeacherForSubject === t.id && <i className="fa-solid fa-check text-navy-600"></i>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2"><i className="fa-solid fa-circle-info mr-1"></i>You can re-assign this later.</p>
+                                </div>
+                                <div className="flex justify-end pt-2">
+                                    <Button 
+                                      disabled={
+                                        classSubjectAssignmentType === "SUBSTITUTE" ? subjectAssignmentsQueue?.length > 0 : false
+                                      }
+                                      onClick={() => {
+                                        setSubjectAssignmentsQueue([...subjectAssignmentsQueue, { subject: selectedSubjectToAdd, teacherId: selectedTeacherForSubject }]);
+                                        setSelectedSubjectToAdd(null);
+                                        setSelectedTeacherForSubject('');
+                                        setTeacherSearchQueue('');
+                                    }} className="w-full shadow-sm"><i className="fa-solid fa-plus mr-2"></i> {classSubjectAssignmentType === "SUBSTITUTE" ? "Substitute" : "Assign"} to Queue</Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    {currentContextData?.subjectId === sub.id && (
-                      <span className="text-[10px] bg-navy-900 text-white px-2 py-0.5 rounded">
-                        Current
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            // Step 2: Teacher Selection
-            <div className="space-y-4 animate-fadeIn">
-              <button
-                onClick={() => {
-                  setSelectedSubjectToAdd(null);
-                  setSelectedTeacherForSubject("");
-                }}
-                className="text-xs text-navy-600 hover:underline mb-2"
-              >
-                <i className="fa-solid fa-arrow-left mr-1"></i> Back to Subjects
-              </button>
-              <div className="p-3 bg-navy-50 rounded border border-navy-100 mb-4">
-                <p className="text-xs font-bold text-navy-500 uppercase">Selected Subject</p>
-                <p className="text-lg font-bold text-navy-900">
-                  {selectedSubjectToAdd.name}{" "}
-                  <span className="text-sm font-normal text-gray-600">
-                    ({selectedSubjectToAdd.code})
-                  </span>
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-navy-800 mb-1.5">
-                  Assign Teacher
-                </label>
-                <select
-                  className="w-full p-3 border border-gray-300 rounded-md"
-                  value={selectedTeacherForSubject}
-                  onChange={(e) => setSelectedTeacherForSubject(e.target.value)}
-                >
-                  <option value="">Select Teacher (Optional)</option>
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.title} {t.first_name} {t.last_name}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  If left blank, the subject will be assigned without a specific teacher.
-                </p>
-              </div>
-              <div className="flex justify-end pt-4">
-                <Button disabled={isLoading}  onClick={handleSubstituteSubject}>Confirm Assignment</Button>
-              </div>
-            </div>
-          )}
-        </div>
+
+                    {/* Right Panel: Pending Queue */}
+                    <div className="w-full md:w-1/2 flex flex-col pt-6 md:pt-0">
+                        <div className="flex justify-between items-center bg-white sticky top-0 py-2 z-10 border-b border-gray-100 mb-4">
+                            <h4 className="text-sm font-bold text-navy-800 uppercase">Pending Queue ({subjectAssignmentsQueue.length})</h4>
+                            {subjectAssignmentsQueue.length > 0 && <span className="text-xs font-bold bg-navy-100 text-navy-800 px-2 py-1 rounded-full">{subjectAssignmentsQueue.length} Ready</span>}
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                            {subjectAssignmentsQueue.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
+                                    <i className="fa-solid fa-clipboard-list text-5xl mb-4 opacity-20"></i>
+                                    <p className="text-sm text-center">Your assignment queue is empty.<br/>Select subjects and teachers to add them here.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {subjectAssignmentsQueue.map((item, idx) => {
+                                        const teacher = item.teacherId ? teachers.find(t => t.id === item.teacherId) : null;
+                                        return (
+                                            <div key={idx} className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm flex justify-between items-start group">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="font-bold text-navy-900 text-sm">{item.subject.name}</span>
+                                                        <span className="text-[10px] font-mono text-gray-500 bg-gray-100 px-1.5 rounded flex gap-5 items-center">
+                                                          <span>{item.subject.code}</span>
+                                                          <span>{item.subject?.credits}hrs/week</span>
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-600 flex items-center gap-1.5">
+                                                        <i className="fa-solid fa-user-tie opacity-50"></i>
+                                                        {teacher ? `${teacher.title} ${teacher.first_name} ${teacher.last_name}` : <span className="italic text-gray-400">Unassigned</span>}
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                  onClick={() => setSubjectAssignmentsQueue(subjectAssignmentsQueue.filter((_, i) => i !== idx))} 
+                                                  className="text-gray-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  <i className="fa-solid fa-times"></i>
+                                                </button>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="pt-4 border-t border-gray-100 mt-4 flex justify-end gap-3 bg-white">
+                            <Button variant="outline" onClick={() => { setShowAddSubjectToClassModal(false); setSelectedSubjectToAdd(null); setSubjectAssignmentsQueue([]); }}>Cancel</Button>
+                            <Button onClick={handleSubstituteSubject} disabled={subjectAssignmentsQueue.length === 0}><i className="fa-solid fa-check-double mr-2"></i>
+                              {classSubjectAssignmentType === "SUBSTITUTE" ? "Reassign Subjects" : "Assign Subjects"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
       </Modal>
+
 
       {/* Teachers  Select Modal (General) */}
       <Modal
@@ -1331,6 +1418,28 @@ const filteredTeachers = useMemo(() => {
       </Modal>
 
       {/* Deleting Academics Modal  */}
+      <Modal isOpen={showConfirmClassSubDel} onClose={() => {setShowConfirmClsSubDel(false);  }} title={`Class Subject Deletion`} size="md">
+            <div className="space-y-4">
+                <p className=" bg-red-50 p-2 text-sm text-red-600 rounded-md ">{
+                  `Please confirm Class subject assignment delete action.This action is irreversible and will disconnect all the connection from the deleted item.`
+              } </p>
+                <div className="flex justify-end gap-3">
+                    <Button isLoading={isLoading}  variant="secondary" onClick={() => setShowConfirmClsSubDel(false)}>Cancel</Button>
+                    <Button 
+                        isLoading={isLoading}
+                        onClick={() => {
+                          handleClassSubjectDeletion(classSubjectDelId as string) ;
+                          setShowConfirmClsSubDel(false);
+                        }}
+                        className="bg-red-600 text-white"
+                      >
+                        Confirm Deleting
+                    </Button>
+                 </div>
+            </div>
+      </Modal>
+
+      {/* Deleting Academics Modal  */}
       <Modal isOpen={isDeletingModalOpen} onClose={() => {setIsDeletingModalOpen(false);  }} title={`${activeTab} Deletion`} size="md">
             <div className="space-y-4">
                 <p className=" bg-red-50 p-2 text-sm text-red-600 rounded-md ">{
@@ -1352,7 +1461,8 @@ const filteredTeachers = useMemo(() => {
                  </div>
             </div>
       </Modal>
-              {/* Class master Assignment confirmation modal  Modal  */}
+      
+      {/* Class master Assignment confirmation modal  Modal  */}
       <Modal isOpen={showClassMasterConfirmModal} onClose={() => {setShowClassMasterConfirmModal(false);  }} title={`Confirm ClassMaster Assignment`} size="md">
             <div className="space-y-4">
                 <p className=" bg-green-100 p-4 text-sm text-green-600 rounded-md ">{
@@ -1372,7 +1482,7 @@ const filteredTeachers = useMemo(() => {
                       >
                         Confirm 
                     </Button>
-                 </div>
+            </div>
             </div>
       </Modal>
 

@@ -69,8 +69,9 @@ export interface Subject {
   id: string;
   name: string; // e.g. "Mathematics"
   code: string; // e.g. "MTH101"
-  classRoomIds: string[]; // ManyToMany to ClassRoom
-  teacherIds: string[]; // ManyToMany to Teacher
+  credits?: string | number; // e.g. "3hrs/week"
+  classRoomIds?: string[]; // ManyToMany to ClassRoom
+  teacherIds?: string[]; // ManyToMany to Teacher
   assignments?: SubjectAssignment[]; // Specific teacher assignments per class
 }
 

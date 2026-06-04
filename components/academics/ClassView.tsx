@@ -19,6 +19,8 @@ interface ClassViewProps {
   setTransferTargetClassId :any ,
   handleAddStudentsToClass :any  ,
   handleTransferStudents :any  ,
+  handleDeleteClassSubject :any  ,
+
 
   searchQuery: string;
   viewMode: "LIST" | "DETAIL";
@@ -35,7 +37,7 @@ interface ClassViewProps {
   onAddSubject: () => void;
   onNavigateToStudent?: (id: string) => void;
   onManageMaster: (c: ClassRoom) => void;
-  onInitiateSubstitute: (sub: Subject, classId: string) => void;
+  onInitiateSubstitute: (sub: Subject,teacher:any, classId: string) => void;
   onTransferStudents: (classId: string) => void;
   onNavigateToSubject: (id: string) => void;
   onDeleteAcademics: (a:"CLASSROOMS" ,s:Subject) => void;
@@ -53,6 +55,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
   setTransferTargetClassId,
   handleAddStudentsToClass ,
   handleTransferStudents ,
+  handleDeleteClassSubject ,
 
   searchQuery,
   viewMode,
@@ -193,8 +196,8 @@ export const ClassView: React.FC<ClassViewProps> = ({
               {cls.name}
             </h4>
             <div className="flex justify-between text-xs text-gray-500 border-t border-gray-100 pt-2 cursor-pointer">
-              <span>{cls?.studentsCount} Students</span>
-              <span>{cls?.subjects.length} Subjects</span>
+              <span>{cls?.studentsCount || "N/A"} Students</span>
+              <span>{cls?.subjectsCount || "N/A"} Subjects</span>
             </div>
             <button
               className="absolute top-2 right-2 text-red-50 rounded-lg bg-red-400 hover:bg-red-500 p-1 px-2"
@@ -218,17 +221,11 @@ export const ClassView: React.FC<ClassViewProps> = ({
 if (viewMode === "DETAIL") {
   if(!selectedCls) return ;
   
-  const classSubjects = subjects.filter((s) => selectedCls?.subjects.includes(s.id)) ;
+  const classSubjects =  selectedCls?.subjects || [] ;
+  // const classSubjects = subjects.filter((s) => selectedCls?.subjects.includes(s.id)) ;
  
   const schedule = generateMockTimetable(selectedCls?.name);
   const currentPeriod = getCurrentPeriodInfo(schedule, subjects, teachers, currentTime);
-
-  const getSubjectTeacher = (sub) => {
-    const assignment = sub.assignments?.find((a) => a.classId === selectedCls.id);
-    if (assignment) return teachers.find((t) => t.id === assignment.teacherId);
-    const tId = sub.teachers[0];
-    return teachers.find((t) => t.id === tId);
-  };
 
   const getSubjectScheduleStr = (subjectName: string, timetable: any[]) => {
     const times: string[] = [];
@@ -236,10 +233,10 @@ if (viewMode === "DETAIL") {
       day.periods.forEach((p: any) => {
         if (
           p.subject !== "Free Period" &&
-          (p.subject.includes(subjectName) || subjectName.includes(p.subject))
+          (p.subject?.includes(subjectName) || subjectName?.includes(p.subject))
         ) {
-          const start = p.time.split("-")[0].trim();
-          times.push(`${day.day.substring(0, 3)} ${start}`);
+          const start = p.time?.split("-")[0].trim();
+          times?.push(`${day.day.substring(0, 3)} ${start}`);
         }
       });
     });
@@ -429,7 +426,7 @@ if (viewMode === "DETAIL") {
             <div className="space-y-1 max-h-80 overflow-y-auto custom-scrollbar">
               {selectedCls?.teachers?.map((t:any) => (
                 <div
-                  key={t.id}
+                  key={t?.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-navy-50 group transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -438,12 +435,12 @@ if (viewMode === "DETAIL") {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-navy-900">
-                        {t.title} {t.first_name} {t.last_name}
+                        {t?.title} {t.first_name} {t.last_name}
                       </p>
                       <p className="text-xs text-gray-500">{t.staff_id}</p>
                     </div>
                   </div>
-                  {t.id === selectedCls.form_teacher.id && (
+                  {t?.id === selectedCls?.form_teacher?.id && (
                     <span className="text-[10px] font-bold px-2 py-1 rounded bg-gold-100 text-gold-800">
                       Master
                     </span>
@@ -469,31 +466,42 @@ if (viewMode === "DETAIL") {
               Subjects ({classSubjects.length})
             </h3>
             <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
-              {classSubjects.map((sub : any ) => {
-                const teacher :any = getSubjectTeacher(sub);
-                const scheduleStr = getSubjectScheduleStr(sub.name, schedule);
+              {classSubjects?.map((su : any ,idx) => {
+                const sub = subjects.find((s) => s.id === su.id)
+                const teacher :any  = su?.teacher;
+                const scheduleStr = getSubjectScheduleStr(sub?.name, schedule);
                 return (
                   <div
-                    key={sub.id}
-                    onClick={() => onNavigateToSubject(sub.id)}
+                    key={`sub${idx}`}
+                    onClick={() => onNavigateToSubject(sub?.id)}
                     className="p-3 border border-gray-100 rounded hover:shadow-md transition-shadow bg-white cursor-pointer group"
                   >
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-sm font-bold text-navy-900 group-hover:text-gold-600 transition-colors">
-                          {sub.name}
+                          {sub?.name}
                         </p>
-                        <p className="text-xs text-gray-500 font-mono">{sub.code}</p>
+                        <p className="text-xs text-gray-500 font-mono">{sub?.code}</p>
                       </div>
                       <div className="flex gap-2">
+                        <button // deleing icon for subject assignment
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClassSubject(sub?.id);
+                          }}
+                          title="delete subject assignment"
+                          className="text-[10px] bg-red-600 text-red-50 px-2 py-1 rounded hover:bg-red-400 border border-red-100 whitespace-nowrap"
+                        >
+                          <i className="fa-solid fa-trash-can"></i>
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            onInitiateSubstitute(sub, selectedCls.id);
+                            onInitiateSubstitute(sub,teacher, selectedCls.id);
                           }}
-                          className="text-[10px] bg-navy-50 text-navy-700 px-2 py-1 rounded hover:bg-navy-100 border border-navy-100 whitespace-nowrap"
+                          className="text-[10px] bg-navy-900 text-navy-50 px-2 py-1 rounded hover:bg-navy-600 border border-navy-100 whitespace-nowrap"
                         >
-                          Assign
+                          Manage
                         </button>
                       </div>
                     </div>
@@ -506,7 +514,7 @@ if (viewMode === "DETAIL") {
                       <i className="fa-solid fa-chalkboard-user"></i>
                       {teacher ? (
                         <span className="font-medium text-navy-800">
-                          {teacher.title} {teacher?.last_name}
+                          {teacher?.name} • {teacher?.staff_id}
                         </span>
                       ) : (
                         <span className="text-orange-500 italic">No teacher assigned</span>
