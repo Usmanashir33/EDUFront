@@ -488,28 +488,33 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   if (!isOpen) return null;
 
   const modalContent = (
-    <div className="fixed inset-0 z-[150] overflow-hidden flex items-center justify-center p-4 sm:p-6" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[150] overflow-hidden flex items-center justify-center p-4 sm:p-6 " aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div className="fixed inset-0 bg-navy-950/35 bg-opacity-80 backdrop-blur-sm transition-opacity" aria-hidden="true" onClick={onClose}></div>
 
-        <div className="relative bg-white rounded-xl shadow-2xl transform transition-all sm:max-w-2xl sm:w-full animate-fadeIn max-h-[90vh] flex flex-col w-full">
-          <div className="flex-shrink-0 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-100">
+        {/* <div className="relative bg-white rounded-xl shadow-2xl transform transition-all sm:max-w-2xl sm:w-full animate-fadeIn max-h-[90vh] flex flex-col w-full bbd "> */}
+        <div className="relative bg-white rounded-xl shadow-2xl transform transition-all sm:max-w-2xl sm:w-full animate-fadeIn mt-5 max-h-[95vh] flex flex-col w-full">
+          <div className="flex-shrink-0 px-4 pt-5 pb-2 sm:p-6 sm:pb-2 border-b border-gray-100">
             <div className="flex items-center justify-between mb-4">
               {icon ? (
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-navy-50 border border-navy-100">
-                  <i className={`${icon} text-navy-600 text-xl`}></i>
+                <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center justify-center h-12 w-12 rounded-full bg-navy-50 border border-navy-100">
+                    <i className={`${icon} text-navy-600 text-xl`}></i>
+                  </div>
+                  <h3 className="text-lg leading-6 font-bold text-navy-900" id="modal-title">
+                    {title}
+                  </h3>
                 </div>
-              ) : <div></div>}
+              ) : <h3 className="text-lg leading-6 font-bold text-navy-900" id="modal-title">
+                    {title}
+                  </h3>
+              }
               <button onClick={onClose} className="text-gray-400 hover:text-navy-900 transition-colors ml-auto">
                 <i className="fa-solid fa-xmark text-xl"></i>
               </button>
             </div>
-            <div className="text-left w-full">
-              <h3 className="text-lg leading-6 font-bold text-navy-900" id="modal-title">
-                {title}
-              </h3>
-            </div>
+            
           </div>
-          <div className="w-full overflow-y-auto custom-scrollbar flex-grow p-4 sm:p-6">
+          <div className="w-full overflow-y-aut custom-scrollba flex-grow p-4 sm:p-6 ">
             {children}
           </div>
         </div>

@@ -131,28 +131,24 @@ const AuthContextProvider = ({ children }) => {
 
     const setSchoolData = (data) => {
         console.log('setSchoolData: ', data);
-        setSelectedSchool(data?.school_and_academics || []);
 
-        setTemplates(data?.templates || []);
-        setFinances(data?.finance || []);
-        setSchoolFees(data?.class_fee_settings || []);
+        setSelectedSchool(data?.school_and_academics || []);
+        setSections(data?.school_and_academics?.sections || []);
+        setSubjects(data?.school_and_academics?.subjects || []);
+        setClassRooms(data?.school_and_academics?.classrooms || []);
 
         setStudents(data?.school_students || []);
         setTeachers(data?.school_teachers || []);
         setStaffs(data?.school_staffs || []);
-        setSections(data?.school_and_academics?.sections || []);
-        setSubjects(data?.school_subjects || []);
-        setClassRooms(data?.school_and_academics?.sections.flatMap(
-            section => section.classrooms) || []
-        );
+
+        setTemplates(data?.templates || []);
+        setFinances(data?.finance || []);
+        setSchoolFees(data?.class_fee_settings || []);
         setPromotionLogs(data?.promotion_logs || [])
-        setActivities(data?.activity_logs || [])
         setPermissions(data?.school_permissions || [])
         setRoles(data?.school_roles || [])
-        setPageLoading(true);
-        setTimeout(() => {
-            setPageLoading(false)
-        }, 1500);
+
+        setActivities(data?.activity_logs || [])
     }
 
 

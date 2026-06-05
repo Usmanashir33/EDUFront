@@ -38,6 +38,8 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
 
   const [subjectSearchQueue, setSubjectSearchQueue] = useState('');
   const [teacherSearchQueue, setTeacherSearchQueue] = useState('');
+  const queueBtnRef = useRef<any|null>(null);
+
   const [subjectAssignmentsQueue, setSubjectAssignmentsQueue] = useState<{subject: Subject, teacherId: string}[]>([]);
   const [classSubjectAssignmentType,setClassSubjectAssignmentType] = useState<"SUBSTITUTE"|"ASSIGNMENT">("ASSIGNMENT");
   const [showConfirmClassSubDel,setShowConfirmClsSubDel] = useState(false);
@@ -135,6 +137,13 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+  
+  useEffect(() => {
+    queueBtnRef?.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    })
+  }, [selectedTeacherForSubject]);
 
   useEffect(() => {
     if (showClassSelectModal && selectedSubjectForClass) {
@@ -178,7 +187,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     
     }else if (data?.assigned_subject_class){ // assigned subject class
       let u = data?.assigned_subject_class
-      setSelectedCls(u);
+      setSelectedCls(u) ;
       setShowAddSubjectToClassModal(false);
       setSelectedSubjectToAdd(null);
       setSelectedTeacherForSubject('');
@@ -1130,16 +1139,16 @@ const filteredTeachers = useMemo(() => {
           setClassSubjectAssignmentType("ASSIGNMENT");
        }}
        title={`${classSubjectAssignmentType === "SUBSTITUTE" ? "Substitute" : "Assign"} Subjects Assignments for ${currentContextData?.classId ? classRooms.find(c => c.id === currentContextData.classId)?.name : ""}`}
-       icon="fa-solid fa-list-check" size="xl">
-                <div className="flex flex-col md:flex-row gap-6 min-h-[60vh] max-h-[75vh] ">
+       icon="fa-solid fa-list-check" >
+                <div className="flex flex-col md:flex-row gap-6 min-h-[60vh] max-h-[75vh] -mt-2">
                     {/* Left Panel: Subject & Teacher Selection */}
                     <div className="w-full md:w-2/3 flex flex-col space-y-4 border-r border-gray-100 pr-0 md:pr-6 overflow-y-auto custom-scrollbar relative ">
                         {!selectedSubjectToAdd ? (
-                            <div className="space-y-4">
+                            <div className="space-y-4 relative ">
                                 <div className="flex justify-between items-center bg-white sticky top-0 py-2 z-10 border-b border-gray-100">
                                     <h4 className="text-sm font-bold text-navy-800 uppercase">1. Select Subject</h4>
                                 </div>
-                                <div>
+                                <div className="sticky top-9">
                                     <input type="text" autoFocus placeholder="Search by name or code..." className="w-full p-2.5 text-sm border border-gray-300 rounded-md focus:border-navy-500 focus:ring-1 focus:ring-navy-500" value={subjectSearchQueue} onChange={(e) => setSubjectSearchQueue(e.target.value)} />
                                 </div>
                                 <div className="grid grid-cols-1 gap-2 p-1">
@@ -1177,7 +1186,10 @@ const filteredTeachers = useMemo(() => {
                                             {selectedTeacherForSubject === '' && <i className="fa-solid fa-check text-navy-600"></i>}
                                         </div>
                                         {filteredTeachers?.map(t => (
-                                            <div key={t.id} onClick={() => setSelectedTeacherForSubject(t.id)} className={`p-3 border-b border-gray-100 cursor-pointer flex items-center justify-between transition-colors ${selectedTeacherForSubject === t.id ? 'bg-navy-50' : 'hover:bg-gray-50'}`}>
+                                            <div key={t.id} onClick={() => {
+                                                setSelectedTeacherForSubject(t.id);
+                                              }} 
+                                              className={`p-3 border-b border-gray-100 cursor-pointer flex items-center justify-between transition-colors ${selectedTeacherForSubject === t.id ? 'bg-navy-50' : 'hover:bg-gray-50'}`}>
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-6 h-6 rounded-full bg-navy-100 flex justify-center items-center text-[10px] text-navy-700 font-bold">{t.first_name[0]}</div>
                                                     <span className="text-sm font-medium text-navy-900">{t.title} {t.first_name} {t.last_name}</span>
@@ -1188,7 +1200,7 @@ const filteredTeachers = useMemo(() => {
                                     </div>
                                     <p className="text-xs text-gray-500 mt-2"><i className="fa-solid fa-circle-info mr-1"></i>You can re-assign this later.</p>
                                 </div>
-                                <div className="flex justify-end pt-2">
+                                <div className="flex justify-end pt-2" ref={queueBtnRef}>
                                     <Button 
                                       disabled={
                                         classSubjectAssignmentType === "SUBSTITUTE" ? subjectAssignmentsQueue?.length > 0 : false
@@ -1238,7 +1250,7 @@ const filteredTeachers = useMemo(() => {
                                                 </div>
                                                 <button 
                                                   onClick={() => setSubjectAssignmentsQueue(subjectAssignmentsQueue.filter((_, i) => i !== idx))} 
-                                                  className="text-gray-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  className="text-gray-300 hover:text-red-500 p-1 opacity-100 group-hover:opacity-80 transition-opacity">
                                                   <i className="fa-solid fa-times"></i>
                                                 </button>
                                             </div>
@@ -1248,9 +1260,9 @@ const filteredTeachers = useMemo(() => {
                             )}
                         </div>
                         
-                        <div className="pt-4 border-t border-gray-100 mt-4 flex justify-end gap-3 bg-white">
-                            <Button variant="outline" onClick={() => { setShowAddSubjectToClassModal(false); setSelectedSubjectToAdd(null); setSubjectAssignmentsQueue([]); }}>Cancel</Button>
-                            <Button onClick={handleSubstituteSubject} disabled={subjectAssignmentsQueue.length === 0}><i className="fa-solid fa-check-double mr-2"></i>
+                        <div className=" border-t border-gray-100 mt-2 flex justify-end gap-3 bg-white">
+                            <Button className="-py-2 px-4" variant="outline" onClick={() => { setShowAddSubjectToClassModal(false); setSelectedSubjectToAdd(null); setSubjectAssignmentsQueue([]); }}>Cancel</Button>
+                            <Button className="-py-2 px-4" onClick={handleSubstituteSubject} disabled={subjectAssignmentsQueue.length === 0}><i className="fa-solid fa-check-double mr-2"></i>
                               {classSubjectAssignmentType === "SUBSTITUTE" ? "Reassign Subjects" : "Assign Subjects"}
                             </Button>
                         </div>

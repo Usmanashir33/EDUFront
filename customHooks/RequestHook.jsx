@@ -8,13 +8,16 @@ const useRequest = () => {
     const Aborter = new AbortController();
     // const {getToken,isAuthenticated} = useContext(authContext) ;
     const { isAuthenticated, getToken } = useContext(authContext);
-    const { setIsLoading } = useContext(uiContext);
+    const { setIsLoading, setPageLoading } = useContext(uiContext);
     const { toast, setToast } = useContext(uiContext);
 
-    const sendRequest = async (url, method, formdata = "", triggeredFunc, load = false, is_formData = false) => {
+    const sendRequest = async (url, method, formdata = "", triggeredFunc, load = false, is_formData = false, isBigQuery = false) => {
         if (!isAuthenticated) { return }
         if (load) {
             setIsLoading(true);
+        }
+        if (isBigQuery) {
+            setPageLoading(true)
         }
         let token = await getToken()
         if (!token) {
@@ -46,6 +49,7 @@ const useRequest = () => {
             })
                 .then((data) => {
                     setIsLoading(false);
+                    setPageLoading(false);
                     if (data?.error) {
                         // chek the format error 
                         let msg = typeof data?.error === 'string' ? data.error :
@@ -55,6 +59,7 @@ const useRequest = () => {
                         return setToast({ message: msg, type: 'error' });
                     }
                     triggeredFunc(data)
+
                 }).catch((err) => {
                     //    show error here 
                     setToast({ message: err.message, type: 'error' });

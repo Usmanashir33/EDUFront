@@ -217,7 +217,7 @@ const App: React.FC = () => {
       }
     }
     if ( school?.id) { 
-      sendRequest(`/director/school-detail/${school?.id}/`,'GET',null as any ,setSchoolData,false,false) ;
+      sendRequest(`/school/school-detail/director/${school?.id}/`,'GET',null as any ,setSchoolData,false,false,true) ;
     }
   };
 
@@ -226,7 +226,7 @@ const App: React.FC = () => {
     // call the big data api here 
     let role = userRole?.toLowerCase()
     if ( selectedSchool?.id) { 
-      sendRequest(`/${role}/school-detail/${selectedSchool?.id}/`,'GET',null as any ,setSchoolData,false,false) ;
+      sendRequest(`/school/school-detail/${role}/${selectedSchool?.id}/`,'GET',null as any ,setSchoolData,false,false,true) ;
     }
     setIsLoginSession(false);
   },[isLoginSession,selectedSchool,])
@@ -259,7 +259,8 @@ const App: React.FC = () => {
                         // fetch school big data  records here           //
                         setSelectedSchool(school) ;
                         if (session?.role){ // director/student/teacher/parent/staff 
-                          sendRequest(`/${session.role?.toLowerCase()}/school-detail/${school?.id}/`,'GET',null as any , setSchoolData,false,false) ;
+                          let role = session?.role?.toLowerCase()
+                          sendRequest(`/school/school-detail/${role}/${school?.id}/`,'GET',null as any , setSchoolData,false,false,true) ;
                         }
                     } else if (session.role === 'director' && directorschools ) { // but school not selected 
                         setCurrentView(ViewState.SELECT_SCHOOL);

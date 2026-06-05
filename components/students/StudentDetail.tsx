@@ -17,12 +17,13 @@ type DetailTab = "OVERVIEW" | "ACADEMIC" | "GUARDIAN" | "ADMIN";
 type TermViewTab = "REPORT" | "ANALYSIS" | "RECORDS";
 interface StudentDetailProps {
   id: string;
-  setViewMode?: (param:ViewMode) => void | undefined;
+  student,setStudent,
+  setViewMode?: (param?:ViewMode) => void | undefined;
   triggerSuspend: () => void;
   triggerDelete: () => void;
 }
 // --- DETAIL VIEW ---
-export const StudentDetail: React.FC<StudentDetailProps> = ({id, setViewMode, triggerDelete, triggerSuspend}) => {
+export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStudent, setViewMode, triggerDelete, triggerSuspend}) => {
   const [activeTab, setActiveTab] = useState<DetailTab>("OVERVIEW");
   const [showImage, setShowImage] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
@@ -33,21 +34,20 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id, setViewMode, tr
   const [termViewTab, setTermViewTab] = useState<TermViewTab>("REPORT");
   const [reportData, setReportData] = useState<any>(null);
   // Security & Notification State
-  const {selectedSchool} = useContext(uiContext);
+  const {selectedSchool} = useContext(uiContext); 
   const {
-    students,
     classRooms,
     isLoading,
   } = useContext(uiContext);
-  // const {currentUser} = useContext(authContext); // to check some other things
   const {sendRequest} = useRequest();
 
-  const s = students.find((st) => st.id === id);
   if (!s) return null;
-  const assignedClassesIds = s?.class_rooms.map((c) => c.class_room) || [];
+  const assignedClassesIds = s?.active_class_rooms || [];
   const assignedClasses = classRooms.filter((c) => assignedClassesIds.includes(c.id));
   const triggeredFunc = (resp) => {
-    console.log('respyy: ', resp);
+    if (resp?.student_details){ 
+      setStudent(resp?.student_details);
+    }
     if (pendingAction === "REPORT") {
         if (resp?.studentReport){
           setTermViewTab("REPORT"); // Default to report view
@@ -67,13 +67,21 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id, setViewMode, tr
     let url = `/result/reportsheet/fetch/${s.id}/${termId}/${clsId}/`
     sendRequest(url,"GET",null as any ,triggeredFunc,true,false)
   };
-  const topRef = useRef(null)
-      useEffect(() => {
-          topRef.current?.scrollIntoView({
-              behavior: "smooth",
-              block: "start"
-          })
-      }, [])
+  useEffect(() => {
+    if (id){ 
+      // setSelectedCls(classRooms.find((c) => c.id === selectedId)) ;
+      let sUrl = `/student/details/${selectedSchool?.id}/${id}/`
+      sendRequest(sUrl,"GET",null as any ,triggeredFunc,!true,false);
+    }
+    // return (() => {setStudent(null)});
+  },[id])
+  const topRef = useRef<any>(null)
+  useEffect(() => {
+      topRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+      })
+  }, [])
 
   return (
     <div className="animate-fadeIn space-y-6">
@@ -168,8 +176,8 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id, setViewMode, tr
             <div className="flex items-end">
               <div className={`w-28 h-28 rounded-xl bg-white p-1.5 shadow-lg relative shrink-0 ${s?.picture ? "cursor-pointer hover:scale-105 transition-transform" : ""}`} onClick={() => s?.picture && setShowImage(true)}>
                 <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center text-5xl text-gray-400 overflow-hidden border border-gray-200">{s?.picture ? <img src={urls.BASE_URL + s?.picture} alt="Student" className="w-full h-full object-cover" /> : <i className="fa-solid fa-user"></i>}</div>
-                <span className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white ${s?.user?.is_active ? "bg-green-500" : "bg-red-500"}`}>
-                  <i className={`fa-solid ${s?.user?.is_active ? "fa-check" : "fa-ban"}`}></i>
+                <span className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white ${s?.is_active ? "bg-green-500" : "bg-red-500"}`}>
+                  <i className={`fa-solid ${s?.is_active ? "fa-check" : "fa-ban"}`}></i>
                 </span>
               </div>
               <div className="ml-5 mb-1">
@@ -178,7 +186,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id, setViewMode, tr
                 </h1>
                 <p className="text-gray-500 font-medium flex items-center text-sm mt-1">
                   <span>{s?.role}</span>
-                  <span className="bg-navy-50 text-navy-700 px-2 py-0.5 rounded border border-navy-100 mr-2">{s?.admission_number}</span>
+                  <span className="bg-navy-50 text-navy-700 px-2 py-0.5 rounded border border-navy-100 mx-2">{s?.admission_number}</span>
                   {s?.email}
                 </p>
               </div>
@@ -236,7 +244,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id, setViewMode, tr
                     </div>
                     <div>
                       <p className="text-gray-500 text-xs uppercase font-bold">Gender</p>
-                      <p className="font-semibold text-navy-900">{s?.gender}</p>
+                      <p className="font-semibold text-navy-900">{s?.gender || "N/A"}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 text-xs uppercase font-bold">Date of Birth</p>
@@ -322,7 +330,8 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id, setViewMode, tr
                       </div>
 
                       {/* REPORT VIEW */}
-                      {termViewTab === "REPORT" && <StudentReport reportData={reportData} selectedSchool={selectedSchool} />}
+                      {termViewTab === "REPORT" && <StudentReport reportData={reportData} 
+                       />}
 
                       {/* ANALYSIS VIEW */} 
                       {termViewTab === "ANALYSIS" && (
@@ -463,11 +472,11 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id, setViewMode, tr
                 <div className="space-y-4">
                   <div className="flex items-center justify-between bg-white p-5 rounded border border-red-100 shadow-sm">
                     <div>
-                      <h4 className="font-bold text-gray-800">{!s.user?.is_active ? "Reactivate Student" : "Suspend Student"}</h4>
+                      <h4 className="font-bold text-gray-800">{!s.is_active ? "Reactivate Student" : "Suspend Student"}</h4>
                       <p className="text-xs text-gray-500 mt-1">Temporarily revoke access.</p>
                     </div>
-                    <Button disabled={isLoading} variant={!s.user?.is_active ? "primary" : "secondary"} className="w-auto max-w-fit  px-6" onClick={triggerSuspend}>
-                      {!s.user?.is_active ? "Activate" : "Suspend"}
+                    <Button disabled={isLoading} variant={!s.is_active ? "primary" : "secondary"} className="w-auto max-w-fit  px-6" onClick={triggerSuspend}>
+                      {!s.is_active ? "Activate" : "Suspend"}
                     </Button>
                   </div>
                   <div className="flex items-center justify-between bg-white p-5 rounded border border-red-100 shadow-sm">

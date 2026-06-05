@@ -95,11 +95,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
   } = useContext(uiContext);
   const {sendRequest} = useRequest();
 
-  const TriggeredFunc = (resp) => {
-    if (resp?.classroom_details){
-      setSelectedCls(resp?.classroom_details)
-    }
-  }
+  
   
   const TriggeredSearchStudentFunc = (data) => {
     if (data?.success === "searchResults"){
@@ -117,7 +113,12 @@ export const ClassView: React.FC<ClassViewProps> = ({
         return;
       }
   }
-
+  
+const TriggeredFunc = (resp) => {
+    if (resp?.classroom_details){
+      setSelectedCls(resp?.classroom_details)
+    }
+  }
   useEffect(() => {
     if (viewMode === "DETAIL" && selectedId){ 
       setSelectedCls(classRooms.find((c) => c.id === selectedId)) ;
