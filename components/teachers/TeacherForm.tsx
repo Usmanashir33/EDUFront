@@ -23,7 +23,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
         isLoading, // loading state for form submission
     } = useContext(uiContext)
     const {selectedSchool} = useContext(uiContext)
-    let teacherSec = selectedSchool?.sections.filter(section => section.classrooms?.some(cls => initialData?.class_room?.includes(cls.id)))?.map((sec) => sec.id );
+
     const [formData, setFormData] = useState({
         firstName: initialData?.first_name || '', 
         lastName: initialData?.last_name ||  '', 
@@ -37,8 +37,6 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
         picture: initialData?.picture || '', 
         nin: initialData?.nin || '',
         role: initialData?.role || '',
-        sectionIds: teacherSec || [], 
-        classRoomIds:initialData?.class_room || [], // Added to match Django M2M
         salary: initialData?.salary ||  '',
         status: initialData?.user?.is_active? "Active" : "Inactive" ,
         bankDetails: { 
@@ -74,6 +72,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
                 </button>
             </div>
 
+                
             <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="p-8 space-y-8">
                 
                 <div className="flex flex-col md:flex-row gap-8">
@@ -125,45 +124,25 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-6">
-                        <h3 className="font-bold text-navy-900 border-b pb-2 mb-4 flex items-center">
-                            <span className="w-6 h-6 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center mr-2 text-xs"><i className="fa-solid fa-briefcase"></i></span>
-                            Professional Assignment
-                        </h3>
-                        <Input disabled={true} placeholder='Job Role' label="Job Role" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} iconClass="fa-solid fa-user-tag" />
-                        
-                        <MultiSelectDropdown 
-                            label="Assigned Sections (Generic)"
-                            items={sections}
-                            selectedIds={formData.sectionIds || []}
-                            onChange={(ids) => setFormData({...formData, sectionIds: ids})}
-                        />
-                        
-                        <MultiSelectDropdown 
-                            label="Assigned Classrooms (Specific)"
-                            items={classRooms}
-                            selectedIds={formData.classRoomIds || []}
-                            onChange={(ids) => setFormData({...formData, classRoomIds: ids})}
-                        />
-
-                        <Input 
-                            label="Base Salary" 
-                            type="text"
-                            value={formatInputCurrency(formData.salary || '')} 
-                            onChange={e => setFormData({...formData, salary: cleanCurrencyInput(e.target.value)})} 
-                            iconClass="fa-solid fa-money-bill" 
-                            placeholder="₦0"
-                        />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-10">
                     <div className="space-y-6">
                          <h3 className="font-bold text-navy-900 border-b pb-2 mb-4 flex items-center">
                             <span className="w-6 h-6 rounded-full bg-navy-100 text-navy-700 flex items-center justify-center mr-2 text-xs"><i className="fa-solid fa-building-columns"></i></span>
-                            Financial
+                            Financial Data
                         </h3>
-                        <Input placeholder='Bank Name' label="Bank Name" value={formData.bankDetails?.bankName} onChange={e => updateBank('bankName', e.target.value)} iconClass="fa-solid fa-building-columns" />
-                        <Input placeholder='Account Number' label="Account Number" value={formData.bankDetails?.accountNumber} onChange={e => updateBank('accountNumber', e.target.value)} iconClass="fa-solid fa-hashtag" />
-                        <Input placeholder='Account Name' label="Account Name" value={formData.bankDetails?.accountName} onChange={e => updateBank('accountName', e.target.value)} iconClass="fa-solid fa-signature" />
+                        <div className="grid grid-cols-2 md:grid-cols-2 gap-10">
+                            <Input 
+                                label="Base Salary" 
+                                type="text"
+                                value={formatInputCurrency(formData.salary || '')} 
+                                onChange={e => setFormData({...formData, salary: cleanCurrencyInput(e.target.value)})} 
+                                iconClass="fa-solid fa-money-bill" 
+                                placeholder="₦0.00"
+                            />
+                            <Input placeholder='Bank Name' label="Bank Name" value={formData.bankDetails?.bankName} onChange={e => updateBank('bankName', e.target.value)} iconClass="fa-solid fa-building-columns" />
+                            <Input placeholder='Account Number' label="Account Number" value={formData.bankDetails?.accountNumber} onChange={e => updateBank('accountNumber', e.target.value)} iconClass="fa-solid fa-hashtag" />
+                            <Input placeholder='Account Name' label="Account Name" value={formData.bankDetails?.accountName} onChange={e => updateBank('accountName', e.target.value)} iconClass="fa-solid fa-signature" />
+                        </div>
                     </div>
                 </div>
 

@@ -42,7 +42,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
               setViewMode('DETAIL');
           }
           if (onClearInitial) onClearInitial();
-      }
+      } 
   }, [initialStudentId, students, onClearInitial]);
 
   // List Filters
@@ -82,7 +82,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
       }else if (data?.updated_student){
         let u = data?.updated_student
 
-        setStudents(students.map(x => x.id === u?.id ? u : x));
+        setStudents(students.map(x => x.id === u?.id ? {...x,...u} : x));
         if (student) setStudent(prev => ({...prev,...u}))
         setViewMode('DETAIL');
       
@@ -109,6 +109,8 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
             setViewMode('LIST');
             setSelectedStudentId(null);
             setStudent(null);
+            setSelectedSchool(s => ({...s,total_students: {...s?.total_students,count:s?.total_students?.count - 1}}))
+
       }
 
   }
@@ -255,14 +257,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
   return ( 
     <div className="w-full h-full overflow-y-auto max-h-100  relative " >
           {/* Pagination - Floating UI */}
-          <Paginator 
-            data={students}
+          {selectedSchool?.total_students?.count && <Paginator 
+            currentLength={selectedSchool?.total_students?.count }
             setData={setStudents}
             filteredData={filteredStudents}
             schoolId = {selectedSchool?.id}
             url={`/student/all-students/${selectedSchool?.id}/`}
             sendRequest={sendRequest}
-          />
+          />}
       <div className="animate-fadeIn space-y-6 relative">
           {(viewMode === 'DETAIL' ||viewMode === 'EDIT') && selectedStudentId && student ? (
                 <>

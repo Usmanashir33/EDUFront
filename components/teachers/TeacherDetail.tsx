@@ -5,22 +5,19 @@ import { Button, Input, ImageViewer, Modal } from '../UI';
 import { safeParseFloat } from './TeacherFinance';
 import { uiContext } from '@/customContexts/UiContext';
 import urls from '@/customHooks/ServerUrls';
+import useRequest from '@/customHooks/RequestHook';
 
 interface TeacherDetailProps { 
     id: string;
-    teacher: Teacher;
-    sections: SchoolSection[];
-    subjects: Subject[];
-    classRooms: ClassRoom[];
+    teacher: Teacher | any ;
+    setTeacher: (teacher:any) => void;
     onBack: () => void;
     onEdit: () => void;
-    onUpdateTeacher: (t: Teacher) => void;
     onTriggerSalary: (data: any) => void;
     onViewReceipt: (data: any) => void;
     onTriggerSuspend: () => void;
     onTriggerDelete: () => void;
     onOpenBankModal: () => void;
-    onSetToast: (t: any) => void;
     onViewDoc: (doc: KYCDocument) => void;
     onVerifyDoc: (doc: KYCDocument) => void;
     triggerRecord: (form:any , type:any ) => void ;
@@ -29,26 +26,40 @@ interface TeacherDetailProps {
 type Tab = 'OVERVIEW' | 'ACADEMIC' | 'FINANCE' | 'ADMIN';
 
 export const TeacherDetail: React.FC<TeacherDetailProps> = ({ 
-    id, teacher, sections, subjects, classRooms, 
-    onBack, onEdit, onUpdateTeacher, onTriggerSalary, onViewReceipt, 
-    onTriggerSuspend, onTriggerDelete, onOpenBankModal,onSetToast, onViewDoc, onVerifyDoc ,triggerRecord
+    id,
+    teacher,
+    setTeacher ,
+    onBack, onEdit,
+    onTriggerSalary,
+    onViewReceipt, 
+    onTriggerSuspend,
+    onTriggerDelete,
+    onOpenBankModal,
+    onViewDoc,
+    onVerifyDoc ,
+    triggerRecord
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW');
-    const [showImage, setShowImage] = useState(false);
-    const {selectedSchool,teachers,isLoading} = useContext(uiContext)
-    const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false); 
+    const [showImage, setShowImage] = useState(false) ;
+    const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false) ; 
+    const {
+        selectedSchool,
+        teachers,
+        isLoading,
+        sections,
+        subjects,
+        setToast,
+        classRooms
+    } = useContext(uiContext);
+    const {sendRequest} = useRequest() ;
     
     // Admin Form States
     const [disciplinaryForm, setDisciplinaryForm] = useState({ title: '', description: '', severity: 'Low' as 'Low'|'Medium'|'High' });
 
-    // Calculations
-    let assignedSections = selectedSchool?.sections.filter(section => section.classrooms?.some(cls => teacher?.class_room?.includes(cls.id))) // ?.map((sec) => sec.id );
-
-    const assignedSubjects = subjects.filter(sub => sub?.teacher?.includes(teacher.id));
-    const formClasses = classRooms.filter(c => c?.form_teacher === teacher.id);
-    const teachingClasses = Array.from(new Set(assignedSubjects?.flatMap(s => s.class_room)))
-                               .map(cid => classRooms.find(c => c.id === cid))
-                               .filter(c => c !== undefined) as ClassRoom[];
+    const assignedSections = sections.filter(sec => teacher?.sections?.includes(sec?.id)) 
+    const assignedSubjects = teacher?.subjects || []
+    const formClasses = classRooms.filter(c => teacher?.form_classes?.includes(c.id)) ;
+    const teachingClasses = classRooms.filter(c => teacher?.class_rooms?.includes(c.id)) ;
 
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
     const isPaidThisMonth = teacher.paymentHistory?.some(p => p.month === currentMonth && p.status === 'Paid');
@@ -60,20 +71,33 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
              description: disciplinaryForm.description,
              severity: disciplinaryForm.severity,
              school : selectedSchool.id,
-             teacher : teacher?.id 
+             teacher : teacher?.id  
          };
          
-        //  console.log('newRecord: ', newRecord);
          triggerRecord(newRecord,'ADD-RECORD')
          setDisciplinaryForm({ title: '', description: '', severity: 'Low' }); // clear the form
     };
-    const topRef = useRef(null)
-      useEffect(() => {
+    const triggeredFunc =  (resp) => {
+        // console.log('resp: ', resp);
+        if (resp?.teacher_details){ 
+        setTeacher(t => ({...t,...resp?.teacher_details}));
+        }
+    }
+    useEffect(() => {
+        if (id){ 
+          let sUrl = `/teacher/details/${selectedSchool?.id}/${id}/`
+          sendRequest(sUrl,"GET",null as any ,triggeredFunc,!true,false);
+        }
+      },[id]);
+
+    const topRef = useRef<any>(null)
+    useEffect(() => {
           topRef.current?.scrollIntoView({
                behavior: "smooth",
               block: "start"
                   })
-        }, [])
+    }, []);
+
     useEffect(() => {
          setDisciplinaryForm({ title: '', description: '', severity: 'Low' }); // clear the form
     },[teacher])
@@ -101,8 +125,8 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                 <div className="w-full h-full bg-navy-50 rounded-lg flex items-center justify-center text-4xl text-navy-300 font-bold border border-gray-100 overflow-hidden">
                                     {teacher.picture ? <img src={urls.BASE_URL+teacher.picture} alt="" className="w-full h-full object-cover"/> : `${teacher.first_name[0]}${teacher.last_name[0]}`}
                                 </div>
-                                <span className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white ${teacher?.user?.is_active? 'bg-green-500' : 'bg-red-500'}`}>
-                                    <i className={`fa-solid ${teacher?.user?.is_active? 'fa-check' : 'fa-ban'}`}></i>
+                                <span className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white ${teacher?.is_active? 'bg-green-500' : 'bg-red-500'}`}>
+                                    <i className={`fa-solid ${teacher?.is_active? 'fa-check' : 'fa-ban'}`}></i>
                                 </span>
                             </div>
                             <div className="ml-5 mb-1">
@@ -221,7 +245,7 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                         </div>
                                         <div className="p-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {teachingClasses.map(cls => (
+                                                {teachingClasses?.map(cls => (
                                                     <div key={cls.id} className="flex items-center p-3 bg-gray-50 rounded border border-gray-200">
                                                         <div className="w-8 h-8 rounded bg-navy-100 text-navy-700 flex items-center justify-center font-bold text-xs mr-3">
                                                             {cls.name.substring(0,2)}
@@ -229,7 +253,7 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                                         <div>
                                                             <p className="text-sm font-bold text-navy-900">{cls.name}</p>
                                                             <p className="text-xs text-gray-500">
-                                                                {assignedSubjects.filter(s => s.class_room.includes(cls.id)).map(s => s.name).join(', ')}
+                                                                {assignedSubjects.filter(s => s.classroom__name===cls?.name).map(s => s.subject__name).join(', ')}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -244,8 +268,8 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                 <div className="space-y-4">
                                      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm text-center">
                                         <h4 className="text-xs font-bold text-gray-500 uppercase ">Status</h4>
-                                        <div className={`text-xl font-bold my-2 ${teacher?.user?.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                                            {teacher?.user?.is_active ? `${teacher?.role} Active` : `${teacher?.role} Inactive`}
+                                        <div className={`text-xl font-bold my-2 ${teacher?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                                            {teacher?.is_active ? `${teacher?.role} Active` : `${teacher?.role} Inactive`}
                                         </div>
                                         <p className="text-xs text-gray-400">Account Standing</p>
                                     </div>
@@ -304,10 +328,17 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                     <h4 className="font-bold text-gray-700 mb-2">Subjects Taught</h4>
                                     <ul className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
                                         {assignedSubjects.map(sub => (
-                                            <li key={sub.id} className="text-sm flex justify-between border-b border-gray-50 pb-1 last:border-0">
-                                                <span>{sub.name}</span> <span className="text-xs text-gray-400 font-mono">{sub.code}</span>
+                                            <li key={sub.id} className="bg-navy-900 text-white px-2 py-1 rounded text-xs text-sm flex justify-between border-b border-gray-50 pb-1 last:border-0">
+                                                <span>
+                                                    <span className="text-xs p-2">{sub.subject__name}</span>
+                                                        •
+                                                    <span className="text-xs p-2">{sub.subject__code}</span>
+                                                </span>
+                                                 <span className="text-xs">{sub.classroom__name}</span>
                                             </li>
                                         ))}
+                                        <div className="flex flex-wrap gap-2">
+                                    </div>
                                         {assignedSubjects.length === 0 && <span className="text-gray-400 italic text-sm">No subjects assigned</span>}
                                     </ul>
                                 </div>
@@ -399,7 +430,13 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                         
                                         {/* Edit Button */}
                                         <button 
-                                            onClick={onOpenBankModal}
+                                            onClick={() => {
+                                                setToast({message:'Edit inside Edit Profile.',type:'info'})
+                                                topRef?.current?.scrollIntoView({
+                                                    behavior: "smooth",
+                                                    block: "start"
+                                                })
+                                            }}
                                             className="absolute top-4 right-4 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors z-10"
                                             title="Edit Bank Details"
                                         >
@@ -519,7 +556,7 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                           ></textarea>
                                      </div>
                                      <div className="flex justify-end">
-                                         <Button onClick={handleAddDisciplinary} className="w-auto px-6" variant="secondary">
+                                         <Button onClick={handleAddDisciplinary} className="w-auto max-w-fit  px-6" variant="secondary">
                                              <i className="fa-solid fa-save mr-2"></i> Log Record
                                          </Button>
                                      </div>
@@ -556,10 +593,10 @@ export const TeacherDetail: React.FC<TeacherDetailProps> = ({
                                 <div className="bg-red-50 border border-red-100 rounded-lg p-6">
                                     <h3 className="text-lg font-bold text-red-800 mb-4">Account Control</h3>
                                     <div className="flex gap-4">
-                                        <Button variant="secondary" className="w-auto px-4" onClick={onTriggerSuspend}>
-                                            {!teacher?.user?.is_active ? 'Activate Account' : 'Suspend Account'}
+                                        <Button variant="secondary" className="w-auto max-w-fit px-4" onClick={onTriggerSuspend}>
+                                            {!teacher?.is_active ? 'Activate Account' : 'Suspend Account'}
                                         </Button>
-                                        <Button variant="danger" className="w-auto px-4" onClick={() => {setIsDeletingModalOpen(true)}}>Delete Teacher</Button>
+                                        <Button variant="danger" className="w-auto max-w-fit px-4" onClick={() => {setIsDeletingModalOpen(true)}}>Delete Teacher</Button>
                                     </div>
                                 </div>
                             </div>

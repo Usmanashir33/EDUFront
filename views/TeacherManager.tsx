@@ -58,13 +58,12 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
     let   [admForm,setAdmForm] = useState({});
     const [recordId,setRecordId] = useState(null);
     const {currentUser} = useContext(authContext);
+    const [selectedTeacher,setSelectedTeacher] = useState<any|null>(null)
     const {   selectedSchool,
+                setSelectedSchool,
               teachers, setTeachers ,// teachers data
-              sections,  // sections data
-              classRooms, // classRooms data
-              subjects,// subjects data
               setToast ,
-          } = useContext(uiContext)
+          } = useContext(uiContext);
     const {sendRequest} = useRequest();
 
     // Date Navigation
@@ -97,50 +96,55 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
   const TriggeredFunc = (data:any) => { 
     // console.log('data: ', data);
     if (data?.success){
-        setToast({ message: data?.success, type: 'success' });
-
         if (data?.success === "searchResults"){
             // only teachers not already in the list of the teachers state will be added to the top of the list 
             let searched = data?.results.filter((res) => teachers.find(s => s.id !== res.id))
             setTeachers((prev) => [...searched,...prev])
             return;
         }
+        setToast({ message: data?.success, type: 'success' });
+
         if (data?.new_teacher){
           setShowPinModal(false);
           setViewMode('LIST');
           setTeachers ([data?.new_teacher,...teachers]);
+          setSelectedSchool(s => ({...s,total_teachers: {...s?.total_teachers,count:s?.total_teachers?.count + 1}}))
           return ;
         
         }else if (data?.updated_teacher){
-          setTeachers(teachers.map(x => x.id === selectedTeacherId ? data?.updated_teacher : x));
+            let u = data?.updated_teacher
+          setTeachers(teachers.map(x => x.id === u?.id ? {...x,...u} : x));
+          if (selectedTeacher) setSelectedTeacher(t => ({...t,...u})) ;
           setViewMode('DETAIL');
           return 
 
         }else if (data?.sus_teacher){
-            setTeachers(teachers.map(x => x.id === selectedTeacherId ? data?.sus_teacher : x));
+            let s = data?.sus_teacher
+            let status = s?.is_active
+            setTeachers(teachers.map(x => x.id === s?.id ? {...x,is_active:status} : x));
+            if (selectedTeacher) setSelectedTeacher(u => ({...u,is_active:status})) ;
             return ;
 
         }else if (data?.del_teacher){
+            setViewMode("LIST") ;
             setTeachers(teachers.filter(x => x.id !== data?.del_teacher.id));
+            setSelectedSchool(s => ({...s,total_teachers: {...s?.total_teachers,count:s?.total_teachers?.count - 1}}))
+
             return ;
         
         }else if (data?.new_record){ 
-            const teacher = teachers?.filter(({id}) =>id ===  data?.new_record?.teacher)
-            const updated = { ...teacher, disciplinaryRecords: [data?.new_record, ...(teacher.disciplinaryRecords || [])] };
-            setTeachers(teachers?.map((tec) => tec.id === teacher.id? updated : tec))
-        
+            if (selectedTeacher) setSelectedTeacher(u => {
+                return { ...u, disciplinaryRecords: [data?.new_record, ...(u.disciplinaryRecords || [])] };
+            }) ;
         }else if (data?.updated_record){
-            const teacher = teachers?.filter(({id}) =>id ===  data?.new_record?.teacher)
-            const updated = {
-                 ...teacher, 
-                disciplinaryRecords: teacher.disciplinaryRecords?.map((rec) => rec.id === data?.updated_record.id ? data?.updated_record :rec) };
-            setTeachers(teachers?.map((tec) => tec.id === teacher.id? updated : tec))
-
+            let ur = data?.updated_record
+            if (selectedTeacher) setSelectedTeacher(u => {
+                return { ...u, disciplinaryRecords: u?.disciplinaryRecords?.map((rec) => rec.id === ur.id ? {...rec,...ur} :rec) };
+            }) ;
         }
     }
   }
     const handleApiCall = (data:any) => {
-        console.log('data: ', data);
         let form = new FormData() 
         // Only include id if updating
         form.append("first_name", data.firstName);
@@ -166,13 +170,9 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
         if (data.picture instanceof File) {
         form.append("picture", data.picture);
         }
-        // ManyToMany → append each classroom id
-        data.classRoomIds?.forEach((id:string) => {
-            form.append("class_rooms", id);
-        })
 
         setServerForm(form)  // initialize the server form 
-        if (!currentUser?.user?.pin_set){
+        if (!currentUser?.user?.pin_set){ 
         // Make the api call here  when user  need no pin to talk to server 
             if (viewMode === "ADD") { 
                 sendRequest("/teacher/add-teacher/","POST",form as any ,TriggeredFunc,true,true)
@@ -294,7 +294,7 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
     }
 
     if (viewMode === 'EDIT' && selectedTeacherId) {
-        const teacher = teachers.find(t => t.id === selectedTeacherId);
+        const teacher = selectedTeacher ?? teachers.find(t => t.id === selectedTeacherId);
         return (
             <>
             <PinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={handlePinSuccess} title="Authorize Action" />
@@ -307,26 +307,22 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
         );
     }
 
-    if (viewMode === 'DETAIL' && selectedTeacherId) {
-        const teacher = teachers.find(t => t.id === selectedTeacherId);
-        if (!teacher) return null;
+    if (viewMode === 'DETAIL' && selectedTeacherId && selectedTeacher) {
         return (
             <>
                 <PinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={handlePinSuccess} title="Authorize Action" />
                 <TeacherDetail 
                     id={selectedTeacherId}
-                    teacher={teacher}
-                    sections={sections}
-                    subjects={subjects}
-                    classRooms={classRooms}
+                    teacher={selectedTeacher}
+                    setTeacher={setSelectedTeacher}
                     onBack={() => setViewMode('LIST')}
                     onEdit={() => setViewMode('EDIT')}
-                    onUpdateTeacher={(t) => onUpdateTeachers(teachers.map(old => old.id === t.id ? t : old))}
+                    // onUpdateTeacher={(t) => onUpdateTeachers(teachers.map(old => old.id === t.id ? t : old))}
                     onTriggerSalary={(data) => { setPayrollData(data); setShowPayrollModal(true);}}
-                    onViewReceipt={(record) => { setReceiptData({ teacher, record }); setShowReceipt(true); }}
+                    onViewReceipt={(record) => { setReceiptData({ selectedTeacher, record }); setShowReceipt(true); }}
                     onTriggerSuspend={ triggerSuspend }
                     onTriggerDelete= { triggerDelete }
-                    onOpenBankModal={() => { setBankForm(teacher.bankDetails || { bankName:'',accountNumber:'',accountName:'' }); setShowBankModal(true); }}
+                    onOpenBankModal={() => { setBankForm(selectedTeacher?.bankDetails || { bankName:'',accountNumber:'',accountName:'' }); setShowBankModal(true); }}
                     onViewDoc={(doc) => setViewDoc(doc)}
                     onVerifyDoc={(doc) => { setPendingAction({ type: 'VERIFY_DOC', payload: { docName: doc.name } }); setShowPinModal(true); }}
                     triggerRecord = { triggerRecord }
@@ -350,14 +346,14 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
 
     return (
         <div className="">
-            <Paginator 
-                data={teachers}
+            {selectedSchool?.total_teachers?.count && <Paginator 
+                currentLength={selectedSchool?.total_teachers?.count }
                 setData={setTeachers}
                 filteredData={filteredTeachers}
                 schoolId = {selectedSchool?.id}
                 url={`/teacher/all-teachers/${selectedSchool?.id}/`}
                 sendRequest={sendRequest}
-            />
+            />}
             <div className="animate-fadeIn space-y-6">
                 
                 {/* Header & Filters */}
@@ -376,7 +372,7 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase">Total Teachers</p><h3 className="text-2xl font-bold text-navy-900 mt-1">{teachers.length}</h3></div>
+                    <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase">Total Teachers</p><h3 className="text-2xl font-bold text-navy-900 mt-1">{selectedSchool?.total_teachers?.count}</h3></div>
                     <div onClick={() => setDrillDownType('PRESENT')} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm cursor-pointer border-l-4 border-l-green-500"><p className="text-xs font-bold text-gray-400 uppercase">Present Today</p><h3 className="text-2xl font-bold text-green-600 mt-1">{dashboardStats.attendanceList.length}</h3></div>
                     <div onClick={() => setDrillDownType('LATE')} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm cursor-pointer border-l-4 border-l-orange-500"><p className="text-xs font-bold text-gray-400 uppercase">Late Comers</p><h3 className="text-2xl font-bold text-orange-600 mt-1">{dashboardStats.lateList.length}</h3></div>
                     <div onClick={() => setDrillDownType('PAID')} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm cursor-pointer border-l-4 border-l-blue-500"><p className="text-xs font-bold text-gray-400 uppercase">Paid ({filterMonth.slice(0,3)})</p><h3 className="text-2xl font-bold text-blue-600 mt-1">{dashboardStats.paidList.length}</h3></div>
@@ -390,22 +386,22 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> 
-                    {(filteredTeachers.length > 0) && filteredTeachers?.map(teacher => (
-                        <div key={teacher.id} onClick={ () => { setSelectedTeacherId(teacher.id); setViewMode('DETAIL'); }} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group">
+                {(filteredTeachers.length > 0) && filteredTeachers?.map(teacher => (
+                        <div key={teacher.id} onClick={ () => { setSelectedTeacherId(teacher.id);setSelectedTeacher(teacher) ;setViewMode('DETAIL'); }} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group">
                             <div className="p-6">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center">
                                         <div className="w-12 h-12 rounded-full bg-navy-100 text-navy-600 flex items-center justify-center font-bold text-lg border
                                         border-white shadow-sm overflow-hidden">
-                                            {teacher.picture ? <img src={urls.BASE_URL+ teacher.picture} alt="" className="w-full h-full object-fit"/> : teacher.first_name[0]}
+                                            {teacher?.picture ? <img src={urls.BASE_URL+ teacher?.picture} alt="" className="w-full h-full object-fit"/> : teacher.first_name[0]}
                                             </div>
                                             <div className="ml-3  ">
                                             <h3 className="font-bold text-navy-900">{teacher.title} {teacher.first_name} {teacher.last_name}</h3>
-                                                <p className="text-xs text-gray-500 max-w-full ">{teacher?.email.length < 15 ? teacher?.email : `${teacher?.email.slice(0,5)}****${teacher?.email.slice(-10)}`}</p>
+                                                <p className="text-xs text-gray-500 max-w-full ">{teacher?.email?.length < 15 ? teacher?.email : `${teacher?.email?.slice(0,5)}****${teacher?.email?.slice(-10)}`}</p>
                                         </div></div>
-                                    <span className={`px-2 py-1 text-xs rounded font-bold ${teacher?.user?.is_active? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{teacher?.user?.is_active? "Active" : "Inactive"}</span>
+                                    <span className={`px-2 py-1 text-xs rounded font-bold ${teacher?.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{teacher?.is_active? "Active" : "Inactive"}</span>
                                 </div>
-                                <div className="space-y-2 text-sm text-gray-600"><p><i className="fa-solid fa-phone w-5 text-gray-400"></i> {teacher?.phone}</p><p><i className="fa-solid fa-layer-group w-5 text-gray-400"></i> {teacher?.class_room?.length} Classes</p></div>
+                                <div className="space-y-2 text-sm text-gray-600"><p><i className="fa-solid fa-phone w-5 text-gray-400"></i> {teacher?.phone}</p><p><i className="fa-solid fa-layer-group w-5 text-gray-400"></i> {teacher?.class_rooms?.length || "N/A"} Classe(s)</p></div>
                             </div>
                             <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center text-xs font-medium"><span className="text-gray-500">ID: {teacher.staff_id}</span><span className="text-navy-600">View Profile <i className="fa-solid fa-arrow-right ml-1"></i></span></div>
                         </div>
