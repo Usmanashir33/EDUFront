@@ -6,10 +6,12 @@ import { safeParseFloat } from './StaffFinance';
 import urls from '@/customHooks/ServerUrls';
 import { uiContext } from '@/customContexts/UiContext';
 import { StaffRoles } from './StaffRoles';
+import useRequest from '@/customHooks/RequestHook';
 
 interface StaffDetailProps { 
     id: string;
     staff: any;
+    setStaff: any;
     onBack: () => void ;
     onEdit: () => void ;
     onTriggerSalary: (data: any) => void;
@@ -25,7 +27,7 @@ interface StaffDetailProps {
 type Tab = 'OVERVIEW' | 'FINANCE' | 'ADMIN' | 'ROLES';
 
 export const StaffDetail: React.FC<StaffDetailProps> = ({ 
-    id, staff, 
+    id, staff, setStaff,
     onBack, onEdit, onTriggerSalary, onViewReceipt, 
     onTriggerSuspend, onTriggerDelete, onOpenBankModal,  onViewDoc, onVerifyDoc ,
     onServerSave
@@ -34,12 +36,13 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
     const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW'); 
     const [showImage, setShowImage] = useState(false);
     const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false); 
-    const {isLoading,selectedSchool,roles} = useContext(uiContext);
+    const {isLoading,selectedSchool,roles,setToast} = useContext(uiContext);
+    const {sendRequest} = useRequest() ;
     
     
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
     const isPaidThisMonth = staff?.paymentHistory?.some(p => p.month === currentMonth && p.status === 'Paid');
-    const schoolRole = roles.filter(r => r.id === staff?.user?.school_role) || [];
+    const schoolRole = roles.filter(r => r.id === staff?.school_role) || [];
 
     const handleManageRoles = (staffId: string, roleIds: string[]) => {
         // Call API to update roles
@@ -51,6 +54,19 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
         onServerSave('ROLE_USER', 'EDIT', form);
         return ;
     }
+    const triggeredFunc =  (resp) => {
+            // console.log('resp: ', resp);
+            if (resp?.staff_details){ 
+            setStaff(t => ({...t,...resp?.staff_details}));
+            }
+        }
+    useEffect(() => {
+            if (id){ 
+              let sUrl = `/staff/details/${selectedSchool?.id}/${id}/`
+              sendRequest(sUrl,"GET",null as any ,triggeredFunc,!true,false);
+            }
+      },[id]);
+    
 
     const topRef = useRef<null|any>(null)
           useEffect(() => {
@@ -81,8 +97,8 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                 <div className="w-full h-full bg-navy-50 rounded-lg flex items-center justify-center text-4xl text-navy-300 font-bold border border-gray-100 overflow-hidden">
                                     {staff?.picture ? <img src={urls.BASE_URL +  staff?.picture} alt="" className="w-full h-full object-cover"/> : `${staff?.first_name[0]}${staff?.last_name[0]}`}
                                 </div>
-                                <span className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white ${staff?.user?.is_active ? 'bg-green-500' : 'bg-red-500'}`}>
-                                    <i className={`fa-solid ${staff?.user?.is_active ? 'fa-check' : 'fa-ban'}`}></i>
+                                <span className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white ${staff?.is_active ? 'bg-green-500' : 'bg-red-500'}`}>
+                                    <i className={`fa-solid ${staff?.is_active ? 'fa-check' : 'fa-ban'}`}></i>
                                 </span>
                             </div>
                             <div className="ml-5 mb-1">
@@ -152,7 +168,7 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                         </h3>
                                         <div className="space-y-4 text-sm">
                                             <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">General Role</span><span className="font-semibold text-navy-900">{staff?.role?.toUpperCase()}</span></div>
-                                            <div className="flex justify-between border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Assigned School Role</span>
+                                            <div className="flex justify-between items-center border-b border-gray-50 pb-2"><span className="text-gray-500 uppercase text-xs font-bold">Assigned School Role</span>
                                                 {schoolRole.map(r => {return (
                                                     <span key={r.id} className="bg-navy-100 text-navy-800 text-sm font-bold px-3 py-1.5 rounded-md border border-navy-200">
                                                         <i className="fa-solid fa-shield-cat mr-1 opacity-50"></i> {r.name}
@@ -167,8 +183,8 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                     
                                     <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm text-center">
                                         <h4 className="text-xs font-bold text-gray-500 uppercase">Current Status</h4>
-                                        <div className={`text-xl font-bold my-2 ${staff?.user?.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                                            {staff?.user?.is_active? "Active" : "Inactive"}
+                                        <div className={`text-xl font-bold my-2 ${staff?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                                            {staff?.is_active? "Active" : "Inactive"}
                                         </div>
                                     </div>
                                 </div>
@@ -260,7 +276,13 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                         
                                         {/* Edit Button */}
                                         <button 
-                                            onClick={onOpenBankModal}
+                                            onClick={() => {
+                                                setToast({message:'Edit in the staff edit profile',type:'info'})
+                                                topRef?.current?.scrollIntoView({
+                                                    behavior: "smooth",
+                                                    block: "start"
+                                                })
+                                            }}
                                             className="absolute top-4 right-4 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors z-10"
                                             title="Edit Bank Details"
                                         >
@@ -350,10 +372,10 @@ export const StaffDetail: React.FC<StaffDetailProps> = ({
                                 <div className="bg-red-50 border border-red-100 rounded-lg p-6">
                                     <h3 className="text-lg font-bold text-red-800 mb-4">Account Control</h3>
                                     <div className="flex gap-4">
-                                        <Button variant="secondary" className="w-auto px-4" onClick={onTriggerSuspend}>
-                                            {!staff?.user?.is_active ? 'Activate Account' : 'Suspend Account'}
+                                        <Button variant="secondary" className="w-auto max-w-fit  px-4" onClick={onTriggerSuspend}>
+                                            {!staff?.is_active ? 'Activate Account' : 'Suspend Account'}
                                         </Button>
-                                        <Button variant="danger" className="w-auto px-4" onClick={() => setIsDeletingModalOpen(true)}>Delete Staff</Button>
+                                        <Button variant="danger" className="w-auto max-w-fit  px-4" onClick={() => setIsDeletingModalOpen(true)}>Delete Staff</Button>
                                     </div>
                                 </div>
                             </div>

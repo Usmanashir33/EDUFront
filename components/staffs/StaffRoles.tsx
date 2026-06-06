@@ -1,5 +1,5 @@
 
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Button } from '../UI';
 import { uiContext } from '@/customContexts/UiContext';
 
@@ -9,12 +9,13 @@ interface StaffRolesProps {
 }
 
 export const StaffRoles: React.FC<StaffRolesProps> = ({ staff, handleManageRoles }) => {
+    const saveRef = useRef<any|null>(null)
     const {roles:systemRoles, permissions:systemPermissions,staffs} = useContext(uiContext);
 
     // Roles & Perms Logic
     const [isEditingRoles, setIsEditingRoles] = useState(false);
     const [roleChanged,setRoleChanged] = useState(false);
-    const [assignedRoles,setAssignedRoles] = useState(systemRoles.filter(r => r.id === staff?.user?.school_role) || []);
+    const [assignedRoles,setAssignedRoles] = useState(systemRoles.filter(r => r.id === staff?.school_role) || []);
     const effectivePermissionIds = Array.from(new Set(assignedRoles.flatMap(r => r.permissionIds)));
     const effectivePermissions = systemPermissions.filter(p => effectivePermissionIds.includes(p.id));
 
@@ -24,13 +25,17 @@ export const StaffRoles: React.FC<StaffRolesProps> = ({ staff, handleManageRoles
         }else{
             const roleToAdd = systemRoles.find(r => r.id === roleId);
             if(roleToAdd) setAssignedRoles(prev => [roleToAdd]);
+            saveRef?.current?.scrollIntoView({
+               behavior: "smooth",
+              block: "start"
+            })
         }
     };
 
     // check role change pls 
     useEffect(() => {
         if (!assignedRoles?.length) return ;
-        const ass = (systemRoles.filter(r => r.id === staff?.user?.school_role) || [])?.map(a => a?.id)
+        const ass = (systemRoles.filter(r => r.id === staff?.school_role) || [])?.map(a => a?.id)
         const assignedRoleIds = assignedRoles.map(r => r.id) ;
 
         setRoleChanged(
@@ -56,17 +61,19 @@ export const StaffRoles: React.FC<StaffRolesProps> = ({ staff, handleManageRoles
                                             </h3>
                                             <p className="text-sm text-gray-500 mt-1">Manage system access for this staff member</p>
                                         </div>
-                                        <Button variant="outline" className="w-auto max-w-fit  px-4" onClick={() => {
-                                            if(isEditingRoles && roleChanged){
-                                                // save changes
-                                                handleManageRoles(staff.id, assignedRoles.map(r => r.id));
-                                                return ;
-                                            }
-                                            setIsEditingRoles(!isEditingRoles);
+                                        <div ref={saveRef}>
+                                            <Button variant="outline" className={`w-auto max-w-fit  px-4 ${(isEditingRoles && roleChanged)? "bg-navy-700 text-gray-100 animate-bounce hover:bg-navy-600" : ''}`} onClick={() => {
+                                                if(isEditingRoles && roleChanged){
+                                                    // save changes
+                                                    handleManageRoles(staff.id, assignedRoles.map(r => r.id));
+                                                    return ;
+                                                }
+                                                setIsEditingRoles(!isEditingRoles);
 
-                                        }}>
-                                            <i className={`fa-solid ${isEditingRoles ? 'fa-check' : 'fa-pen'} mr-2`}></i> {isEditingRoles ? roleChanged?"Save Changes":"Done" : 'Manage Roles'}
-                                        </Button>
+                                            }}>
+                                                <i className={`fa-solid ${isEditingRoles ? 'fa-check' : 'fa-pen'}  mr-2`}></i> {isEditingRoles ? roleChanged?"Save Changes":"Done" : 'Manage Roles'}
+                                            </Button>
+                                        </div>
                                     </div>
                                      
                                     <div className="space-y-6">

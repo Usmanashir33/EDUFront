@@ -891,7 +891,7 @@ export const Paginator:React.FC<PaginatorProps> = ({ data, setData, filteredData
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages,setTotalPages] = useState(2);
     // const dataPerPage = 2 ; // testing
-    const dataPerPage = 14;
+    const dataPerPage = 15;
     
     
     const handlePageDataChange = (resp: any) => {

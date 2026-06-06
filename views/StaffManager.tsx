@@ -31,13 +31,14 @@ const getMockAttendance = (staffId: string, dateStr: string) => {
 export const StaffManager: React.FC<StaffManagerProps> = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('LIST');
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [selectedStaff,setselectedStaff] = useState<any|null>(null)
   const [searchTerm, setSearchTerm] = useState('');
   let [serverForm,setServerForm]= useState(new FormData()) // form to handle server data 
   let [admForm,setAdmForm] = useState({});
   
   const {currentUser} = useContext(authContext) ;
   const { 
-      selectedSchool,
+      selectedSchool,setSelectedSchool,
       staffs, setStaffs, // staff data
       setToast,roles
   } = useContext(uiContext) ;
@@ -107,28 +108,37 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
   const TriggeredFunc = (data:any) => {
     // console.log('data: ', data);
     if (data?.success){
-        setToast({ message: data?.success, type: "success" });
         if (data?.success === "searchResults"){
             // only students not already in the list of the students 
-            let searched = data?.results.filter((res) => staffs.find(s => s.id !== res.id))
+            let searched = data?.results.filter((res) => !staffs.find(s => s.id === res.id))
             setStaffs((prev) => [...searched,...prev])
             return;
         }
+        setToast({ message: data?.success, type: "success" });
         if (data?.new_staff){
             setStaffs([ data?.new_staff,...staffs]);
+            setSelectedSchool(s => ({...s,total_staffs: {...s?.total_staffs,count:s?.total_staffs?.count + 1}}))
             setViewMode('LIST') ;
 
         }else if (data?.updated_staff){
-            setStaffs(staffs.map(x => x.id === selectedStaffId ? data?.updated_staff : x));
-            setViewMode('DETAIL');
+          let u = data?.updated_staff
+          setStaffs(staffs.map(x => x.id === u?.id ? {...x,...u} : x));
+          if (selectedStaff) setselectedStaff(t => ({...t,...u})) ;
+          setViewMode('DETAIL');
+          return 
 
         }else if (data?.sus_staff){
-          const updated = staffs.map(s => s.id === selectedStaffId ? data?.sus_staff : s);
-          setStaffs(updated);
+            let s = data?.sus_staff
+            let status = s?.is_active
+            setStaffs(staffs.map(x => x.id === s?.id ? {...x,is_active:status} : x));
+            if (selectedStaff) setselectedStaff(u => ({...u,is_active:status})) ;
+            return ;
+
         }else if (data?.del_staff){
-          setStaffs(staffs.filter(s => s.id !== selectedStaffId));
           setViewMode('LIST');
-          setSelectedStaffId(null);
+          setStaffs(staffs.filter(x => x.id !== data?.del_staff.id)) ;
+          setSelectedSchool(s => ({...s,total_staffs: {...s?.total_staffs,count:s?.total_staffs?.count - 1}}))
+
         }
     }
   }
@@ -255,8 +265,8 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
               let status = ( filterStatus  == "active") ? true :false
               const matchSearch = (t.title + t.first_name + t.last_name + t.middle_name + t.phone + t.staff_id + t.email).toLowerCase().includes(searchTerm.toLowerCase());
               const matchGender = filterGender === 'All' || t.gender?.toLowerCase() === filterGender?.toLowerCase() ;
-              const matchActivity = filterDept  === 'All' || t?.activity_role?.role === filterDept || roles.find((r:any) => r.name === filterDept && r.id === t.user.school_role) ;
-              const matchStatus = filterStatus === 'All' || t.user.is_active === status ;
+              const matchActivity = filterDept  === 'All' || t?.activity_role?.role === filterDept || roles.find((r:any) => r.name === filterDept && r.id === t?.school_role) ;
+              const matchStatus = filterStatus === 'All' || t?.is_active === status ;
               return matchSearch && matchActivity  && matchGender && matchStatus ;
           });
         
@@ -283,13 +293,12 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
       ); 
   }
 
-  if (viewMode === 'EDIT' && selectedStaffId) { 
-      const staffMember = staffs.find(s => s.id === selectedStaffId);
+  if (viewMode === 'EDIT' && selectedStaffId && selectedStaff) { 
       return (
         <>
             <PinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={handlePinSuccess} title="Authorize Action" />
                 <StaffForm 
-                    initialData={staffMember} 
+                    initialData={selectedStaff} 
                     onCancel={() => setViewMode('DETAIL')} 
                     onSubmit={(data:any) => {handleApiCall(data)}}
                 /> 
@@ -298,16 +307,14 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
       ); 
   }
 
-  if (viewMode === 'DETAIL' && selectedStaffId) {
-      const selectedStaff = staffs.find(s => s.id === selectedStaffId);
-      if (!selectedStaff) return null;
-
+  if (viewMode === 'DETAIL' && selectedStaffId && selectedStaff) {
       return (
         <>
             <PinModal isOpen={showPinModal} onClose={() => setShowPinModal(false)} onSuccess={handlePinSuccess} title="Authorize Action" />
             <StaffDetail 
                 id={selectedStaffId}
                 staff={selectedStaff} 
+                setStaff={setselectedStaff} 
                 onBack={() => setViewMode('LIST')}
                 onEdit={() => setViewMode('EDIT')}
                 onTriggerSalary={(data) => { setPayrollData(data); setShowPayrollModal(true); }}
@@ -338,14 +345,15 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
 
   return (
     <>
-      <Paginator 
-          data={staffs}
+      {selectedSchool?.total_staffs?.count && <Paginator
+
+          currentLength={selectedSchool?.total_staffs?.count}
           setData={setStaffs}
           filteredData={filteredStaffs}
           schoolId = {selectedSchool?.id}
           url={`/staff/all-staffs/${selectedSchool?.id}/`} 
           sendRequest={sendRequest}
-      /> 
+      /> }
       <div className="animate-fadeIn space-y-6">
         {/* {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />} */}
         
@@ -397,13 +405,13 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
           </div>
           }
           {(filteredStaffs.length !== 0) && filteredStaffs?.map(s => {
-            let schoolRole = roles.filter(r => r.id === s.user.school_role) || [] ;
+            let schoolRole = roles?.filter(r => r.id === s?.school_role) || [] ;
             return (
-            <div key={s.id} onClick={() => { setSelectedStaffId(s.id); setViewMode('DETAIL'); }} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all group cursor-pointer hover:-translate-y-1">
+            <div key={s.id} onClick={() => { setSelectedStaffId(s.id);setselectedStaff(s); setViewMode('DETAIL'); }} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all group cursor-pointer hover:-translate-y-1">
               <div className="p-6 flex items-start gap-4">
                 <div className="w-12 h-12 rounded-full bg-navy-100 flex items-center justify-center text-navy-700 font-bold text-lg border border-white shadow-sm overflow-hidden">{s.picture ? <img src={urls.BASE_URL + s.picture} alt="" className="w-full h-full object-cover"/> : `${s.first_name[0]}${s.last_name[0]}`}</div>
                 <div className="flex-1">
-                    <div className="flex justify-between items-start"><h3 className="font-bold text-navy-900 group-hover:text-gold-600 transition-colors">{s.title} {s.first_name} {s.last_name}</h3><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${s.user?.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{s.user?.is_active ? 'Active' : 'Inactive'}</span></div>
+                    <div className="flex justify-between items-start"><h3 className="font-bold text-navy-900 group-hover:text-gold-600 transition-colors">{s.title} {s.first_name} {s.last_name}</h3><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${s.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{s.is_active ? 'Active' : 'Inactive'}</span></div>
                     <p className="text-xs text-navy-500 font-bold uppercase mb-1">{s.role}</p>
                     <p className="text-xs text-gray-500 flex items-center gap-2 capitalize"><i className="fa-solid fa-layer-group"></i> {s.activity_role?.role || 'Staff'}</p>
                     <p className="text-xs text-gray-500 flex items-center gap-2 mt-1"><i className="fa-solid fa-phone"></i> {s.phone}</p>
@@ -424,7 +432,7 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
 
         {/* Drill Down Modal */}
         <Modal isOpen={drillDownType !== null} onClose={() => setDrillDownType(null)} title="Detailed List" icon="fa-solid fa-list">
-              <div className="max-h-[60vh] overflow-y-auto"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50 sticky top-0"><tr><th className="px-4 py-2 text-left text-xs font-bold">Staff</th><th className="px-4 py-2 text-right text-xs font-bold">{drillDownType === 'LATE' ? 'Time In' : 'Status'}</th></tr></thead><tbody className="divide-y divide-gray-200">{getDrillDownList().map((s: any) => (<tr key={s.id} onClick={() => { setDrillDownType(null); setSelectedStaffId(s.id); setViewMode('DETAIL'); }} className="cursor-pointer hover:bg-navy-50"><td className="px-4 py-3"><p className="font-bold text-sm text-navy-900">{s.first_name} {s.last_name}</p><p className="text-xs text-gray-500 capitalize">{s.activityRole?.role}</p></td><td className="px-4 py-3 text-right">{drillDownType === 'LATE' ? <span className="font-mono text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700">{s.arrivalTime}</span> : <span className="text-xs font-bold px-2 py-1 rounded uppercase bg-green-100 text-green-700">Paid</span>}</td></tr>))}</tbody></table></div>
+              <div className="max-h-[60vh] overflow-y-auto"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50 sticky top-0"><tr><th className="px-4 py-2 text-left text-xs font-bold">Staff</th><th className="px-4 py-2 text-right text-xs font-bold">{drillDownType === 'LATE' ? 'Time In' : 'Status'}</th></tr></thead><tbody className="divide-y divide-gray-200">{getDrillDownList().map((s: any) => (<tr key={s.id} onClick={() => { setDrillDownType(null); setSelectedStaffId(s.id);setselectedStaff(s); setViewMode('DETAIL'); }} className="cursor-pointer hover:bg-navy-50"><td className="px-4 py-3"><p className="font-bold text-sm text-navy-900">{s.first_name} {s.last_name}</p><p className="text-xs text-gray-500 capitalize">{s.activityRole?.role}</p></td><td className="px-4 py-3 text-right">{drillDownType === 'LATE' ? <span className="font-mono text-xs font-bold px-2 py-1 rounded bg-red-100 text-red-700">{s.arrivalTime}</span> : <span className="text-xs font-bold px-2 py-1 rounded uppercase bg-green-100 text-green-700">Paid</span>}</td></tr>))}</tbody></table></div>
           </Modal>
       </div>
     </>

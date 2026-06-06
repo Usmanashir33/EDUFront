@@ -118,9 +118,9 @@ const {sendRequest} = useRequest() ;
                 {/* Director Dashbord  */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                     {[
-                        { label: 'Students', val: selectedSchool?.total_students, icon: 'fa-user-graduate', color: 'text-blue-600', bg: 'bg-blue-100', mod: 'STUDENTS' },
-                        { label: 'Teachers', val: selectedSchool?.total_teachers, icon: 'fa-chalkboard-user', color: 'text-purple-600', bg: 'bg-purple-100', mod: 'TEACHERS' },
-                        { label: 'Staffs', val: selectedSchool?.total_staffs, icon: 'fa-id-card', color: 'text-pink-600', bg: 'bg-pink-100', mod: 'STAFFS' },
+                        { label: 'Students', val: selectedSchool?.total_students?.count, icon: 'fa-user-graduate', color: 'text-blue-600', bg: 'bg-blue-100', mod: 'STUDENTS' },
+                        { label: 'Teachers', val: selectedSchool?.total_teachers?.count, icon: 'fa-chalkboard-user', color: 'text-purple-600', bg: 'bg-purple-100', mod: 'TEACHERS' },
+                        { label: 'Staffs', val: selectedSchool?.total_staffs?.count, icon: 'fa-id-card', color: 'text-pink-600', bg: 'bg-pink-100', mod: 'STAFFS' },
                         { label: 'Classes', val: selectedSchool?.total_classrooms, icon: 'fa-chalkboard', color: 'text-orange-600', bg: 'bg-orange-100', mod: 'ACADEMICS' },
                         // { label: 'Parents', val: selectedSchool?.total_parents, icon: 'fa-chalkboard', color: 'text-orange-600', bg: 'bg-orange-100', mod: 'PARENTS' },
                     ].map((s, i) => (
@@ -134,7 +134,7 @@ const {sendRequest} = useRequest() ;
                 <div className="bg-gradient-to-r from-navy-900 to-navy-800 text-white rounded-xl shadow-lg p-8 relative overflow-hidden">
                     <div className="relative z-10">
                         <h3 className="text-2xl font-bold mb-2">Welcome, Director</h3>
-                        <p className="text-navy-100">School operations are running smoothly. You have {selectedSchool?.total_students} active students and {selectedSchool?.total_teachers} teachers.</p>
+                        <p className="text-navy-100">School operations are running smoothly. You have {selectedSchool?.total_students?.count} active students and {selectedSchool?.total_teachers?.count} teachers.</p>
                     </div>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-3xl"></div>
                 </div>

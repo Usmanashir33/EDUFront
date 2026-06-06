@@ -98,7 +98,7 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
     if (data?.success){
         if (data?.success === "searchResults"){
             // only teachers not already in the list of the teachers state will be added to the top of the list 
-            let searched = data?.results.filter((res) => teachers.find(s => s.id !== res.id))
+            let searched = data?.results.filter((res) => !teachers.find(s => s.id === res.id))
             setTeachers((prev) => [...searched,...prev])
             return;
         }
@@ -129,7 +129,7 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
             setViewMode("LIST") ;
             setTeachers(teachers.filter(x => x.id !== data?.del_teacher.id));
             setSelectedSchool(s => ({...s,total_teachers: {...s?.total_teachers,count:s?.total_teachers?.count - 1}}))
-
+            setSelectedTeacher(null);
             return ;
         
         }else if (data?.new_record){ 
