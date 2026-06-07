@@ -117,7 +117,7 @@ export const ClassView: React.FC<ClassViewProps> = ({
 const TriggeredFunc = (resp) => {
     if (resp?.classroom_details){
       setSelectedCls(resp?.classroom_details)
-    }
+    } 
   }
   useEffect(() => {
     if (viewMode === "DETAIL" && selectedId){ 

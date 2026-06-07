@@ -190,11 +190,12 @@ export const StaffManager: React.FC<StaffManagerProps> = () => {
     }));
 
     setServerForm(form)  // initialize the server form 
+    if (viewMode === "ADD") { 
+      sendRequest("/staff/add-staff/","POST",form as any,TriggeredFunc,true,true);
+      return ;
+    }
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server  
-        if (viewMode === "ADD") { 
-          sendRequest("/staff/add-staff/","POST",form as any,TriggeredFunc,true,true)
-        }
         if (viewMode === "EDIT") {
           sendRequest(`/staff/update-staff/${selectedStaffId}/`,"PUT",form as any,TriggeredFunc,true,true)
         }

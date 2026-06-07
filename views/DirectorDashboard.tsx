@@ -284,11 +284,11 @@ const {sendRequest} = useRequest() ;
         <div className={`h-20 flex items-center justify-center border-b border-navy-800 shrink-0 transition-all duration-300 ${sidebarExpanded ? 'px-4' : 'px-2'}`}>
             {sidebarExpanded || mobileMenuOpen ? (
                 <div className="flex items-center gap-3 animate-fadeIn w-full overflow-hidden">
-                    {school.image ? <img src={school.image} alt={school.name} className="w-10 h-10 object-cover rounded-lg border-2 border-white/20" /> : <div className="w-10 h-10 rounded-lg bg-gold-500 flex items-center justify-center text-navy-900 shrink-0"><i className="fa-solid fa-graduation-cap text-lg"></i></div>}
-                    <span className="font-bold text-sm tracking-wide leading-tight line-clamp-2 text-left">{school.name}</span>
+                    {school?.image ? <img src={school?.image} alt={school?.name} className="w-10 h-10 object-cover rounded-lg border-2 border-white/20" /> : <div className="w-10 h-10 rounded-lg bg-gold-500 flex items-center justify-center text-navy-900 shrink-0"><i className="fa-solid fa-graduation-cap text-lg"></i></div>}
+                    <span className="font-bold text-sm tracking-wide leading-tight line-clamp-2 text-left">{school?.name}</span>
                 </div>
             ) : (
-                <div className="w-10 h-10 rounded-lg bg-gold-500 flex items-center justify-center text-navy-900 text-xl font-bold cursor-pointer" title={school.name}><i className="fa-solid fa-graduation-cap"></i></div>
+                <div className="w-10 h-10 rounded-lg bg-gold-500 flex items-center justify-center text-navy-900 text-xl font-bold cursor-pointer" title={school?.name}><i className="fa-solid fa-graduation-cap"></i></div>
             )}
         </div>
 
@@ -321,7 +321,7 @@ const {sendRequest} = useRequest() ;
         <header className="h-20 shadow-sm border-b bg-white border-gray-200 flex items-center justify-between px-4 md:px-8 z-10">
             <div className="flex items-center gap-4">
                 <button className="lg:hidden p-2 -ml-2 rounded-md text-gray-500 hover:bg-gray-100" title="Open menu" onClick={() => setMobileMenuOpen(true)}><i className="fa-solid fa-bars text-xl"></i></button>
-                <h2 className="text-xl md:text-2xl font-bold tracking-tight text-navy-900">{isActiveTabDispaly() === 'OVERVIEW' ? school.name : isActiveTabDispaly()?.replace('_', ' ')}</h2>
+                <h2 className="text-xl md:text-2xl font-bold tracking-tight text-navy-900">{isActiveTabDispaly() === 'OVERVIEW' ? school?.name : isActiveTabDispaly()?.replace('_', ' ')}</h2>
             </div>
             <div className="flex items-center gap-3 md:gap-6">
                 <button 
@@ -330,14 +330,14 @@ const {sendRequest} = useRequest() ;
                   title="System Activity Logs"
                 >
                     <i className="fa-solid fa-list-check text-xl"></i>
-                    {activities.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>}
+                    {activities?.length > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>}
                 </button>
                 <div className="flex items-center gap-3">
                     <div className="text-right hidden md:block">
                         <p className="text-sm font-bold text-navy-900">{currentUserFullname()}</p>
                     </div>
                     <div className="w-10 h-10 rounded-full border overflow-hidden flex items-center justify-center font-bold bg-navy-100 text-navy-600">
-                        {currentUser.picture ? <img src={urls.BASE_URL+currentUser.picture} alt="Profile" className="w-full h-full object-cover" /> : <span>{currentUser.name.charAt(0)}</span>}
+                        {currentUser?.picture ? <img src={urls.BASE_URL+currentUser.picture} alt="Profile" className="w-full h-full object-cover" /> : <span>{currentUser?.name?.charAt(0)}</span>}
                     </div>
                 </div>
                 <div className="h-8 w-px hidden md:block bg-gray-200"></div>
@@ -436,7 +436,7 @@ const {sendRequest} = useRequest() ;
                   <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gray-200">
                     {/* Pagination - Floating UI */}
                                 <Paginator 
-                                  data={activities}
+                                  currentLength={activities?.length}
                                   setData={setActivities}
                                   filteredData={activities}
                                   schoolId = {selectedSchool?.id}

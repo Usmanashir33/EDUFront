@@ -172,11 +172,12 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
         }
 
         setServerForm(form)  // initialize the server form 
+        if (viewMode === "ADD") { 
+            sendRequest("/teacher/add-teacher/","POST",form as any ,TriggeredFunc,true,true);
+            return ;
+        }
         if (!currentUser?.user?.pin_set){ 
         // Make the api call here  when user  need no pin to talk to server 
-            if (viewMode === "ADD") { 
-                sendRequest("/teacher/add-teacher/","POST",form as any ,TriggeredFunc,true,true)
-            }
             if (viewMode === "EDIT") {
                 sendRequest(`/teacher/update-teacher/${selectedTeacherId}/`,"PUT",form as any ,TriggeredFunc,true,true)
             }
@@ -381,7 +382,7 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
 
                 {/* List */}
                 <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200 mt-6">
-                    <h2 className="text-lg font-bold text-navy-900">Directory</h2>
+                    <h2 className="text-lg font-bold text-navy-900">Directories</h2>
                     <div className="flex gap-3"><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 pr-3 py-2 border rounded-md" /><Button className="w-auto px-4" onClick={() => setViewMode('ADD')}><i className="fa-solid fa-plus mr-2"></i> Onboard</Button></div>
                 </div>
 

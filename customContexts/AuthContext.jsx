@@ -32,7 +32,6 @@ const AuthContextProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(
         localStorage.getItem("a_token") ? true : false
     );
-
     const currentUserFullname = () => {
         return `${currentUser?.title} ${currentUser?.first_name} ${currentUser?.last_name} ${currentUser?.middle_name}`
     }
@@ -130,12 +129,13 @@ const AuthContextProvider = ({ children }) => {
     };
 
     const setSchoolData = (data) => {
-        console.log('setSchoolData: ', data);
+        console.log('data: ', data);
+        let scl = data?.school_and_academics
+        setSelectedSchool(scl || []);
 
-        setSelectedSchool(data?.school_and_academics || []);
-        setSections(data?.school_and_academics?.sections || []);
-        setSubjects(data?.school_and_academics?.subjects || []);
-        setClassRooms(data?.school_and_academics?.classrooms || []);
+        setSections(scl?.sections || []);
+        setSubjects(scl?.subjects || []);
+        setClassRooms(scl?.classrooms || []);
 
         setStudents(data?.school_students || []);
         setTeachers(data?.school_teachers || []);

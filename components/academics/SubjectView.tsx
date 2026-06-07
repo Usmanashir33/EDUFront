@@ -1,36 +1,50 @@
-import React from "react";
+import React, { useContext, useEffect } from "react";
 import {Subject, ClassRoom, Teacher, Student, SubjectAssignment} from "../../types";
 import {Button} from "../UI";
+import useRequest from "@/customHooks/RequestHook";
+import { uiContext } from "@/customContexts/UiContext";
 
 interface SubjectViewProps {
-  subjects: Subject[];
-  classRooms: ClassRoom[];
-  teachers: Teacher[];
-  students: Student[];
+  subject :any,
+  setSubject :any ,
   searchQuery: string;
   viewMode: "LIST" | "DETAIL";
   selectedId: string | null;
   onSelectItem: (id: string, view: "LIST" | "DETAIL") => void;
   onEditSubject: (s: Subject) => void;
-  onAssignClass: (s: Subject) => void;
-  onAssignTeacher: (s: Subject) => void;
+  // onAssignClass: (s: Subject) => void;
+  // onAssignTeacher: (s: Subject) => void;
   onDeleteAcademics: (a:"SUBJECTS" ,s:Subject) => void;
 }
 
 export const SubjectView: React.FC<SubjectViewProps> = ({
-  subjects,
-  classRooms,
-  teachers,
-  students,
+  subject,
+  setSubject,
   searchQuery,
   viewMode,
   selectedId,
   onSelectItem,
   onEditSubject,
-  onAssignClass,
-  onAssignTeacher,
+  // onAssignClass ,
+  // onAssignTeacher,
   onDeleteAcademics,
 }) => {
+  const {sendRequest} = useRequest();
+  const {classRooms,subjects,selectedSchool} = useContext(uiContext);
+  const TriggeredFunc = (resp) => {
+        if (resp?.subject_details){
+          setSubject(resp?.subject_details)
+        } 
+      }
+      useEffect(() => {
+        if (viewMode === "DETAIL" && selectedId  ){ 
+          setSubject(subjects.find((c) => c.id === selectedId)) ;
+          // send request here for class details fetch from the server 
+          let secUrl = `/academics/details/${selectedSchool?.id}/subjects/${selectedId}/`
+          sendRequest(secUrl,"GET",null as any ,TriggeredFunc,!true,false);
+        }
+        return (() => {setSubject(null)});
+      },[selectedId])
   // --- LIST VIEW ---
   if (viewMode === "LIST") {
     const filteredSubjects = subjects.filter(
@@ -68,7 +82,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
               <tr
                 key={sub.id}
                 className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => onSelectItem(sub.id, "DETAIL")}
+                onClick={() => {setSubject(sub);onSelectItem(sub.id, "DETAIL")}}
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
                   {sub.code}
@@ -80,25 +94,10 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                   {sub.name}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600 max-cols-2">
-                  {sub.teachers?.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {sub.teachers?.map((t : any) => {
-                        return t ? (
-                          <span
-                            key={t.id}
-                            className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs border border-green-100"
-                          >
-                            {t.title} {t.first_name} {t.last_name}
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 italic text-xs">Unassigned</span>
-                  )}
+                  {sub.teachersCount || 0 } Teacher(s)
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
-                  {sub.classes?.length || 0 } Classes
+                  {sub.classesCount || 0 } Classe(s)
                 </td>
                 <td  className="px-6 py-4 text-sm text-gray-600 flex ">
                   <button
@@ -126,12 +125,19 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
   }
 
   // --- DETAIL VIEW ---
-  const subject:any = subjects.find((s) => s.id === selectedId);
+  // const subject:any = subjects.find((s) => s.id === selectedId);
   if (!subject) return null;
 
-  const takingClasses = classRooms.filter((c) => subject?.classes?.includes(c.id));
-  const assignedTeachers = subject?.teachers;
-
+  const takingClasses = classRooms.filter((c) => subject?.class_rooms?.includes(c.id));
+  const assignedTeachers = subject?.teachers?.map(t => {
+    return {
+      title:t.teacher__title,
+      first_name:t.teacher__first_name,
+      last_name:t.teacher__last_name,
+      staff_id:t.teacher__staff_id,
+      id:t.teacher__id,
+    }
+  });
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900 text-white p-8 rounded-xl shadow-lg relative overflow-hidden flex justify-between items-center">
@@ -167,16 +173,17 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
             <h3 className="font-bold text-navy-900 flex items-center">
               <i className="fa-solid fa-chalkboard mr-2"></i> Enrolled Classes
             </h3>
-            <Button className="w-auto px-3 max-w-fit py-1 text-xs" onClick={() => onAssignClass(subject)}>
+            {/* <Button className="w-auto px-3 max-w-fit py-1 text-xs" onClick={() => onAssignClass(subject)}>
               + Manage
-            </Button>
+            </Button> */}
           </div>
           <div className="space-y-2">
             {takingClasses.map((c : any) => {
-              const assignment = subject.assignments?.find(
-                (a: SubjectAssignment) => a.classId === c.id,
-              );
-              const tName :any =  null;
+              // const assignment = subject.assignments?.find(
+              //   (a: SubjectAssignment) => a.classId === c.id,
+              // );
+              const formMaster = c?.form_teacher ?? null
+              let f = ` ${formMaster?.title} ${formMaster?.first_name} ${formMaster?.middle_name} ${formMaster?.last_name}`
               return (
                 <div
                   key={c.id}
@@ -185,7 +192,7 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
                   <div>
                     <span className="font-bold text-navy-700 block">{c.name}</span>
                     <span className="text-xs text-gray-500">
-                      {tName ? `Taught by: ${tName}` : "No teacher assigned"}
+                      {formMaster ? `Form Master: ${f}` : "No form master assigned"}
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">
@@ -205,14 +212,14 @@ export const SubjectView: React.FC<SubjectViewProps> = ({
             <h3 className="font-bold text-navy-900 flex items-center">
               <i className="fa-solid fa-chalkboard-user mr-2"></i> Teachers
             </h3>
-            <Button className="w-auto max-w-fit px-3 py-1 text-xs" onClick={() => onAssignTeacher(subject)}>
+            {/* <Button className="w-auto max-w-fit px-3 py-1 text-xs" onClick={() => onAssignTeacher(subject)}>
               + Manage
-            </Button>
+            </Button> */}
           </div>
           <div className="space-y-2">
-            {assignedTeachers.map((t : any) => (
+            {assignedTeachers.map((t : any,idx) => (
               <div
-                key={t.id}
+                key={`${t.id}-${idx}`}
                 className="p-3 bg-navy-50 rounded flex justify-between items-center border border-navy-100"
               >
                 <div>

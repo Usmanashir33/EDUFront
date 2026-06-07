@@ -16,9 +16,9 @@ const useRequest = () => {
         if (load) {
             setIsLoading(true);
         }
-        if (isBigQuery) {
-            setPageLoading(true)
-        }
+        // if (isBigQuery) {
+        //     setPageLoading(true)
+        // }
         let token = await getToken()
         if (!token) {
             return setToast({ message: "Log out and login again", type: 'error' });

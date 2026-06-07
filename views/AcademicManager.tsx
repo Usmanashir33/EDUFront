@@ -130,6 +130,8 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const {sendRequest} = useRequest()
   const [showPinModal, setShowPinModal] = useState(false);
   const [ selectedCls ,setSelectedCls ]=useState<any>(null);
+  const [ selectedSec ,setSelectedSec ]=useState<any>(null);
+  const [ selectedSub ,setSelectedSub ]=useState<any>(null);
 
 
   // --- EFFECTS ---
@@ -155,7 +157,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
           teacherId: assignment ? assignment.teacherId : "",
           isSelected: isSelected,
         };
-      });
+      }); 
       setClassSelectState(initial);
     }
   }, [showClassSelectModal, selectedSubjectForClass, classRooms]);
@@ -233,7 +235,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   }
 
   const  TriggerClassFunc = (data) => {
-    console.log('data: ', data);
+    // console.log('data: ', data);
     if (data?.success){setToast({message:data?.success, type: "success"})}
 
     if (data?.new_classroom){ // process new classroom
@@ -257,7 +259,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       setacademicTarget(null);
 
     }else if (data?.form_classroom){
-      console.log('data: ', data);
+      // console.log('data: ', data);
       let u = data?.form_classroom
       setShowAddModal(false) ;
       setShowTeacherSelectModal(false);
@@ -283,7 +285,7 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   
 
   const TriggeredFunc = (data) => { // 
-    console.log('data: ', data);
+    // console.log('data: ', data);
     if (data?.success){
       setToast({message:data?.success, type: "success"});
 
@@ -300,10 +302,12 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       setShowAddModal(false);
 
     }else if (data?.updated_section){ // update new section 
+      let u = data?.updated_section
       setShowAddModal(false) ;
       setSections(
-      sections.map((s) => (s.id === editSectionTarget?.id ? data?.updated_section : s)),
+      sections.map((s) => (s.id === editSectionTarget?.id ? {...s,...u} : s)),
       );
+      if (selectedSec) setSelectedSec(prev => ({...prev,...u})),
       setEditSectionTarget(null);
       resetForms();
 
@@ -311,17 +315,24 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
       setSections(
       sections.filter((s) => (s.id !== data?.deleted_section?.id)),
       );
+      if (selectedSec) setSelectedSec(null),
+      setViewMode("LIST");
       setacademicTarget(null);
 
     } else if (data?.deleted_subject){ // update new section 
+      setViewMode("LIST");
       setSubjects(
       subjects.filter((s) => (s.id !== data?.deleted_subject?.id)),
       );
+      if (selectedSub) setSelectedSub(null);
       setacademicTarget(null);
 
+
     }else if (data?.updated_subject){ // update subject
+      let u = data?.updated_subject
       setShowAddModal(false)
-      setSubjects( subjects.map((s) => s.id === editSubjectTarget?.id ? data?.updated_subject  : s));
+      setSubjects( subjects.map((s) => s.id === editSubjectTarget?.id ? {...s,...u}  : s));
+      if (selectedSub) setSelectedSub(prev => ({...prev,...u}));
       setEditSubjectTarget(null);
       setShowClassSelectModal(false);   // for managing subjects data 
       setSelectedSubjectForClass(null); 
@@ -480,11 +491,11 @@ const filteredTeachers = useMemo(() => {
       section : classForm?.sectionId,
       pin : ''}
     
-    if (!currentUser?.user?.pin_set){
+    // if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
       sendRequest(`/academics/create/classrooms/`,"POST",f as any ,TriggerClassFunc,true,false);
       return ;
-    }
+    // }
 
     setMethode("POST");
     setServerform(f);
@@ -520,11 +531,11 @@ const filteredTeachers = useMemo(() => {
       teachersIds : subjectForm.teachersIds,
       pin : ''
     };
-    if (!currentUser?.user?.pin_set){ 
+    // if (!currentUser?.user?.pin_set){ 
       // Make the api call here  when user  need no pin to talk to server 
       sendRequest(`/academics/create/subjects/`,"POST",f as any ,TriggeredFunc,true,false);
       return ;
-    }
+    // }
     setServerform(f);
     setMethode("POST");
     setShowPinModal(true);
@@ -559,11 +570,11 @@ const filteredTeachers = useMemo(() => {
       pin : ''
     }
 
-    if (!currentUser?.user?.pin_set){
+    // if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
       sendRequest(`/academics/class/enrollment/`,"POST",f as any,TriggerClassFunc2,true,false);
       return ;
-    }
+    // }
     setMethode("ENROLLMENT");
     setServerform(f);
     setShowPinModal(true);
@@ -643,7 +654,6 @@ const filteredTeachers = useMemo(() => {
   };
 
   const handleManageSubjectTeachers = (ids: string[]) => {
-    console.log('ids: ', ids);
     if (!currentContextData?.subjectId) return;
     setCurrentContextData({
     ...currentContextData,
@@ -759,11 +769,8 @@ const filteredTeachers = useMemo(() => {
 
         {activeTab === "SECTIONS" && (
           <SectionView
-            sections={sections}
-            classRooms={classRooms}
-            students={students}
-            teachers={teachers}
-            subjects={subjects}
+            section={selectedSec}
+            setSection={setSelectedSec}
             searchQuery={searchQuery}
             viewMode={viewMode}
             selectedId={selectedItemId}
@@ -870,10 +877,8 @@ const filteredTeachers = useMemo(() => {
 
         {activeTab === "SUBJECTS" && (
           <SubjectView
-            subjects={subjects}
-            classRooms={classRooms}
-            teachers={teachers}
-            students={students}
+            subject={selectedSub}
+            setSubject={setSelectedSub}
             searchQuery={searchQuery}
             viewMode={viewMode}
             selectedId={selectedItemId}
@@ -886,22 +891,22 @@ const filteredTeachers = useMemo(() => {
               setEditSubjectTarget(s);
               setEditSubjectForm({name: s.name, code: s.code,credits:s?.credits});
             }}
-            onAssignClass={(s) => {
-              setSelectedSubjectForClass(s);
-              setEditingClass(false);
-              setEditSubjectTarget(s);
-              setShowClassSelectModal(true);
-            }}
-            onAssignTeacher={(s  : any) => {
-              setTeacherSelectMode("ADD_TO_SUBJECT");
-              setEditSubjectTarget(s);
-              setEditingClass(false);
-              setCurrentContextData({
-                subjectId: s.id,
-                selectedIds: s?.teachers,
-              });
-              setShowTeacherSelectModal(true);
-            }}
+            // onAssignClass={(s) => {
+            //   setSelectedSubjectForClass(s);
+            //   setEditingClass(false);
+            //   setEditSubjectTarget(s);
+            //   setShowClassSelectModal(true);
+            // }}
+            // onAssignTeacher={(s  : any) => {
+            //   setTeacherSelectMode("ADD_TO_SUBJECT");
+            //   setEditSubjectTarget(s);
+            //   setEditingClass(false);
+            //   setCurrentContextData({
+            //     subjectId: s.id,
+            //     selectedIds: s?.teachers,
+            //   });
+            //   setShowTeacherSelectModal(true);
+            // }}
             onDeleteAcademics={deleteAcademics}
           />
         )}

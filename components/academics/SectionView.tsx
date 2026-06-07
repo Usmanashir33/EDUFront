@@ -1,14 +1,13 @@
-import React from "react";
+import React, { useContext, useEffect } from "react";
 import {SchoolSection, ClassRoom, Teacher, Subject, Student} from "../../types";
 import {Button} from "../UI";
 import urls from "@/customHooks/ServerUrls";
+import useRequest from "@/customHooks/RequestHook";
+import { uiContext } from "@/customContexts/UiContext";
 
 interface SectionViewProps {
-  sections: SchoolSection[];
-  classRooms: ClassRoom[];
-  students: Student[];
-  teachers: Teacher[];
-  subjects: Subject[];
+  section:any,
+  setSection : any,
   searchQuery: string;
   onSelectItem: (id: string, view: "LIST" | "DETAIL") => void;
   viewMode: "LIST" | "DETAIL";
@@ -22,17 +21,42 @@ interface SectionViewProps {
 }
 
 export const SectionView: React.FC<SectionViewProps> = ({
-  sections, searchQuery,
-  onSelectItem, viewMode, selectedId, onEditSection, onSetTimetableTarget,
-   onShowReportModal, onNavigateToClass,onDeleteAcademics
+    selectedId,
+    section,
+    setSection ,
+    searchQuery,
+    onSelectItem,
+   viewMode,
+   onEditSection,
+   onSetTimetableTarget,
+   onShowReportModal,
+    onNavigateToClass,
+   onDeleteAcademics
   }) => {
+    const {sendRequest} =useRequest() ;
+    const {sections,selectedSchool} = useContext(uiContext);
+    
+  const TriggeredFunc = (resp) => {
+      if (resp?.section_details){
+        setSection(resp?.section_details)
+      } 
+    }
+    useEffect(() => {
+      if (viewMode === "DETAIL" && selectedId  ){ 
+        setSection(sections.find((c) => c.id === selectedId)) ;
+        // send request here for class details fetch from the server 
+        let secUrl = `/academics/details/${selectedSchool?.id}/sections/${selectedId}/`
+        sendRequest(secUrl,"GET",null as any ,TriggeredFunc,!true,false);
+      }
+      return (() => {setSection(null)});
+    },[selectedId])
   // --- LIST VIEW ---
   if (viewMode === "LIST") {
     const filteredSections:any = sections.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredSections?.map((sec) => (
-          <div key={sec.id} onClick={() => onSelectItem(sec.id, "DETAIL")} className="p-5 border border-gray-200 rounded-lg bg-navy-50/30 hover:border-navy-200 transition-colors cursor-pointer group hover:shadow-md">
+          <div key={sec.id} onClick={() => {setSection(sec);onSelectItem(sec.id, "DETAIL")}} className="p-5 border border-gray-200 rounded-lg bg-navy-50/30 hover:border-navy-200 transition-colors cursor-pointer group hover:shadow-md">
             <div className="flex items-center justify-between mb-2">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-navy-600 shadow-sm">
                 <i className="fa-solid fa-layer-group"></i>
@@ -61,9 +85,8 @@ export const SectionView: React.FC<SectionViewProps> = ({
   }
 
   // --- DETAIL VIEW ---
-  const section:any = sections.find((s) => s.id === selectedId);
+  // const section:any = sections.find((s) => s.id === selectedId);
   if (!section) return null;
-
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -113,6 +136,8 @@ export const SectionView: React.FC<SectionViewProps> = ({
             </button>
           </div>
           <div className="grid grid-cols-1 gap-4">
+            {!section?.classrooms?.length && <div className="text-center text-gray-400 py-8">No classrooms assigned to this section.</div>}
+
             {section?.classrooms?.map((cls) => {
               let formTeacher = cls?.form_teacher || null
               return (
@@ -135,7 +160,7 @@ export const SectionView: React.FC<SectionViewProps> = ({
           </div>
         </div>
         {/* Teachers Column */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
             <h3 className="font-bold text-lg text-navy-900">Teachers ({section?.teachersCount})</h3>
             <button onClick={() => onShowReportModal(section?.teachers, "TEACHER", `${section.name} Teachers`)} className="text-xs font-bold text-navy-600 hover:text-gold-600 flex items-center bg-navy-50 px-3 py-1 rounded">
@@ -162,7 +187,7 @@ export const SectionView: React.FC<SectionViewProps> = ({
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
