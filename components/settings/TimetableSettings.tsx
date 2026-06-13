@@ -6,9 +6,9 @@ import { Teacher, SchoolSection, Subject } from '../../types';
 interface TimetableSettingsProps {
     config: any;
     setConfig: (c: any) => void;
-    teachers: Teacher[];
-    sections: SchoolSection[];
-    subjects: Subject[];
+    teachers: Teacher[] |any ;
+    sections: SchoolSection[] |any ;
+    subjects: Subject[] |any ;
     onToast: (msg: any) => void;
 }
 
@@ -48,13 +48,15 @@ export const TimetableSettings: React.FC<TimetableSettingsProps> = ({ config, se
                     <h2 className="text-xl font-bold text-navy-900">Advanced Timetable Generator</h2>
                     <p className="text-sm text-gray-500">Configure parameters, select sections, and map teacher availability (Sat-Wed).</p>
                 </div>
-                <Button className="w-auto px-4" onClick={() => onToast({message: "Timetable generation started...", type: 'success'})}>
+                {/* <Button className="w-auto px-4" onClick={() => onToast({message: "Timetable generation started...", type: 'success'})}> */}
+                <Button className="w-auto px-4" onClick={() => onToast({message: "This feature is not ready yet", type: 'info'})}>
                     <i className="fa-solid fa-wand-magic-sparkles mr-2"></i> Generate
                 </Button>
             </div>
+            <p className="text-lg text-center text-gray-500">This feature is not ready yet.</p>
 
             {/* 1. General Config */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Input 
                     type="number" 
                     label="Periods per Day" 
@@ -76,10 +78,10 @@ export const TimetableSettings: React.FC<TimetableSettingsProps> = ({ config, se
                     onChange={e => setConfig({...config, breakDuration: Number(e.target.value)})} 
                     iconClass="fa-solid fa-mug-hot" 
                 />
-            </div>
+            </div> */}
 
             {/* 2. Section Scoping */}
-            <div className="bg-navy-50 p-6 rounded-lg border border-navy-100">
+            {/* <div className="bg-navy-50 p-6 rounded-lg border border-navy-100">
                 <h4 className="font-bold text-navy-900 mb-4 flex items-center">
                     <i className="fa-solid fa-layer-group mr-2 text-navy-600"></i> Select Sections for Generation
                 </h4>
@@ -102,24 +104,24 @@ export const TimetableSettings: React.FC<TimetableSettingsProps> = ({ config, se
                         </label>
                     ))}
                 </div>
-            </div>
+            </div> */}
 
             {/* 3. Teacher Availability & Constraints */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
+            {/* <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <div className="bg-gray-100 p-4 border-b border-gray-200">
                     <h4 className="font-bold text-navy-900">Teacher Availability & Assignments</h4>
                     <p className="text-xs text-gray-500">Define available days (Sat-Wed) and time slots for each teacher.</p>
                 </div>
                 <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
                     {teachers.map(t => {
-                        const assignedSubs = subjects.filter(s => s.teacherIds.includes(t.id));
+                        const assignedSubs = subjects;
                         const tConfig = config.teacherAvailability[t.id] || { days: [], startTime: '08:00', endTime: '14:00', maxHours: 5 };
 
                         return (
                             <div key={t.id} className="p-4 hover:bg-gray-50 transition-colors">
                                 <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-3">
                                     <div>
-                                        <p className="font-bold text-navy-900 text-sm">{t.title} {t.firstName} {t.lastName}</p>
+                                        <p className="font-bold text-navy-900 text-sm">{t.title} {t.first_name} {t.last_name}</p>
                                         <p className="text-xs text-gray-500">{assignedSubs.length} Subjects: {assignedSubs.map(s => s.name).join(', ')}</p>
                                     </div>
                                     <div className="flex gap-4 items-center">
@@ -156,7 +158,7 @@ export const TimetableSettings: React.FC<TimetableSettingsProps> = ({ config, se
                         );
                     })}
                 </div>
-            </div>
+            </div> */}
         </div>
     );
 };

@@ -4,11 +4,12 @@ import { Toggle, Button, Input ,Modal} from '../UI';
 
 import { uiContext } from '@/customContexts/UiContext';
 import useRequest from '@/customHooks/RequestHook';
+import { stringify } from 'querystring';
 
 interface AcademicSettingsProps {
     data: any;
     setData: (d: any) => void;
-    saveData: (operation : "SETFEE"|"ACADEMIC"|"SETPROMOTION" ,fdata?: any) => void;
+    saveData: (operation : "SETFEE"|"ACADEMIC"|"SETPROMOTION"|'CONFIGURATIONS'|"CORRENTCONFIGURATIONS" | any ,fdata?: any) => void;
     originalData: any;
     promotionMappings,
     setPromotionMappings
@@ -22,10 +23,7 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
     const {selectedSchool,findSessionById,findTermById,} = useContext(uiContext);
     const [newSession, setNewSession] = useState('');
     const [newTerm, setNewTerm] = useState('');
-    const [showModal,setShowModal] = useState(false)
-    const [currentTermFees,setCurrentTermFees] = useState([])
     const {setToast,classRooms,schoolFees,students,isLoading,promotionLogs} = useContext(uiContext);
-    const {sendRequest} = useRequest() ;
 
      // Manual Promotion State
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -33,13 +31,13 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
     const [promoToSearch, setPromoToSearch] = useState('');
     const [promoFromClassId, setPromoFromClassId] = useState('');
     const [promoToClassId, setPromoToClassId] = useState('');
-    
+    const [showAddingSessionorTerm,setShowAddingSessionorTerm] = useState(false);
+    const [termOrSession,setTermOrSession] = useState<"TERM"|"SESSION">('SESSION');
     
     // Initialize lists if they don't exist in data
-    const sessions = data.availableSessions || ['2023/2024', '2024/2025'];
-    const terms = data.availableTerms || ['1st Term', '2nd Term', '3rd Term'];
+    const sessions = data.availableSessions || ['2000/2001'];
+    const terms = data.availableTerms || ['null'];
 
-    const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   // Fee Configuration Logic
     const currentSession = data.session ;
     const currentTerm = data.term ;
@@ -54,69 +52,34 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
         return t 
     },[data.term])
 
-    const TriggeredFunc = ( resp : any ) => {
-        console.log('resp: ', resp);
-        setSelectedClassIds([])
-
-        if (resp?.configured_classes){ // set configure classes
-            setCurrentTermFees(resp?.configured_classes);
-            setSelectedClassIds([])
-            return 
-        }
-    }
-
-    const toggleClassSelection = (id: string) => {
-        setSelectedClassIds(prev => 
-            prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
-        );
-    };
-
-    const handleSelectAllUnassigned = () => {
-        const unassigned = classRooms.filter(c => !currentTermFees.some((f: any) => f.classId === c.id)).map(c => c.id);
-        setSelectedClassIds(Array.from(new Set([...selectedClassIds, ...unassigned])));
-    };
-
-    const handleAssignFee = () => {
-        let termId = selectedSchool?.terms.find((t) => t.name === currentTerm)?.id;
-        let sessionId = selectedSchool?.sessions.find((t) => t.name === currentSession)?.id;
-        let feeForm = {
-            school : selectedSchool.id ,
-            term :termId ,
-            session: sessionId ,
-            classIds : selectedClassIds,
-        }
-        saveData("SETFEE",feeForm)
-        return 
-    };
-   
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
     };
 
     const handleAddSession = () => {
-        if (newSession && !sessions.includes(newSession)) {
-            const updatedSessions = [...sessions, newSession];
-            setData({ ...data, availableSessions: updatedSessions });
+        if (newSession ) {
+            let form ={
+                school : selectedSchool.id ,
+                name : newSession,
+                configType : "SESSION"
+            }
+            saveData("CONFIGURATIONS",form)
             setNewSession('');
         }
     };
 
     const handleAddTerm = () => {
-        if (newTerm && !terms.includes(newTerm)) {
-            const updatedTerms = [...terms, newTerm];
-            setData({ ...data, availableTerms: updatedTerms });
+        if (newTerm ) {
+            let form ={
+                school : selectedSchool.id ,
+                name : newTerm,
+                configType : "TERM"
+            }
+            saveData("CONFIGURATIONS",form)
             setNewTerm('');
         }
     };
-
-    const handleDeleteTerm = (term: string) => {
-        const updatedTerms = terms.filter((t: string) => t !== term);
-        setData({ ...data, availableTerms: updatedTerms });
-        // If current term is deleted, reset to first available
-        if (data.term === term && updatedTerms.length > 0) {
-            setData({ ...data, availableTerms: updatedTerms, term: updatedTerms[0] });
-        }
-    };
+   
 
     const isChanged = (field: string) => data[field] !== originalData[field];
     const checkUpdate = () => {
@@ -132,15 +95,6 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
     useEffect(() => {
         return () => setData({ ...originalData}); // Reset to original on unmount or when logo changes
     }, []);
-    
-    useEffect(() => {
-        let termId = selectedSchool?.terms.find((t) => t.name === currentTerm)?.id;
-        let sessionId = selectedSchool?.sessions.find((t) => t.name === currentSession)?.id;
-
-        let url = `/school_finance/school-fee-settings/set-fee-for-classes/${selectedSchool?.id}/${sessionId}/${termId}/` ;
-        sendRequest(url,"GET",null as any,TriggeredFunc,true,false)
-    }, [currentTerm,currentSession]);
-
     
     // Manual Promotion Logic
     const handleAddPromotionMapping = () => {
@@ -183,15 +137,12 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
             if (setToast) setToast({ message: 'Add at least one class promotion mapping.', type: 'error' });
             return;
         }
-        // let sessionId = selectedSchool?.sessions.find((t) => t.name === currentSession)?.id;
         let sessionId = getSession?.id;
 
         const executedRecord = {
-            // id: `promo-exec-${Date.now()}`,
-            // date: new Date().toISOString(),
             school: selectedSchool?.id ,
             session: currentSession ,
-            sessionId:  sessionId ,
+            sessionId:  sessionId , 
             mappings: [...promotionMappings]
         };
         saveData("SETPROMOTION",executedRecord) ;
@@ -205,18 +156,18 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                 <p className="text-sm text-gray-500">Set current sessions, terms, and grading rules.</p>
             </div>
             
-            <div className="bg-navy-50 p-6 rounded-lg border border-navy-100 flex flex-col md:flex-row gap-8">
+            <div className="bg-navy-50 p-6 rounded-lg border border-navy-100 flex flex-col md:flex-row md:gap-3 gap-6 overflow-x-auto ">
                
                 {/* Session Management */}
-                <div className="flex-1 w-full">
-                    <label className="block text-sm font-bold text-navy-900 mb-2">Current Session</label>
+                <div className="flex-1 w-fit ">
+                    <label className="block text-sm font-bold text-navy-900 mb-2">Manage Current Session</label>
                     <div className="flex gap-2 mb-3">
                         <select 
                             className={`w-full p-3 rounded-md border focus:ring-2 focus:ring-navy-900 focus:border-transparent bg-white shadow-sm transition-colors ${isChanged('session') ? 'border-orange-400 ring-2 ring-orange-100' : 'border-navy-200'}`}
                             value={data.session}
                             onChange={e => setData({...data, session: e.target.value})}
                         >
-                            {sessions.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                            {sessions.map((s: string,idx) => <option key={`${idx}${s}`} value={s}>{s}</option>)}
                         </select>
                     </div>
                     {isChanged('session') && (
@@ -227,9 +178,11 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                                     <p className="text-xs font-bold text-orange-800 uppercase">Critical System Change</p>
                                     <p className="text-xs text-orange-700 mt-1 leading-relaxed">
                                         Advancing the academic session will <b>archive all active class registers</b>, attendance, and gradebooks. New records will be initialized for {data.session}.
+                                        <b>Click save changes below to proceed.</b>
                                     </p>
                                 </div>
                             </div>
+                            
                         </div>
                     )}
                     
@@ -244,7 +197,7 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                                 value={newSession}
                                 onChange={(e) => setNewSession(e.target.value)}
                             />
-                            <button onClick={handleAddSession} className="bg-navy-900 text-white px-3 py-1 rounded text-xs font-bold hover:bg-navy-800">
+                            <button onClick={() =>  {if (!newSession)return ;setTermOrSession("SESSION"),setShowAddingSessionorTerm(true)}} className="bg-navy-900 text-white px-3 py-1 rounded text-xs font-bold hover:bg-navy-800">
                                 <i className="fa-solid fa-plus"></i>
                             </button>
                         </div>
@@ -252,8 +205,8 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                 </div>
 
                 {/* Term Management */}
-                <div className="flex-1 w-full">
-                    <label className="block text-sm font-bold text-navy-900 mb-2">Current Term</label>
+                <div className="flex-1 w-fit">
+                    <label className="block text-sm font-bold text-navy-900 mb-2">Manage Current Term</label>
                     <div className="flex gap-2 mb-3">
                         <select 
                             className={`w-full p-3 rounded-md border focus:ring-2 focus:ring-navy-900 focus:border-transparent bg-white shadow-sm transition-colors ${isChanged('term') ? 'border-gold-400 ring-2 ring-gold-100' : 'border-navy-200'}`}
@@ -271,6 +224,7 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                                     <p className="text-xs font-bold text-gold-800 uppercase">Term Migration</p>
                                     <p className="text-xs text-gold-700 mt-1 leading-relaxed">
                                         Switching to <b>{data.term}</b> will update the active context for all teachers. Ensure grading for {originalData.term} is concluded.
+                                        <b>Click save changes below to proceed</b>
                                     </p>
                                 </div>
                             </div>
@@ -279,9 +233,7 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
 
                     {/* Manage Terms Control */}
                     <div className="bg-white p-3 rounded border border-navy-200">
-                        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Manage Terms</p>
-                        
-                        {/* List Existing */}
+                        {/* List Existing
                         <div className="flex flex-wrap gap-2 mb-3">
                             {terms.map((t: string) => (
                                 <span key={t} className="inline-flex items-center bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded border border-gray-200">
@@ -291,9 +243,10 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                                     )}
                                 </span>
                             ))}
-                        </div>
+                        </div> */}
 
                         {/* Add New */}
+                        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Add New Term</p>
                         <div className="flex gap-2">
                             <input 
                                 type="text" 
@@ -302,160 +255,30 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                                 value={newTerm}
                                 onChange={(e) => setNewTerm(e.target.value)}
                             />
-                            <button onClick={handleAddTerm} className="bg-navy-900 text-white px-3 py-1 rounded text-xs font-bold hover:bg-navy-800">
+                            <button onClick={() => {if (!newTerm)return ;setTermOrSession("TERM"),setShowAddingSessionorTerm(true)}} className="bg-navy-900 text-white px-3 py-1 rounded text-xs font-bold hover:bg-navy-800">
                                 <i className="fa-solid fa-plus"></i>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-            
-             {/* School Fees Configuration */}
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm animate-fadeIn">
-                <div className="mb-4 ">
-                    <div className="flex justify-between ">
-                        <h3 className="text-lg font-bold text-navy-900 flex items-center">
-                            <i className="fa-solid fa-money-bill-wave text-navy-500 mr-2"></i>
-                            School Fees Configuration
-                        </h3>
-                        <Button className='w-fit'
-                        onClick={() => {
-                            setShowModal(true)
-                            }}>
-                            New Configuration
-                        </Button>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">Select multiple classes to lock their official school fees for <b>{currentSession}</b> - <b>{currentTerm}</b>.</p>
-                </div>
-                 <Modal isOpen={showModal} onClose={() => {setShowModal(false);setSelectedClassIds([])}} title="Non Configured Classes List" icon="fa-solid fa-list">
-                    <div className="bg-navy-50 p-6 rounded-xl border border-navy-100 mb-6 space-y-6">
-                        <div>
-                            <div className="flex justify-between items-end mb-3">
-                                <label className="block text-sm font-bold text-navy-900 uppercase">1. Select Target Classes</label>
-                                <button onClick={handleSelectAllUnassigned} className="text-xs text-navy-600 hover:text-navy-900 font-bold bg-white px-3 py-1 rounded border border-navy-200 hover:bg-navy-50 transition-colors">
-                                    Select All Unassigned
-                                </button>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                {classRooms.filter((cls :any ) => !(currentTermFees?.map((fe:any )=> fe?.id).includes(cls.id))).map((c: any) => {
-                                    const isSelected = selectedClassIds.includes(c.id);
-                                    const existingFee = schoolFees.find((f: any) => f.classIds.includes(c?.id));
-                                    
-                                    return (
-                                        <div 
-                                            key={c.id}
-                                            onClick={() => toggleClassSelection(c.id)}
-                                            className={`cursor-pointer border rounded-lg p-3 flex flex-col items-start transition-all ${
-                                                isSelected 
-                                                    ? 'bg-navy-900 border-navy-900 text-white shadow-md' 
-                                                    : existingFee 
-                                                        ? 'bg-white border-gray-200 hover:border-navy-300' 
-                                                        : 'bg-white border-gray-300 hover:border-navy-400'
-                                            }`}
-                                        >
-                                            <div className="flex justify-between w-full items-center mb-1">
-                                                <span className={`font-bold ${isSelected ? 'text-white' : 'text-navy-900'}`}>{c.name}</span>
-                                                {isSelected && <i className="fa-solid fa-check-circle text-white"></i>}
-                                            </div>
-                                            {existingFee && !isSelected && (
-                                                <span className="text-xs font-bold text-green-600">Assigned: {formatCurrency(existingFee.amount)}</span>
-                                            )}
-                                            {!existingFee && !isSelected && (
-                                                <span className="text-xs text-gray-500 italic">Unassigned</span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+            <div className="border-t border-gray-400 "></div>
 
-                        {/* <div className="border-t border-navy-200"></div> */}
-                            
-                        {(selectedClassIds.length > 0 )  &&
-                            <div className="flex-1 w-full bg-white p-4 rounded-lg border flex flex-col justify-center border-orange-200 shadow-sm">
-                                <div className="flex items-start text-orange-800">
-                                    <i className="fa-solid fa-triangle-exclamation text-xl mr-3 mt-1 text-orange-500"></i>
-                                    <div>
-                                        <h4 className="font-bold text-sm uppercase">Confirmation Warning</h4>
-                                        <p className="text-sm mt-1">
-                                            Saving will <b>permanently lock and log</b> a specific  <b> Assigned </b> fee for each and every student in the selected {selectedClassIds.length} class(es).Dependant on the fee for that class .
-                                        </p>
-                                    </div>
-                                </div>
-                                            
-                            </div>
-                        }
-
-                        <div className="flex justify-end pt-2">
-                            <Button 
-                                onClick={handleAssignFee} 
-                                disabled={selectedClassIds.length === 0 || isLoading }
-                                className={`px-8 py-3 font-bold ${selectedClassIds.length === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-navy-900 text-white hover:bg-navy-800'}`}
-                            >
-                                <i className="fa-solid fa-lock mr-2"></i> Log Fees for Selected Classes
-                            </Button>
-                        </div>
-                    </div>
-                </Modal>
-
-                {currentTermFees.length > 0 ? (
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Class</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Students configured</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Inactive Students</th>
-                                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Fee Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {currentTermFees.map((fee: any) => {
-                                    const classInfo = classRooms.find((c: any) => c.id === fee.id);
-                                    const classNameStr = classInfo ? classInfo.name : 'Unknown Class';
-                                    const studentCount = fee?.configInfo?.totalStudents
-                                    const configuredAmount = fee?.configInfo?.configuredAmount
-
-                                    const studentConfigCount = fee?.configInfo?.configuredStudents
-                                    const studentUnConfigCount = fee?.configInfo?.UnconfiguredStudents
-                                    const inActiveCount = fee?.configInfo?.inActiveStudents
-                                    
-                                    return (
-                                        <tr key={fee.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="font-bold text-navy-900">{classNameStr}</div>
-                                                <div className="text-xs text-gray-500">ID: {fee.id}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {studentConfigCount}/{studentCount} Student(s)
-                                                </span>
-                                            </td>
-                                            
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {inActiveCount}/{studentCount} Student(s)
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-navy-900">
-                                                {formatCurrency(configuredAmount)}
-                                            </td>
-                                            
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div className="text-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                        <i className="fa-solid fa-folder-open text-gray-300 text-4xl mb-3"></i>
-                        <p className="text-gray-500">No school fees configured yet for {currentSession} - {currentTerm}.</p>
-                        <p className="text-xs text-gray-400 mt-1">Select a class and set the fee amount above to get started.</p>
-                    </div>
-                )}
+            <div className={`transition-all duration-300 ${isChanged('lockPastRecords') ? 'bg-red-50 p-2 rounded-lg border border-red-200' : ''}`}>
+                    <Toggle 
+                        label="Lock Past Academic Records" 
+                        description="Prevent editing of grades from previous sessions." 
+                        checked={data.lockPastRecords} 
+                        onChange={v => setData({...data, lockPastRecords: v})} 
+                    />
+                    {isChanged('lockPastRecords') && (
+                        <p className="text-xs text-red-700 mt-2 flex items-center animate-fadeIn">
+                            <i className="fa-solid fa-lock mr-2"></i>
+                            <b>Security Alert:</b> {data.lockPastRecords ? "Historical grades are now READ-ONLY." : "WARNING: Historical grades are now EDITABLE. This opens the system to potential record tampering."}
+                        </p>
+                    )}
             </div>
-
+                    {/* promosion tab  */}
             <div className="space-y-4 pt-2">
                 <div className={`transition-all duration-300 ${isChanged('autoPromotion') ? 'bg-orange-50 p-4 rounded-lg border border-orange-200' : ''}`}>
                     <Toggle 
@@ -624,30 +447,16 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                     </div>
                 )}
 
-                <div className="border-t border-gray-100 my-2"></div>
-
-                <div className={`transition-all duration-300 ${isChanged('lockPastRecords') ? 'bg-red-50 p-4 rounded-lg border border-red-200' : ''}`}>
-                    <Toggle 
-                        label="Lock Past Academic Records" 
-                        description="Prevent editing of grades from previous sessions." 
-                        checked={data.lockPastRecords} 
-                        onChange={v => setData({...data, lockPastRecords: v})} 
-                    />
-                    {isChanged('lockPastRecords') && (
-                        <p className="text-xs text-red-700 mt-2 flex items-center animate-fadeIn">
-                            <i className="fa-solid fa-lock mr-2"></i>
-                            <b>Security Alert:</b> {data.lockPastRecords ? "Historical grades are now READ-ONLY." : "WARNING: Historical grades are now EDITABLE. This opens the system to potential record tampering."}
-                        </p>
-                    )}
-                </div>
-                <div className="px-6 pt-6 mt- border-t border-gray-100 hidden md:block">
+                <div className="px-6 pt-6 mt- border-t border-gray-100">
                     <Button onClick={() => {
                         saveData("ACADEMIC")
-                    }} disabled={checkUpdate()} className="w-full">
+                    }} disabled={checkUpdate()} className="w-fit">
                      <i className="fa-solid fa-save mr-2"></i> Save Changes
                     </Button>
                 </div>
+            
             </div>
+             {/* School Fees Configuration */}
              <Modal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} title="Class Promotion History" size="lg">
                 <div className="space-y-6">
                     <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-2 text-sm text-navy-800">
@@ -710,6 +519,41 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                     )}
                 </div>
             </Modal>
+
+            {/* Fee Settings Configuration Warning Modal */}
+            <Modal isOpen={showAddingSessionorTerm} onClose={() => setShowAddingSessionorTerm(false)} title="School Configuration Alert" size="md">
+                <div className="space-y-4 flex flex-col items-center text-center pt-2 pb-4">
+                    <div className="w-20 h-20 bg-gold-100 rounded-full flex items-center justify-center shadow-sm border border-gold-200">
+                        <i className="fa-solid fa-triangle-exclamation text-4xl text-gold-500 animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-black text-navy-900 mb-3">Action Required.</h3>
+                        <p className="text-gray-600 text-sm leading-relaxed max-w-sm mx-auto font-medium">
+                            New {termOrSession} Precausions!
+                            <br/><br/>
+                                Make sure the name written is perfect on its role.
+                            <br/><br/>
+                            If the new {`${termOrSession?.toLocaleLowerCase() } `} 
+                             is added all the school configurations,records,etc associated with it will use it as its reference, so you cannot <b>update</b> it's name or <b>delete</b> it completely.
+                             <strong className="text-navy-900"> Click Configure ⇓ </strong> below to proceed.
+                        </p>
+                    </div>
+                    
+                    <div className="flex w-full gap-4 mt-6 border-t border-gray-100 pt-6">
+                        <Button variant="secondary" onClick={() => setShowAddingSessionorTerm(false)} className="flex-1 py-3 text-sm font-bold justify-center">
+                            Cancel
+                        </Button>
+                        <Button onClick={() => {
+                            setShowAddingSessionorTerm(false);
+                            if (termOrSession === "SESSION") handleAddSession()
+                            if (termOrSession === "TERM") handleAddTerm()
+                        }} className="bg-navy-900 text-white flex-[2] flex items-center justify-center py-3 text-sm font-bold shadow-md hover:bg-navy-800 transition-colors">
+                            <i className="fa-solid fa-cogs mr-2"></i> Configure
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
         </div>
     );
 };

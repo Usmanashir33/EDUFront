@@ -11,6 +11,7 @@ import StudentLedger from '@/components/finance/StudentLedger';
 import PaymentDetails from '@/components/finance/PaymentDetails';
 import SearchPayment from '@/components/finance/SearchPayments';
 import urls from '@/customHooks/ServerUrls';
+import AllPaymentStudents from '@/components/finance/AllPaymentStudents';
 
 interface FinanceManagerProps {
     personalMode?: boolean; // New Prop
@@ -51,8 +52,9 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     const {currentUser} = useContext(authContext);
     const sessions = selectedSchool?.sessions || [];
     const terms = selectedSchool?.terms || [];
-    const currentUserRole = currentUser?.role || 'director';
+    const currentUserRole = currentUser?.role || 'director'; 
     const currentUserId = currentUser?.user?.id || '';
+    const [validCurrent,setValidCurrent] = useState(false);
 
     const [activeTab, setActiveTab] = useState<FinanceTab>(   //for both parent and personal modes, default to overview/dashboard
         currentUserRole === 'parent' ? 'PAYMENT' : (personalMode ? 'OVERVIEW' : 'OVERVIEW')
@@ -120,6 +122,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     const [paymentAmount, setPaymentAmount] = useState('');
     const [isPaymentFormModalOpen, setIsPaymentFormModalOpen] = useState(false);
     const [historyPayment,setHistoryPayment] = useState()
+    const [showAllStudents ,setShowAllStudents] = useState(false)
 
     const currentParent = parents?.find(p => p.id === currentUserId) || parents?.[0] || { walletBalance: 0 };
     const walletBalance = currentParent.walletBalance || 0;
@@ -138,7 +141,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     const [rejectionNote, setRejectionNote] = useState('');
     const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
 
-    const [currentTermRecords,setCurrentTermRecords] = useState()
+    const [currentTermRecords,setCurrentTermRecords] = useState<any>([])
 
     const totalPendingPayments = useMemo(() => {
         if (!pendingPayments?.length) return ;
@@ -167,7 +170,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     }, [paymentStudents, students, schoolFees]);
     
     const TriggeredFunc = (resp) => {
-        console.log('resp: ', resp);
+        // console.log('resp: ', resp);
         setActionToValidate(null);
         if (resp?.new_school_fees){
             setIsFeeModalOpen(false);
@@ -178,7 +181,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             return
         }
         if (resp?.dashbordData){
-            setCurrentTermRecords(resp?.dashbordData)
+            setCurrentTermRecords(resp?.dashbordData);
+            setValidCurrent(true);
             return
         }
         if (resp?.updated_school_fees){
@@ -276,7 +280,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
         // Trigger PIN modal for authorization
         if (!currentUser?.user?.pin_set){
-            let url = `/school_finance/director-payments/create/` ;
+            let url = `/school_finance/payments/create/` ;
             sendRequest(url,"POST",form as any ,TriggeredFunc,true,true) ;
             return ;
         }
@@ -284,7 +288,6 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     }
 
     const handleUpdatePayments = (action:"APPROVE"| "REJECT",ids:String[]) => {
-        console.log('actionToValidate: ', actionToValidate);
         let form = {
             school:selectedSchool?.id ,
             paymentIds :ids ,
@@ -294,7 +297,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         setServerForm(form);
         // Trigger PIN modal for authorization
         if (!currentUser?.user?.pin_set){
-            let url = `/school_finance/director-payments/create/` ;
+            let url = `/school_finance/payments/create/` ;
             sendRequest(url,"PUT",form as any ,TriggeredFunc,true,!true) ;
             return ;
         }
@@ -329,13 +332,13 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
             if (actionToValidate.type === 'SUBMIT_PAYMENT') {
                 serverForm.append('pin',pins)
-                let url = `/school_finance/director-payments/create/`
+                let url = `/school_finance/payments/create/`
                 sendRequest(url,"POST",serverForm as any ,TriggeredFunc,true,true)
                 return 
             }
 
             if (['REJECT',"REJECT_BULK","APPROVE","APPROVE_BULK"].includes(actionToValidate.type)) {
-                let url = `/school_finance/director-payments/create/`
+                let url = `/school_finance/payments/create/`
                 sendRequest(url,"PUT",{...serverForm,pin:pins} as any ,TriggeredFunc,true,false)
                 return 
             }
@@ -346,7 +349,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     useEffect(() => {
         let termId = selectedSchool.terms.find( t => t.name === selectedTerm)?.id ;
         let sessionId = selectedSchool.sessions.find(t => t.name === selectedSession)?.id ;
-        let url = `/school_finance/director-dashbord/${selectedSchool.id}/${sessionId}/${termId}/${drillDownStatus}/` ;
+        let url = `/school_finance/dashbord/${selectedSchool.id}/${sessionId}/${termId}/${drillDownStatus}/` ;
 
         if (termId && sessionId){
             sendRequest(url,"GET",null as any,TriggeredFunc,true,false);
@@ -356,7 +359,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     
     // fetch payments 
     useEffect(() => {
-        let url = `/school_finance/director-payment-records/${selectedSchool.id}/`;
+        let url = `/school_finance/payment-records/${selectedSchool.id}/`;
         if (selectedSchool.id){
             sendRequest(url,"GET",null as any,TriggeredFunc,true,false);
         }
@@ -378,20 +381,20 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         // 1. Fee Incomes (Only relevant for Directors or the specific Student)
         if (!personalMode || currentUserRole === 'student') {
             const feeTxns = feeRecords
-                .filter(r => r.amountPaid > 0)
-                .map(r => {
-                    const s = students.find(st => st.id === r.studentId);
-                    return {
-                        id: `txn-fee-${r.id}`,
-                        type: 'INCOME' as const,
-                        category: 'FEES' as const,
-                        amount: r.amountPaid,
-                        description: `School Fees (${r.term}) - ${s?.firstName} ${s?.lastName}`,
-                        date: r.lastPaymentDate || new Date().toISOString(),
-                        status: 'COMPLETED' as const,
-                        reference: `REF-${r.id.slice(-6)}`
-                    };
-                });
+                // .filter(r => r.amountPaid > 0)
+                // .map(r => {
+                //     const s = students.find(st => st.id === r.studentId);
+                //     return {
+                //         id: `txn-fee-${r.id}`,
+                //         type: 'INCOME' as const,
+                //         category: 'FEES' as const,
+                //         amount: r.amountPaid,
+                //         description: `School Fees (${r.term}) - ${s?.firstName} ${s?.lastName}`,
+                //         date: r.lastPaymentDate || new Date().toISOString(),
+                //         status: 'COMPLETED' as const,
+                //         reference: `REF-${r.id.slice(-6)}`
+                //     };
+                // });
             txns = [...txns, ...feeTxns];
         }
 
@@ -440,8 +443,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     const netBalance = totalIncome - totalExpenses;
 
     // Student Personal Stats
-    const myTotalPaid = feeRecords.reduce((acc, r) => acc + r.amountPaid, 0);
-    const myTotalDue = feeRecords.reduce((acc, r) => acc + r.totalDue, 0);
+    const myTotalPaid = feeRecords.reduce((acc, r) => acc + r?.amountPaid, 0);
+    const myTotalDue = feeRecords.reduce((acc, r) => acc + r?.totalDue, 0);
     const myOutstanding = myTotalDue - myTotalPaid;
 
     // Teacher Personal Stats
@@ -451,7 +454,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         <button
             onClick={() => setActiveTab(id)}
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center transition-all whitespace-nowrap ${
-                activeTab === id ? 'bg-navy-800 text-white shadow-md border border-gold-400 b-2' : 'bg-white/90 text-gray-800 hover:bg-navy-50 hover:text-navy-700'
+                activeTab !== id ? 'bg-navy-800 text-white shadow-md border border-md border border-gold-400 b-2' : 'bg-white/90 text-gray-800 hover:bg-navy-50 hover:text-navy-700'
             }`}
         >
             <i className={`${icon} mr-2`}></i> {label}
@@ -468,22 +471,23 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     }, [selectedSchool]);
 
     return (
-        <div className="h-full flex flex-col space-y-6 animate-fadeIn max-h-screen">
+        <div className="h-full flex flex-col space-y-4 animate-fadeIn max-h-screen">
             {/* Merged Header: Fee Collection Analysis + Tabs */}
             
             {!personalMode && (
                 <div className="bg-navy-900 text-white p-3 rounded-xl shadow-lg relative overflow-hidden flex-shrink-0 ">
                      <div className="absolute top-0 right-0 w-64 h-54 bg-white opacity-5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
                      <div className="relative z-10 space-y-6">
-                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                         {activeTab === 'OVERVIEW' && <div className="flex  flex-col md:flex-row justify-between items-start md:items-center gap-4">
                              <div>
                                  <h3 className="text-2xl font-bold mb-1">Fee Collection Analysis</h3>
                                  <p className="text-navy-200 text-sm">Select a session and term to view specific fee performance.</p>
                              </div>
-                             <div className="flex flex-wrap items-center gap-2 bg-navy-800 p-2 rounded-lg border border-navy-700">
+                             Filter:
+                             <div className="flex flex-wrap items-center gap-2 bg-navy-800 px-2 rounded-lg border border-navy-700">
                                  <label className="text-sm font-bold text-navy-300 px-2  ">Session:</label>
                                  <select 
-                                    className="bg-navy-200 text-gray-800 border border-navy-600 rounded p-2 text-sm font-bold focus:outline-none focus:border-gold-500"
+                                    className="bg-navy-200 text-gray-800 border border-navy-600 rounded px-2 py-1 text-sm font-bold focus:outline-none focus:border-gold-500"
                                     value={selectedSession || ""} onChange={(e) => setSelectedSession(e.target.value)}
                                   >
                                      {sessions.map((s)  => (
@@ -493,7 +497,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
                                  <label className="text-sm font-bold text-navy-300 px-2">Term:</label>
                                  <select value={selectedTerm || ""} onChange={(e) => setSelectedTerm(e.target.value)} 
-                                 className="bg-navy-200 text-gray-800 border border-navy-600 rounded px-4 py-2 text-sm font-bold focus:outline-none focus:border-gold-500"
+                                 className="bg-navy-200 text-gray-800 border border-navy-600 rounded px-2 py-1 text-sm font-bold focus:outline-none focus:border-gold-500"
                                  >
                                      {terms.map((t) => (
                                          <option key={t.id} value={t.name}>{t.name}</option>
@@ -501,10 +505,10 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
                                  </select>
                              </div>
-                         </div>
+                         </div>}
 
                          {/* Navigation Tabs Merged Here */}
-                         <div className="flex gap-2 justify-start bg-navy-800/50 p-1.5 rounded-xl overflow-x-auto no-scrollbar border border-white/10">
+                         <div className="flex gap-2 justify-start bg-navy-800/50  p-1.5 rounded-xl overflow-x-auto no-scrollbar border border-white/10">
                             {currentUserRole !== 'parent' && (
                                 <>
                                     <TabButton id="OVERVIEW" label="Dashboard" icon="fa-solid fa-chart-pie" />
@@ -550,7 +554,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             )}
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar -mb-2">
                 
                 {/* --- STUDENT PERSONAL VIEW --- */}
                 {personalMode && currentUserRole === 'student' && (
@@ -646,38 +650,41 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                 {!personalMode && activeTab === 'OVERVIEW' && (
                     <FadeIn>
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
                             <div onClick={() => setDrillDownStatus('PAID')} className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden ${drillDownStatus === 'PAID' ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-100'}`}>
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><i className="fa-solid fa-circle-check text-6xl text-green-600"></i></div>
-                                <div className="relative z-10"><p className="text-xs font-bold uppercase text-gray-500 mb-2">Fully Paid</p><h3 className="text-3xl font-bold text-navy-900 mb-1">{currentTermRecords?.paid_count } <span className="text-sm font-medium text-gray-400">Students</span></h3><p className="text-sm font-bold text-green-600">{formatCurrency(currentTermRecords?.total_paid)}</p></div>
+                                <div className="relative z-10"><p className="text-xs font-bold uppercase text-gray-500 mb-2">Fully {`${selectedSession} » ${selectedTerm}`}</p><h3 className="text-3xl font-bold text-navy-900 mb-1">{currentTermRecords?.paid_count } <span className="text-sm font-medium text-gray-400">Students</span></h3><p className="text-sm font-bold text-green-600">{formatCurrency(currentTermRecords?.total_paid) || "N/A"}</p></div>
                             </div>
                             <div onClick={() => setDrillDownStatus('PARTIAL')} className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden ${drillDownStatus === 'PARTIAL' ? 'border-gold-500 ring-2 ring-gold-200' : 'border-gray-100'}`}>
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><i className="fa-solid fa-circle-half-stroke text-6xl text-gold-600"></i></div>
-                                <div className="relative z-10"><p className="text-xs font-bold uppercase text-gray-500 mb-2">Partially Paid</p><h3 className="text-3xl font-bold text-navy-900 mb-1">{currentTermRecords?.partial_count} <span className="text-sm font-medium text-gray-400">Students</span></h3><p className="text-sm font-bold text-gold-600">{formatCurrency(currentTermRecords?.total_partial)}</p></div>
+                                <div className="relative z-10"><p className="text-xs font-bold uppercase text-gray-500 mb-2">Partially  {`${selectedSession} » ${selectedTerm}`} </p><h3 className="text-3xl font-bold text-navy-900 mb-1">{currentTermRecords?.partial_count} <span className="text-sm font-medium text-gray-400">Students</span></h3><p className="text-sm font-bold text-gold-600">{formatCurrency(currentTermRecords?.total_partial) || "N/A"}</p></div>
                             </div>
                             <div onClick={() => setDrillDownStatus('UNPAID')} className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden ${drillDownStatus === 'UNPAID' ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-100'}`}>
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><i className="fa-solid fa-circle-xmark text-6xl text-red-600"></i></div>
-                                <div className="relative z-10"><p className="text-xs font-bold uppercase text-gray-500 mb-2">Unpaid / Owing </p><h3 className="text-3xl font-bold text-navy-900 mb-1">{currentTermRecords?.unpaid_count} <span className="text-sm font-medium text-gray-400">Students</span></h3><p className="text-sm font-bold text-red-600">{formatCurrency(currentTermRecords?.total_unpaid)}</p></div>
+                                <div className="relative z-10"><p className="text-xs font-bold uppercase text-gray-500 mb-2">Unpaid/Owing  {`${selectedSession} » ${selectedTerm}`} </p><h3 className="text-3xl font-bold text-navy-900 mb-1">{currentTermRecords?.unpaid_count} <span className="text-sm font-medium text-gray-400">Students</span></h3><p className="text-sm font-bold text-red-600">{formatCurrency(currentTermRecords?.total_unpaid) || "N/A"}</p></div>
                             </div>
                              <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
                                 <p className="text-xs font-bold uppercase text-gray-500 mb-2">Net Balance (All Time)</p>
-                                <h3 className="text-3xl font-bold text-navy-900 mb-1">{formatCurrency(currentTermRecords?.total_net_balance)}</h3>
+                                <h3 className="text-3xl font-bold text-navy-900 mb-1">{formatCurrency(currentTermRecords?.total_net_balance) || "N/A"}</h3>
                                 <p className="text-xs text-gray-400">Total Outstanding</p>
                             </div>
                         </div>
 
                         {/* In-Page Drill Down List */}
                         {(
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8 animate-fadeIn">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-2 animate-fadeIn">
                                 <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                                    <h3 className="font-bold text-navy-900 text-lg">
+                                    {(!isLoading && validCurrent) && <h3 className="font-bold text-navy-900 text-lg">
                                         {drillDownStatus === 'PAID' ? 'Fully Paid Students' : drillDownStatus === 'PARTIAL' ? 'Partially Paid Students' : 'Unpaid Students'} - {selectedSession} ({selectedTerm})
-                                    </h3>
-                                    <button onClick={() => setDrillDownStatus(null)} className="text-gray-400 hover:text-gray-600">
+                                    </h3>}
+                                    {isLoading && <div className="font-bold text-gray-500 text-lg">
+                                        🔃Loading....
+                                    </div>}
+                                    {/* <button onClick={() => setDrillDownStatus(null)} className="text-gray-400 hover:text-gray-600">
                                         <i className="fa-solid fa-times text-xl"></i>
-                                    </button>
+                                    </button> */}
                                 </div>
-                                <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+                                <div className="max-h-[400px] overflow-y-auto custom-scrollbar relative">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-white sticky top-0 shadow-sm">
                                             <tr>
@@ -686,15 +693,15 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Class</th>
                                                 <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Total Due</th>
                                                 <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Amount Paid</th>
-                                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Payer</th>
+                                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Trx Type</th>
                                                 <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Net Balance</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 bg-white">
                                             {currentTermRecords?.data?.filter(r => r.status === drillDownStatus)
                                                 .map(r => {
-                                                    const student = students.find(s => s.id === r.student);
-                                                    const balance = r.net_balance;
+                                                    // const balance = r.net_balance;
+                                                    const balance = r.current_net_balance ;
                                                     const clss = classRooms.filter(cls =>  r.active_classes.includes(cls.id))
                                                     return (
                                                         <tr key={r.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => {
@@ -719,9 +726,9 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                                                 {formatCurrency(r?.amount_paid)}
                                                             </td>
                                                             <td className="px-6 py-4 text-sm text-gray-500">
-                                                                {r?.payment_details?.payer || '-'}
+                                                                {r?.transaction_type || '-'}
                                                             </td>
-                                                            <td className={`px-6 py-4 text-right text-sm font-bold ${balance < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                                            <td className={`px-6 py-4 text-right text-sm font-bold ${balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                                                                 {formatCurrency(balance)}
                                                             </td>
                                                         </tr>
@@ -729,6 +736,12 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                                 })}
                                         </tbody>
                                     </table>
+                                    {!currentTermRecords?.data?.filter(r => r.status === drillDownStatus).length && <div className="px-6 py-3 text-center p-10 my-10 tex font-bold text-gray-400 ">
+                                        {`No ${drillDownStatus} Payment found For ${selectedSession} » ${selectedTerm} `}
+                                    </div>}
+                                    {currentTermRecords?.data?.length >= 14 && <div className=" text-center text-blue-600 font-xl  hover:pointer-cursor" onClick={() => {
+                                        setShowAllStudents(true);
+                                    }}> »» see all</div>}
                                 </div>
                             </div>
                         )}
@@ -736,7 +749,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                 )}
                 
                 {/* --- PAYMENT (Make Payment) --- */}
-                {activeTab === 'PAYMENT' && (
+                {activeTab === 'PAYMENT' && ( 
                     <PaymentPage
                         userRole = {currentUser?.role || 'PARENT'}
                         defaultBank={defaultBank} 
@@ -910,6 +923,18 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                         </div>
                     </div>
                 </Modal>
+                
+                {showAllStudents && drillDownStatus && 
+                <AllPaymentStudents
+                    schoolId={selectedSchool?.id}
+                    sessionId={selectedSchool.sessions?.find(t => t.is_current)?.id}
+                    termId={selectedSchool.terms?.find(t => t.is_current)?.id}
+                    type={drillDownStatus}
+                    requestSender={sendRequest}
+                    setLedgerStudentId={setLedgerStudentId}
+                    showAllStudents={showAllStudents}
+                    setShowAllStudents={setShowAllStudents}
+                />}
 
                 {/* --- PAYMENT VALIDATION (Director) --- */}
                 {!personalMode && activeTab === 'PAYMENT_VALIDATION' && (
@@ -988,8 +1013,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                             )}
                                             <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
                                             <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Details</th>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Receipt</th>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Payer</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Payer</th>
                                             <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Amount</th>
                                             <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Status</th>
                                         </tr>
@@ -1022,23 +1046,23 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                                     <td className="px-6 py-4 text-sm text-gray-500">{new Date(p.date_initiated).toLocaleDateString()}</td>
                                                     <td className="px-6 py-4">
                                                         <p className="text-xs text-gray-600 font-medium">{p.students?.length} Student(s)</p>
-                                                        {(p?.payment_method !== "CASH") && <div className="mt-1 space-y-0.5">
+                                                        {/* {(p?.payment_method !== "CASH") && <div className="mt-1 space-y-0.5">
                                                             <p className="text-xs text-gray-500">Phone: <span className="font-medium text-gray-700">{p.phone_number}</span></p>
                                                             <p className="text-xs text-gray-500">Bank: <span className="font-medium text-gray-700">{p.bank_name || 'N/A'}</span></p>
                                                             <p className="text-xs text-gray-500">Acct: <span className="font-medium text-gray-700">{p.account_number}</span></p>
-                                                        </div>}
-                                                        {(p?.payment_method === "CASH") && <div className="mt-1 space-y-0.5">
+                                                        </div>} */}
+                                                        {/* {(p?.payment_method === "CASH") && <div className="mt-1 space-y-0.5"> */}
                                                             <p className="text-xs text-gray-500">{p?.payment_method}</p>
-                                                        </div>}
-                                                        {p?.note && <p className="text-xs text-red-600 italic mt-2 bg-gold-50 p-1.5 rounded border border-gold-100">Reason: {p?.note}</p>}
+                                                        {/* </div>} */}
+                                                        {/* {p?.note && <p className="text-xs text-red-600 italic mt-2 bg-gold-50 p-1.5 rounded border border-gold-100">Reason: {p?.note}</p>} */}
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    {/* <td className="px-6 py-4">
                                                         {p?.receipt_image ? (
                                                             <button onClick={(e) => {e.stopPropagation();setReceiptImageToView(p?.receipt_image || null)}} className="text-navy-600 hover:text-navy-800 text-sm font-bold flex items-center gap-2">
                                                                 <i className="fa-solid fa-image"></i> View Receipt
                                                             </button>
                                                         ) : <span className="text-gray-400 text-sm">No Receipt</span>}
-                                                    </td>
+                                                    </td> */}
                                                     <td className="px-6 py-4 text-sm font-bold text-right text-navy-900">{p?.payer}</td>
 
                                                     <td className="px-6 py-4 text-sm font-bold text-right text-navy-900">{ formatCurrency(p?.total_amount) }</td>
@@ -1080,7 +1104,6 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                 )}
 
             </div>
-
             
             <PaymentDetails
                 historyPayment={historyPayment}
@@ -1117,14 +1140,14 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                 </div>
             </Modal>
 
-            <div className="z-[999]">
+            {!!receiptImageToView && <div className="z-[999]">
                 <ImageViewer 
                     isOpen={!!receiptImageToView} 
                     imageUrl={ prepareImageUrl(receiptImageToView, urls.BASE_URL) || undefined} 
                     onClose={() => setReceiptImageToView(null)} 
                     altText="Payment Receipt"
                 />
-            </div>
+            </div>}
 
             {/* Student Ledger Modal for All Roles  */}
             {ledgerStudentId && 

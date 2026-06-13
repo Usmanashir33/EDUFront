@@ -126,11 +126,11 @@ export const FinanceSettings: React.FC<FinanceSettingsProps> = ({ data,saveData 
 
 
     const [editingBank, setEditingBank] = React.useState({
+        is_active : true,
+        is_default : false,
         bank_name : '',
         account_number : '',
         account_name : '',
-        is_default : false,
-        is_active : false
     });
     const filteredClasses = classSectionFilter === 'ALL' ? classRooms.map(cls => cls.id) : classRooms.filter(c => c?.section == sections.find(sec => sec.name === classSectionFilter)?.id).map(cls => cls.id);
         const handleSettingsSave = (operation : "CREATE" | "EDIT") => {  
@@ -177,11 +177,11 @@ export const FinanceSettings: React.FC<FinanceSettingsProps> = ({ data,saveData 
                     // Handle fee setting deletion
                     sendRequest(`/school_finance/school-fee-settings/delete/${selectedSchool?.id}/${actionToValidate?.id}/${pins}/`,"DELETE",null as any ,TriggeredFunc,true,false)
                     return 
-                }
+                } 
             setActionToValidate(null);
         }
     const TriggeredFunc = (resp) => {
-        console.log('resp: ', resp);
+        // console.log('resp: ', resp);
         if (resp?.new_school_fees){
             setIsFeeModalOpen(false);
             setEditingFeeId(null);
@@ -210,12 +210,13 @@ export const FinanceSettings: React.FC<FinanceSettingsProps> = ({ data,saveData 
     const handleDeleteSetting = () => {
         let feeId = actionToValidate?.id || null
         if (!feeId || (actionToValidate?.type !== "DELETE_FEE_SETTING")) return;
-        // check user pin 
+        // // check user pin 
         if (!currentUser?.user?.pin_set){
             sendRequest(`/school_finance/school-fee-settings/delete/${selectedSchool?.id}/${feeId}/""/`,"DELETE",null as any ,TriggeredFunc,true,false)
             return ;
         }
-        // setPinModalOpen(true);
+        setPinModalOpen(true);
+        return ;
     }
     const handleAddNewBank = () => {
         setMode('ADD');
@@ -224,7 +225,7 @@ export const FinanceSettings: React.FC<FinanceSettingsProps> = ({ data,saveData 
             account_number : '',
             account_name : '',
             is_default : false,
-            is_active : false
+            is_active : true
     });
         setIsFinanceFormOpen(true);
     }
@@ -243,10 +244,10 @@ export const FinanceSettings: React.FC<FinanceSettingsProps> = ({ data,saveData 
             <Modal isOpen={isFinanceFormOpen} onClose={() => setIsFinanceFormOpen(false)} title={mode === "EDIT" ? "Edit Bank Account" : "Add New Bank Account"} icon="fa-solid fa-building-columns">
                 <div className="space-y-4">
                     <Input required placeholder="Enter bank name" label="Bank Name" value={editingBank.bank_name} onChange={e => setEditingBank({...editingBank, bank_name: e.target.value})} iconClass="fa-solid fa-building-columns" />
-                    <Input required placeholder="Enter account number" label="Account Number" value={editingBank.account_number} onChange={e => setEditingBank({...editingBank, account_number: e.target.value})} iconClass="fa-solid fa-hashtag" />
+                    <Input required placeholder="Enter account number" label="Account Number" value={editingBank.account_number} maxLength={11} onChange={e => setEditingBank({...editingBank, account_number: e.target.value})} iconClass="fa-solid fa-hashtag" />
                     <Input required placeholder="Enter account name" label="Account Name" value={editingBank.account_name} onChange={e => setEditingBank({...editingBank, account_name: e.target.value})} iconClass="fa-solid fa-signature" />
                     <Toggle label="Set as Default Account" checked={editingBank.is_default} onChange={v => setEditingBank({...editingBank, is_default: v})} />
-                    <Toggle label="Active Account" checked={editingBank.is_active} onChange={v => setEditingBank({...editingBank, is_active: v})} />
+                    <Toggle label="Active Account" checked={editingBank?.is_active} onChange={v => setEditingBank({...editingBank, is_active: v})} />
                     <Button 
                         disabled={isLoading}
                         onClick={() => {
@@ -322,7 +323,7 @@ export const FinanceSettings: React.FC<FinanceSettingsProps> = ({ data,saveData 
                 <div className="space-y-4">
                     {/* hedaet tp warn about deleting  */}
                     <div className="">
-                        <h4 className="text-sm text-red-600 rounded-md  bg-red-100 font-bold p-3 flex items-center gap-2">
+                        <h4 className="text-sm text-red-400 rounded-md  bg-red-50 font-bold p-3 flex items-center gap-2">
                             <i className="fa-solid fa-triangle-exclamation"></i>
                             Warning: Deleting a Fee Setting is irreversible. Ensure to set another setting for the respective classes affected to avoid Fee Calculation issues.
                         </h4>

@@ -14,9 +14,9 @@ interface RoleSettingsProps {
 export const RoleSettings: React.FC<RoleSettingsProps> = ({
      roles, permissions, onUpdateRoles, onUpdatePermissions,
     }) => {
-    const {isLoading,selectedSchool} = useContext(uiContext);
+    const {isLoading,selectedSchool,setToast} = useContext(uiContext);
     const [view, setView] = useState<'ROLES' | 'PERMISSIONS'>('ROLES');
-
+    const [showDeleteRoleModal,setShowDeleteRoleModal] = useState(false);
     // Modals
     const [roleModal, setRoleModal] = useState<{ isOpen: boolean; data: Partial<SchoolRole> | null }>({ isOpen: false, data: null });
     const [permModal, setPermModal] = useState<{ isOpen: boolean; data: Partial<SchoolPermission> | null }>({ isOpen: false, data: null });
@@ -40,21 +40,26 @@ export const RoleSettings: React.FC<RoleSettingsProps> = ({
         onUpdateRoles(form,action);
         return ;
     };
-
+    const handleDeleteRole = () => {
+        let id = roleModal.data?.id ;
+        onUpdateRoles({id},"DELETE");
+    }
     const handleSavePerm = (e: React.FormEvent) => {
         e.preventDefault();
-        const fd = new FormData(e.target as HTMLFormElement);
-        const name = fd.get('name') as string;
-        const desc = fd.get('description') as string;
-        let id = permModal.data?.id ;
-        let action: "ADD" | "EDIT" | "DELETE" = id ? "EDIT" : "ADD";
-        let form:any = {
-            name,
-            description: desc,
-            school : selectedSchool?.id ,
-        }
-        id? form.id = id : null ;
-        onUpdatePermissions(form,action);
+        setPermModal({ isOpen: false, data: {} })
+        setToast({message:"Adding permission is currently not available",type:'info'})
+        // const fd = new FormData(e.target as HTMLFormElement);
+        // const name = fd.get('name') as string;
+        // const desc = fd.get('description') as string;
+        // let id = permModal.data?.id ;
+        // let action: "ADD" | "EDIT" | "DELETE" = id ? "EDIT" : "ADD";
+        // let form:any = {
+        //     name,
+        //     description: desc,
+        //     school : selectedSchool?.id ,
+        // }
+        // id? form.id = id : null ;
+        // onUpdatePermissions(form,action);
         return ;
     };
 
@@ -104,12 +109,21 @@ export const RoleSettings: React.FC<RoleSettingsProps> = ({
                                 <div key={r.id} onClick={() => setViewRoleModal({ isOpen: true, data: r })} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md hover:border-gold-300 transition-all cursor-pointer group">
                                     <div className="flex justify-between items-start mb-3">
                                         <h3 className="font-bold text-navy-900 text-lg group-hover:text-gold-600 transition-colors">{r.name}</h3>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); setRoleModal({ isOpen: true, data: r }); }}
-                                            className="text-gray-400 hover:text-navy-600 p-1"
-                                        >
-                                            <i className="fa-solid fa-pen"></i>
-                                        </button>
+                                        <div className="flex gap-4 items-center">
+                                            
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setRoleModal({ isOpen: true, data: r }); }}
+                                                className="text-gray-400 hover:text-navy-600 p-1"
+                                            >
+                                                <i className="fa-solid fa-pen"></i>
+                                            </button>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setRoleModal({ isOpen: false, data: r });setShowDeleteRoleModal(true); }}
+                                                className="text-red-600 hover:text-red-400 p-1"
+                                            >
+                                                <i className="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     <p className="text-sm text-gray-600 mb-4 h-10 overflow-hidden">{r.description}</p>
                                     <div className="pt-3 border-t border-gray-100 flex justify-between items-center text-xs">
@@ -192,17 +206,18 @@ export const RoleSettings: React.FC<RoleSettingsProps> = ({
 
             <Modal isOpen={permModal.isOpen} onClose={() => setPermModal({ isOpen: false, data: null })} title={permModal.data?.id ? "Edit Permission" : "Define Permission"} icon="fa-solid fa-key">
                 <form onSubmit={handleSavePerm} className="space-y-4">
-                    <Input label="Permission Identifier" name="name" defaultValue={permModal.data?.name} required placeholder="e.g. view_finance_records" className="font-mono text-sm" />
+                    <Input label="Permission Identifier" name="name" disabled defaultValue={permModal.data?.name} required placeholder="e.g. view_finance_records (Not Allowed Now)" className="font-mono text-sm" />
                     <div className="space-y-2">
                         <label className="block text-xs font-bold text-gray-500 uppercase">Description</label>
                         <textarea name="description" defaultValue={permModal.data?.description} required rows={3} className="w-full px-3 py-2 border rounded-md focus:outline-none focus:border-navy-900" placeholder="What does this permission allow..."></textarea>
                     </div>
                     <div className="pt-4 flex gap-3">
                         <Button type="button" variant="outline" onClick={() => setPermModal({ isOpen: false, data: null })}>Cancel</Button>
-                        <Button type="submit">Save Permission</Button>
+                        <Button type="submit" >Save Permission</Button>
                     </div>
                 </form>
             </Modal>
+
              <Modal isOpen={viewRoleModal.isOpen} onClose={() => setViewRoleModal({ isOpen: false, data: null })} title="Role Overview" icon="fa-solid fa-users-viewfinder">
                 {viewRoleModal?.data && (
                     <div className="space-y-6">
@@ -255,6 +270,49 @@ export const RoleSettings: React.FC<RoleSettingsProps> = ({
                     </div>
                 )}
             </Modal>
+            {/* Fee Settings Configuration Warning Modal */}
+                        <Modal isOpen={showDeleteRoleModal} onClose={() => setShowDeleteRoleModal(false)} title="School Configuration Alert" size="sm">
+                            <div className="space-y-4 flex flex-col items-center text-center pt-2 pb-4">
+                                <div className="w-20 h-20 bg-gold-100 rounded-full flex items-center justify-center shadow-sm border border-gold-200">
+                                    <i className="fa-solid fa-triangle-exclamation text-4xl text-gold-500 animate-pulse"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-navy-900 mb-3">Action Required.</h3>
+                                    <p className="text-gray-600 text-sm leading-relaxed max-w-sm mx-auto font-medium">
+                                        <strong>
+                                            <i className='px-1'>{roleModal?.data?.name}</i> 
+                                        </strong>
+                                            
+                                            has
+                                             <b className='px-1'>
+                                                { roleModal?.data?.permissionIds?.length}
+                                            </b> Permissions and 
+                                            <b className='px-1'>
+                                                { roleModal?.data?.users?.length} Users.
+                                            </b>
+                                        <br/><br/>
+
+                                        If the Role is <b>Deleted.</b>
+                                        All users,staffs,teachers associated with this Role will loose their access to the permissions
+                                        associated with the Role. <b>if you are agree</b>
+                                         <strong className="text-navy-900"> Click Delete ⇓ </strong> below to proceed.
+                                    </p>
+                                </div>
+                                
+                                <div className="flex w-full gap-4 mt-6 border-t border-gray-100 pt-6">
+                                    <Button variant="secondary" onClick={() => setShowDeleteRoleModal(false)} className="flex-1 py-3 text-sm font-bold justify-center">
+                                        Cancel
+                                    </Button>
+                                    <Button onClick={() => {
+                                        setShowDeleteRoleModal(false);
+                                        if (view === "ROLES") handleDeleteRole()
+                                        // if (termOrSession === "TERM") handleAddTerm()
+                                    }} className="bg-navy-900 text-white flex-[2] flex items-center justify-center py-3 text-sm font-bold shadow-md hover:bg-navy-800 transition-colors">
+                                        <i className="fa-solid fa-cogs mr-2"></i> Delete
+                                    </Button>
+                                </div>
+                            </div>
+                        </Modal>
         </div>
     );
 };

@@ -570,11 +570,11 @@ const filteredTeachers = useMemo(() => {
       pin : ''
     }
 
-    // if (!currentUser?.user?.pin_set){
+    if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server 
       sendRequest(`/academics/class/enrollment/`,"POST",f as any,TriggerClassFunc2,true,false);
       return ;
-    // }
+    }
     setMethode("ENROLLMENT");
     setServerform(f);
     setShowPinModal(true);

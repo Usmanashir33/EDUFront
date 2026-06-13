@@ -448,7 +448,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   const isInfo = type === 'info';
 
   return (
-    <div className={`fixed top-6 right-6 z-[9999999] flex flex-col w-full max-w-sm overflow-hidden rounded-lg shadow-2xl animate-slideInRight ${currentStyle.bg} ${currentStyle.border}`}>
+    <div className={`fixed top-6 right-6 z-[9999999] flex flex-col w-full max-w-[50vw] overflow-hidden rounded-lg shadow-2xl animate-slideInRight ${currentStyle.bg} ${currentStyle.border}`}>
       <div className="flex items-center p-4 gap-4">
         <div className="shrink-0">
            <i className={`fa-solid ${currentStyle.icon} text-2xl ${currentStyle.iconColor}`}></i>

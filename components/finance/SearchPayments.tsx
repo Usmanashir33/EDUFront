@@ -45,7 +45,7 @@ const SearchPayment = ({
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8 ">
                         <div className="relative  flex justify-between gap-3 items-center shadow-md bg-gray-100 max-w-full m-2">
                             <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                            <input type="search" placeholder="Search Payment by REFERENCE NUMBER  only ..." value={search} onChange={e => setSearch(e.target.value)}
+                            <input type="search" placeholder="Search payment by ref number" value={search} onChange={e => setSearch(e.target.value)}
                                 autoFocus
                                 className="w-fit flex-1 pl-9 pr-3 py-2 border   border-gray-300 rounded-md focus:outline-none focus:border-navy-500" 
                             />
@@ -64,7 +64,7 @@ const SearchPayment = ({
                                         <tr>
                                             <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
                                             <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Details</th>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Payer</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Payer</th>
                                             <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Ref No</th>
                                             <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Amount</th>
                                             <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Status</th>
@@ -81,16 +81,16 @@ const SearchPayment = ({
                                                 <td className="px-6 py-4">
                                                         <p className="text-xs text-gray-600 font-medium">{p.students?.length} Student(s)</p>
                                                         
-                                                        {(p?.payment_method !== "CASH") && <div className="mt-1 space-y-0.5">
+                                                        {/* {(p?.payment_method !== "CASH") && <div className="mt-1 space-y-0.5">
                                                             <p className="text-xs text-gray-500">Phone: <span className="font-medium text-gray-700">{p.phone_number}</span></p>
                                                             <p className="text-xs text-gray-500">Bank: <span className="font-medium text-gray-700">{p.bank_name || 'N/A'}</span></p>
                                                             <p className="text-xs text-gray-500">Acct: <span className="font-medium text-gray-700">{p.account_number}</span></p>
-                                                        </div>}
+                                                        </div>} */}
 
-                                                        {(p?.payment_method === "CASH") && <div className="mt-1 space-y-0.5">
-                                                            <p className="text-xs text-gray-500">{p?.payment_method} </p>
-                                                        </div>}
-                                                        {p?.note && <p className="text-xs text-red-600 italic mt-2 bg-gold-50 p-1.5 rounded border border-gold-100">Reason: {p?.note}</p>}
+                                                        {/* {(p?.payment_method === "CASH") && <div className="mt-1 space-y-0.5"> */}
+                                                        <p className="text-xs text-gray-500">{p?.payment_method} </p>
+                                                        {/* </div>} */}
+                                                        {/* {p?.note && <p className="text-xs text-red-600 italic mt-2 bg-gold-50 p-1.5 rounded border border-gold-100">Reason: {p?.note}</p>} */}
                                                     </td>
                                                 <td className="px-6 py-4 text-sm text-gray-600">{p?.payer}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-600">{p?.ref_number}</td>

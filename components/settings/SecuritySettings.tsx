@@ -6,7 +6,7 @@ interface SecuritySettingsProps {
     data: any;
     setData: (d: any) => void;
     saveData: (d: any) => void;
-    originalData: any;
+    originalData: any; 
 }
 
 export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ data, setData,saveData, originalData }) => {
@@ -68,10 +68,11 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ data, setDat
                             value={data.sessionTimeout} 
                             onChange={e => setData({...data, sessionTimeout: e.target.value})}
                         >
-                            <option>15 Minutes</option>
-                            <option>30 Minutes</option>
-                            <option>1 Hour</option>
-                            <option>4 Hours</option>
+                            <option value={'30m'}>30 Minutes</option>
+                            <option value={'1h'}>1 Hour</option>
+                            <option value={'4h'}>4 Hours</option>
+                            <option value={'24h'}>24 Hours</option>
+                            <option value={'2d'}>2 Days</option>
                         </select>
                         {isChanged('sessionTimeout') && (
                             <p className="text-xs text-orange-600 mt-2 font-medium flex items-center animate-fadeIn">
@@ -94,7 +95,7 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ data, setDat
                     {/* PIN Requirement */}
                     <div>
                         <Toggle 
-                            label="Director PIN Requirement" 
+                            label="PIN Requirement" 
                             description="Enforce 4-digit PIN for sensitive actions (Deletion, Salary Payment)." 
                             checked={data.requirePin} 
                             onChange={v => setData({...data, requirePin: v})} 
@@ -114,7 +115,7 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ data, setDat
 
                     {/* New Device Alerts */}
                     <Toggle 
-                        label="New Device Alerts" 
+                        label="Loggin Device Alerts" 
                         description="Send an email notification to the Director whenever a new device logs into an admin account." 
                         checked={data.loginAlerts ?? true} 
                         onChange={v => setData({...data, loginAlerts: v})} 
@@ -123,7 +124,7 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ data, setDat
                     <div className="border-t border-gray-100"></div>
 
                     {/* Strong Password Policy */}
-                    <div>
+                    {/* <div>
                         <Toggle 
                             label="Enforce Strong Passwords" 
                             description="Require 8+ chars, numbers, and symbols for all Staff and Director accounts." 
@@ -136,8 +137,8 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ data, setDat
                                 <b>Warning:</b> Weak passwords are the #1 cause of data breaches. Recommended to keep enabled.
                             </p>
                         )}
-                    </div>
-                    <div className="px-6 pt-6 mt- border-t border-gray-100 hidden md:block">
+                    </div> */}
+                    <div className="px-6 pt-6 mt- border-t border-gray-100 md:block">
                         <Button onClick={saveData} disabled={checkUpdate()} className="w-full">
                         <i className="fa-solid fa-save mr-2"></i> Save Changes
                         </Button>

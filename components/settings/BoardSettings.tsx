@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
 import { Input, ImageUpload, Button } from '../UI';
 import urls from '@/customHooks/ServerUrls';
 import { uiContext } from '@/customContexts/UiContext';
@@ -13,12 +13,13 @@ interface BoardSettingsProps {
 
 export const BoardSettings: React.FC<BoardSettingsProps> = ({ data, setData,saveData, originalData }) => {
     const showWarning = (field: string) => data[field] !== originalData[field];
+    const {isLoading} = useContext(uiContext);
     const getLogo = () => {
         if (typeof data?.logo ===  'string'){ // not file object 
             return urls.BASE_URL + data.logo
         }else {
             const previewUrl = URL.createObjectURL(data?.logo);
-            return previewUrl;
+            return previewUrl; 
         }
     }
 
@@ -155,7 +156,7 @@ export const BoardSettings: React.FC<BoardSettingsProps> = ({ data, setData,save
                 </div>
                 <Input label="Website URL(Optional)" value={data?.website} onChange={e => setData({ ...data, website: e.target.value })} iconClass="fa-solid fa-globe" />
                 <div className="px-6 pt-6 mt- border-t border-gray-100 hidden md:block">
-                    <Button onClick={saveData} disabled={checkUpdate()} className="w-full">
+                    <Button onClick={saveData} disabled={checkUpdate() || isLoading} className="w-full">
                     <i className="fa-solid fa-save mr-2"></i> Save Changes
                     </Button>
                 </div>

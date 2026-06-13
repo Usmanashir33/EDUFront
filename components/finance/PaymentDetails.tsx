@@ -16,7 +16,7 @@ const PaymentDetails = ({
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
     };
     const triggeredFunc = (resp) => {
-        console.log('resp: ', resp);
+        // console.log('resp: ', resp);
         if (resp?.fetchedPayment){
             setSelectedHistoryPayment(resp?.fetchedPayment)
         }
@@ -24,7 +24,7 @@ const PaymentDetails = ({
     useEffect(() => {
         setSelectedHistoryPayment(historyPayment)
         if (historyPayment){
-            let url = `/school_finance/director-get-payment-records/${selectedSchool?.id}/${historyPayment?.id}/` ;
+            let url = `/school_finance/get-payment-records/${selectedSchool?.id}/${historyPayment?.id}/` ;
             sendRequest(url,"GET",null as any,triggeredFunc,true,false)
         }
     },[historyPayment,]);
@@ -33,7 +33,7 @@ const PaymentDetails = ({
         <div>
              <Modal isOpen={!!historyPayment} onClose={() => setHistoryPayment(null)} title="Payment Transaction Details" size="sm" >
                 {selectedHistoryPayment && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 overflow-y-auto max-h-[75vh]">
                         <div className="bg-navy-50 p-6 rounded-xl border border-navy-100 relative">
                             <i className="fa-solid fa-file-invoice-dollar absolute top-6 right-6 text-4xl text-navy-200"></i>
                             <h3 className="font-black text-2xl text-navy-900 mb-1">{formatCurrency(selectedHistoryPayment?.total_amount)}</h3>
@@ -48,24 +48,39 @@ const PaymentDetails = ({
                         </div>
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-xs text-gray-500 font-bold uppercase">Date Initiated</p>
-                                    <p className="font-medium text-navy-900">{new Date(selectedHistoryPayment?.date_initiated).toLocaleString()}</p>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="flex justify-between items-center m-2">
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-bold uppercase">Date Initiated</p>
+                                        <p className="font-medium text-navy-900">{new Date(selectedHistoryPayment?.date_initiated).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-bold uppercase">Date Resolved</p>
+                                        <p className="font-medium text-navy-900">{selectedHistoryPayment.date_resolved ? new Date(selectedHistoryPayment.date_resolved).toLocaleString() : 'not set '}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 font-bold uppercase">Date Resolved</p>
-                                    <p className="font-medium text-navy-900">{selectedHistoryPayment.date_resolved ? new Date(selectedHistoryPayment.date_resolved).toLocaleString() : 'not set '}</p>
-                                </div>
-                                <div className="col-span-2">
-                                    <p className="text-xs text-gray-500 font-bold uppercase">Approver / Resolved By</p>
-                                    <p className="font-medium text-navy-900 flex items-center gap-2">
-                                        {selectedHistoryPayment.resolved_by ? (
-                                            <><i className="fa-solid fa-user-shield text-green-600"></i> {selectedHistoryPayment.resolved_by}</>
-                                        ) : (
-                                            <><span className="text-gray-400 italic">None</span></>
-                                        )}
-                                    </p>
+                                <div className="flex justify-between items-center m-2">
+                                    <div className="col-span-2">
+                                        <p className="text-xs text-gray-500 font-bold uppercase">Initiated By</p>
+                                        <p className="font-medium text-navy-900 flex items-center gap-2">
+                                            {selectedHistoryPayment?.payer ? (
+                                                <><i className="fa-solid fa-user-shield text-green-600"></i> {selectedHistoryPayment.payer}</>
+                                            ) : (
+                                                <><span className="text-gray-400 italic">None</span></>
+                                            )}
+                                        </p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-xs text-gray-500 font-bold uppercase">Approved / Resolved By</p>
+                                        <p className="font-medium text-navy-900 flex items-center gap-2">
+                                            {selectedHistoryPayment.resolved_by ? (
+                                                <><i className="fa-solid fa-user-shield text-green-600"></i> {selectedHistoryPayment.resolved_by}</>
+                                            ) : (
+                                                <><span className="text-gray-400 italic">None</span></>
+                                            )}
+                                        </p>
+                                    </div>
+
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 font-bold uppercase ">Ref No</p>
@@ -107,8 +122,8 @@ const PaymentDetails = ({
                             
                             {selectedHistoryPayment?.note && (
                                 <div className="border-t border-gray-100 pt-4">
-                                    <p className="text-xs text-gray-500 font-bold uppercase mb-2">Manager Note / Rejection Reason</p>
-                                    <div className="bg-red-50 p-3 rounded border border-red-100 text-sm text-red-800 italic">
+                                    <p className="text-xs text-gray-500 font-bold uppercase mb-2">Approver Note / Rejection Reason</p>
+                                    <div className="bg-green-50 p-3 rounded border border-green-100 text-sm text-gray-800 italic">
                                         "{selectedHistoryPayment.note}"
                                     </div>
                                 </div>

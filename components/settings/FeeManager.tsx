@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { FadeIn, Modal, Button, PinModal, ImageUpload, ImageViewer } from '../UI';
+import { FadeIn, Modal, Button,} from '../UI';
 import { uiContext } from '@/customContexts/UiContext';
 
 
@@ -14,7 +14,7 @@ const FeeManager = ({
     setIsDeleteModalOpen,
     setActionToValidate
 }) => {
-    const {isLoading,} = useContext(uiContext);
+    const {isLoading,classRooms} = useContext(uiContext);
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
     };
@@ -41,39 +41,41 @@ const FeeManager = ({
                                     </div>
             
                                     {/* Configured Fees List */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-auto">
                                         <table className="min-w-full divide-y divide-gray-200">
                                             <thead className="bg-gray-50">
                                                 <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Name</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Classes</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Created</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Updated</th>
-                                                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Amount</th>
-                                                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Actions</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Name</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Classes</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Created</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Updated</th>
+                                                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">Amount</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
                                                 {schoolFees.length === 0 ? (
                                                     <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No fee settings configured yet.</td></tr>
                                                 ) : (
-                                                    schoolFees.map(fs => (
+                                                    schoolFees.map(fs => {
+                                                        let clss = classRooms.filter(c => fs?.class_rooms.includes(c.id))
+                                                        return (
                                                         <tr key={fs.id} className="hover:bg-gray-50">
-                                                            <td className="px-6 py-4 text-md text-gray-500 font-bold ">{fs?.name}</td>
-                                                            <td className="px-6 py-4 text-sm font-bold text-navy-900">{
-                                                                fs.classIds.map(cid => (
-                                                                <span key={cid.id} className='inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full mr-2'>
+                                                            <td className="px-4 py-4 text-md text-gray-500 font-bold ">{fs?.name}</td>
+                                                            <td className="px-4 py-4 text-sm font-bold text-navy-900 flex flex-col gap-2">{
+                                                                clss?.map(cid => (
+                                                                <span key={cid.id} className='inline-block bg-gray-200 text-blue-800 text-xs font-semibold p-2 rounded-sm'>
                                                                     {cid?.name}
                                                                 </span>))
                                                             }</td>
                                                             {/* insert date here  */}
-                                                            <td className="px-6 py-4 text-sm text-gray-500">{fs.createdAt}</td>
-                                                            <td className="px-6 py-4 text-sm text-gray-500">{fs.updatedAt}</td>
-                                                            <td className="px-6 py-4 text-sm font-bold text-right text-green-600">{formatCurrency(fs.amount)}</td>
-                                                            <td className="px-6 py-4 text-center flex space-x-2">
+                                                            <td className="px-4 py-4 text-sm text-gray-500">{fs.createdAt}</td>
+                                                            <td className="px-4 py-4 text-sm text-gray-500">{fs.updatedAt}</td>
+                                                            <td className="px-4 py-4 text-sm font-bold text-right text-green-600">{formatCurrency(fs.amount)}</td>
+                                                            <td className="px-4 py-4 text-center flex space-x-2">
                                                                 <button onClick={() => {
                                                                     setClassSectionFilter('ALL');
-                                                                    setSelectedClasses([fs?.classIds.map(c => c.id)].flat());
+                                                                    setSelectedClasses(fs?.class_rooms);
                                                                     setEditingFeeId(fs.id);
                                                                     setFeeName(fs.name);    
                                                                     setFeeAmount(fs.amount.toString());
@@ -88,7 +90,7 @@ const FeeManager = ({
                                                             </td>
             
                                                         </tr>
-                                                    ))
+                                                    )})
                                                 )}
                                             </tbody>
                                         </table>

@@ -19,7 +19,7 @@ const StudentLedger = ({
     const [studentData,setStudentData] = useState<any>({})
 
     const triggeredFunc = (resp) => {
-        console.log('resp: ', resp);
+        // console.log('resp: ', resp);
         setStudentData(resp.studentLedger)
     }
     const filteredEntries = studentData?.ledgerEntries?.filter(entry => {
@@ -44,7 +44,7 @@ const StudentLedger = ({
                                     const clss = classRooms.filter(cls => studentData?.student?.active_class_rooms?.includes(cls.id))
                                     
                                     return (
-                                        <div className="flex items-center gap-4 w-full pr-8">
+                                        <div className="flex items-center gap-4 w-full pr-8 ">
                                             <img className="w-12 h-12 rounded-full bg-navy-100 flex items-center justify-center text-navy-700 font-bold text-xl flex-shrink-0"
                                                 src={urls.BASE_URL + studentData?.student.picture} alt="pic"
                                             />
@@ -66,8 +66,8 @@ const StudentLedger = ({
                         >
             
                                 
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                    <div className="space-y-4 relative overflow-y-auto max-h-[75vh]">
+                                        <div className=" sticky top-0 flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
                                             <span className="text-sm font-bold text-gray-700">Filter by Date:</span>
                                             <input 
                                                 type="date" 

@@ -15,10 +15,11 @@ import { uiContext } from '@/customContexts/UiContext';
 import { authContext } from '@/customContexts/AuthContext';
 import useRequest from '@/customHooks/RequestHook';
 import { RoleSettings } from '@/components/settings/RoleSettings';
+import { SchoolFeeSettings } from '@/components/settings/SchoolFeeSettings';
 
-type SettingsTab = 'BOARD'|'ROLES' | 'ACADEMIC' | 'TIMETABLE' | 'FINANCE' | 'SECURITY' | 'APPEARANCE' | 'TEMPLATES';
+type SettingsTab = 'BOARD'|'ROLES' | 'ACADEMIC' | "SCHOOLFEE" | 'TIMETABLE' | 'FINANCE' | 'SECURITY' | 'APPEARANCE' | 'TEMPLATES';
 type FinanceActions = 'ADD' | 'EDIT' | 'DELETE' | 'TOGGLE' | "SETFEE" | "SETPROMOTION";
-
+type PendingActionMethodes = "CONFIGURATIONS" | "CORRENTCONFIGURATIONS" | 'ADD' | 'EDIT' | 'DELETE' | 'TOGGLE' | "SETFEE" | "SETPROMOTION"
 
 interface SettingsManagerProps { 
     onLogActivity?: (action: any, module: any, description: string) => void;
@@ -30,6 +31,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
   const [activeTab, setActiveTab] = useState<SettingsTab>('BOARD');
   const [financeAction, setFinanceAction] = useState<FinanceActions>('ADD');
   const [isFinanceFormOpen, setIsFinanceFormOpen] = useState(false);
+  const [feeSignal ,setFeeSignal] = useState(false);
   
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const {selectedSchool,
@@ -52,7 +54,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
   const {sendRequest} = useRequest();
   const [showPinModal, setShowPinModal] = useState(false);
   const [promotionMappings, setPromotionMappings] = useState<{fromClassId: string, toClassId: string}[]>([]);
-  const [pendingAction,setPendingAction] = useState<{name:any,method:'ADD'|"EDIT"|"DELETE",id?:any}>({name:"",method:"ADD",id:null})
+  const [pendingAction,setPendingAction] = useState<{name:any,method:PendingActionMethodes,id?:any}>({name:"",method:"ADD",id:null})
     
 
   // Default Values
@@ -66,10 +68,30 @@ const defaultBord = () => {
           phone: selectedSchool?.phone  || "",
           website: selectedSchool?.website  || ""
       }
-  
+}
+  // Default Values
+const defaultAcademics = () => {
+  return {
+          session: selectedSchool?.sessions?.find((s) => s.is_current )?.name  || '2023/2024',
+          term: selectedSchool?.terms?.find((t) => t.is_current  ) ?.name  || '1st Term',
+          availableSessions:selectedSchool?.sessions?.map((s) => s.name) ||  ['2000/2001',], // Added for dynamic list
+          availableTerms: selectedSchool?.terms?.map((s) => s.name) || ['null Term',], // Added for dynamic list
+          autoPromotion: selectedSchool?.auto_promotion,
+          lockPastRecords: selectedSchool?.lock_records,
+          gradingSystem : selectedSchool?.grading_system || 'Standard (A-F)' ,
+          executedPromotions :[ ]
+        }
+}
+const defaultSecurity = () => {
+  return {
+          requirePin: currentUser?.user?.pin_set,
+          sessionTimeout: currentUser?.user?.session_timeout,
+          twoFactor: currentUser?.user?.otp_required ,
+          loginAlerts: currentUser?.user?.login_alerts, // New professional setting
+        }
 }
 const defaults = useMemo(() => {
-  return { 
+return { 
       board: {
           name: selectedSchool?.name ,
           logo: selectedSchool?.logo ,
@@ -81,10 +103,11 @@ const defaults = useMemo(() => {
       },
       
       academic: {
-          session: selectedSchool?.sessions?.find((s) => s.is_current )?.name  || '2023/2024',
-          term: selectedSchool?.terms?.find((t) => t.is_current  ) ?.name  || '1st Term',
-          availableSessions:selectedSchool?.sessions.map((s) => s.name) ||  ['2023/2024', '2024/2025'], // Added for dynamic list
-          availableTerms: selectedSchool?.terms?.map((s) => s.name) || ['1st Term', '2nd Term', '3rd Term'], // Added for dynamic list
+        session: selectedSchool?.sessions?.find((s) => s.is_current )?.name  || '2023/2024',
+        term: selectedSchool?.terms?.find((t) => t.is_current) ?.name  || '1st Term',
+          
+          availableSessions:selectedSchool?.sessions?.map((s) => s.name) ||  ['2000/2001',], // Added for dynamic list
+          availableTerms: selectedSchool?.terms?.map((s) => s.name) || ['null Term',], // Added for dynamic list
           autoPromotion: selectedSchool?.auto_promotion,
           lockPastRecords: selectedSchool?.lock_records,
           gradingSystem : selectedSchool?.grading_system || 'Standard (A-F)' ,
@@ -93,7 +116,6 @@ const defaults = useMemo(() => {
       finance: {
           onlinePayment: true,
           paymentDueDate: 14,
-  
           bank_accounts: [
   
           ],
@@ -120,31 +142,85 @@ const defaults = useMemo(() => {
   };
 },[selectedSchool])
 
+
   // State Management
   const [board, setBoard] = useState(() => defaultBord() );
-  const [academic, setAcademic] = useState(defaults.academic);
-  const [security, setSecurity] = useState(defaults.security);
+  const [academic, setAcademic] = useState(() => defaultAcademics ());
+  const [security, setSecurity] = useState(() => defaultSecurity());
+
   const [appearance, setAppearance] = useState(defaults.appearance);
   const [templates, setTemplates] = useState( defaults.templates);
-  useEffect(() => {
-      setBoard(defaults?.board)
-      // setAcademic(defaults?.academic)
-      // setSecurity(defaults?.security)
-      // setAppearance(defaults?.appearance)
-      // setTemplates(defaults?.templates)
-  },[defaults])
-
-  const TriggeredFunc = (res) => {
-    console.log('res: ', res);
-    if (res?.success){setToast({message: res.success, type: 'success'}) }
-    // update ui here 
-
-    if (res?.created_account) {
-      setIsFinanceFormOpen(false) ;
-      setFinances(prev => ({...prev, bank_accounts: [res.created_account,...prev.bank_accounts]})) ;
-      return 
+ 
+  const TriggeredFuncBord = (res) => {
+    setPendingAction({name:"",method:"ADD",id:null})
+    if (res?.updated_school) { 
+      // try {
+      //   const session =  JSON.parse(localStorage.getItem('session') as any);
+      //   if (!session) throw new Error("No session found in localStorage");
+      //   localStorage.setItem('session', JSON.stringify({
+      //     ...session,
+      //     school: {...session?.school,...res.updated_school}
+      //     }))
+      //   }catch(e){
+      //       console.error("Failed to update session in localStorage: ", e);
+      //   }
+        setSelectedSchool(prev => ({...prev,...res.updated_school})) ;
     }
-    if (res?.promotion_log) {
+    if (res?.updated_user) { 
+      let u = res?.updated_user
+      // try {
+      //   const session =  JSON.parse(localStorage.getItem('session') as any );
+      //   if (!session) throw new Error("No session found in localStorage");
+      //   localStorage.setItem('session', JSON.stringify({
+      //     ...session,
+      //     user: {...session.user,...u}
+      //   }))
+      // }catch(e){
+      //     console.error("Failed to update session in localStorage: ", e);
+      // }
+      setCurrentUser(prev => ({...prev,...u})) ;
+      
+    }
+  }
+  const TriggeredFuncAcad = (res) => {
+    setPendingAction({name:"",method:"ADD",id:null})
+    // console.log('res: ', res);
+    if (res?.success){setToast({message: res.success, type: 'success'}) }
+
+    if (res?.updated_academics) {
+      let data = res?.updated_academics
+      setSelectedSchool(prev => ({
+        ...prev,
+        ...data?.school,
+        sessions:data?.sessions,
+        terms:data?.terms
+      })) ;
+
+      setAcademic(p => ({
+        ...p,
+        session: data?.sessions?.find((s) => s.is_current )?.name  || '2023/2024',
+        term: data?.terms?.find((t) => t.is_current  ) ?.name  || '1st Term',
+        availableSessions:data.sessions?.map(s => s.name),
+        availableTerms:data.terms?.map(s => s.name),
+        autoPromotion : data?.school?.auto_promotion ,
+        lockPastRecords : data?.school?.lock_records ,
+        gradingSystem :  data?.school?.grading_system
+      }))
+      return ;
+    }else if (res?.new_session) {
+      setSelectedSchool(p => ({...p,sessions : [res?.new_session,...p.sessions]}));
+      setAcademic(p => ({...p,availableSessions:[res?.new_session.name,...p?.availableSessions]}))
+      return ;
+
+    }else if(res?.new_term){
+      setSelectedSchool(p => ({...p,terms : [res?.new_term,...p.terms]}))
+      setAcademic(p => ({...p,availableTerms:[res?.new_term.name,...p?.availableTerms]}))
+      return ;
+    }else if(res?.generated){
+      setFeeSignal(res?.generated)
+      return ;
+
+    } else if (res?.promotion_log) {
       setPromotionLogs((prev: any[]) => {
           const newLog = res.promotion_log;
           const exists = prev.some(log => log.id === newLog.id);
@@ -158,62 +234,67 @@ const defaults = useMemo(() => {
       setPromotionMappings([]);
       return;
     }
+  }
+  const TriggeredFunc = (res) => {
+    // console.log('res: ', res);
+    if (res?.success){setToast({message: res.success, type: 'success'}) }
+    // update ui here 
 
-    if (res?.updated_account) {
+    if (res?.created_account) {
+      setIsFinanceFormOpen(false) ;
+      setFinances(prev => ({...prev, bank_accounts: [res.created_account,...prev.bank_accounts]})) ;
+      return 
+
+    }else if (res?.updated_account) {
       setIsFinanceFormOpen(false) ;
       setFinances(prev => {
         const updatedAccounts = prev.bank_accounts.map(acc => acc.id === res.updated_account?.id ? res.updated_account : res.updated_account?.is_default ? {...acc, is_default: false} : acc);
         return {...prev, bank_accounts: updatedAccounts};
       }) ;
-    }
 
-    if (res?.deleted_account) {
+    }else if (res?.deleted_account) {
       setFinances(prev => {
         const filteredAccounts = prev.bank_accounts.filter(acc => acc.id != res.deleted_account?.id);
         return {...prev, bank_accounts: filteredAccounts} ;
       }) 
+    } else if (res?.updated_user) { 
+      let u = res?.updated_user
+      setCurrentUser(prev => ({
+        ...prev,
+        user: {
+          ...prev.user,
+          pin_set:u.requirePin,
+          session_timeout :u.sessionTimeout ,
+          otp_required:u.twoFactor ,
+          login_alerts:u.loginAlerts
+        }
+      })) ;
+      setSecurity(
+          {
+          requirePin: u.requirePin,
+          sessionTimeout: u.sessionTimeout,
+          twoFactor: u.twoFactor ,
+          loginAlerts: u.loginAlerts, 
+        }
+      )
     }
 
-    if (res?.updated_school) { 
-      try {
-        const session =  JSON.parse(localStorage.getItem('session') as any);
-        if (!session) throw new Error("No session found in localStorage");
-        localStorage.setItem('session', JSON.stringify({
-          ...session,
-          school: res.updated_school
-          }))
-        }catch(e){
-            console.error("Failed to update session in localStorage: ", e);
-        }
-        setSelectedSchool(res.updated_school) ;
-    }
-    if (res?.updated_user) { 
-      try {
-        const session =  JSON.parse(localStorage.getItem('session') as any );
-        if (!session) throw new Error("No session found in localStorage");
-        localStorage.setItem('session', JSON.stringify({
-          ...session,
-          user: res.updated_user
-        }))
-      }catch(e){
-          console.error("Failed to update session in localStorage: ", e);
-      }
-      setCurrentUser(res.updated_user) ;
-    }
+    
 
   }
 
   const saveBoard = () => {
-    console.log('board: ', board);
+    
     Object.entries(board).forEach(([key, value]) => {
       // console.log(key, value);
         serverForm.append(key, value);
     });
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server  
-        sendRequest(`/director/school-detail/${selectedSchool.id}/`,"PUT",serverForm as any ,TriggeredFunc,true,true)
+        sendRequest(`/school/school-detail/${selectedSchool.id}/`,"PUT",serverForm as any ,TriggeredFuncBord,true,true)
        return 
     }
+    setPendingAction({name:"BOARD",method:"ADD",id:null})
     setShowPinModal(true) ;
   };
 
@@ -233,9 +314,10 @@ const defaults = useMemo(() => {
     setShowPinModal(true) ;
   };
 
-  const saveAcademic = (operation:"SETFEE"|"ACADEMIC"|"SETPROMOTION" = "ACADEMIC", fdata?:any ) => {
+  const saveAcademic = (operation:"SETFEE"|"ACADEMIC"|"SETPROMOTION"|"CONFIGURATIONS" = "ACADEMIC", fdata?:any ) => {
     let f:any = {}
     if (operation === "ACADEMIC"){
+      setPendingAction({name:"ACADEMIC",method:"ADD",id:null})
       let form:any = new FormData()
       Object.entries(academic).forEach(([key, value]) => {
         // check list type to loop throygh it 
@@ -248,27 +330,33 @@ const defaults = useMemo(() => {
           form.append(key, value);
         }
       });
-      f=form; // for local use 
+      fdata=form; // for local use 
       setServerForm(form)
     }else if (operation === "SETFEE"){
-      setFinanceAction("SETFEE")
-      f = fdata // data is raedy form to be pushed to server 
+      setPendingAction({name:"ACADEMIC",method:"SETFEE",id:''})
       setServerForm(fdata)
 
     }else if (operation === "SETPROMOTION"){
-      setFinanceAction("SETPROMOTION")
-      f = fdata // data is raedy form to be pushed to server 
-      setServerForm(fdata)
+      setPendingAction({name:"ACADEMIC",method:"SETPROMOTION",id:''})
+      setServerForm(fdata);
+
+    }else if (operation === "CONFIGURATIONS"){
+      setPendingAction({name:"ACADEMIC",method:"CONFIGURATIONS",id:''})
+      setServerForm(fdata);
+      // console.log('fdata: ', fdata);
     }
-    if (!f){return setToast({type:'error',message:"form not ready"})}
+    if (!fdata){return setToast({type:'error',message:"form not ready"})}
+    
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server  
-        if (financeAction === 'SETFEE'){
-            sendRequest(`/school_finance/school-fee-settings/set-fee-for-classes/`,"POST",f as any,TriggeredFunc,true,!true)
-          }else if (financeAction === "SETPROMOTION"){
-          sendRequest(`/director/class/promotion/`,"POST",serverForm as any,TriggeredFunc,true,!true)
+        if (operation === 'SETFEE'){
+            sendRequest(`/school_finance/school-fee-settings/set-fee-for-classes/`,"POST",fdata as any,TriggeredFuncAcad,true,!true)
+        }else if (operation === "SETPROMOTION"){
+          sendRequest(`/director/class/promotion/`,"POST",fdata as any,TriggeredFuncAcad,true,!true)
+        }else if (operation === "CONFIGURATIONS"){
+          sendRequest(`/school/config/`,"POST",fdata as any,true,!true)
         }else{
-          sendRequest(`/director/academic-settings/${selectedSchool.id}/`,"PUT",f as any,TriggeredFunc,true,true)
+          sendRequest(`/academics/academic-settings/${selectedSchool.id}/`,"PUT",fdata as any,TriggeredFuncBord,true,true)
         }
        return 
     }
@@ -318,6 +406,12 @@ const defaults = useMemo(() => {
         return prev.map(p => p.id === updated.id ? updated : p )
       });
     }
+    if (res?.deleted_role){
+      let deleted = res?.deleted_role
+      return setRoles(prev => {
+        return prev.filter(p => p.id !== deleted.id  )
+      });
+    }
 
   }
 
@@ -326,7 +420,7 @@ const defaults = useMemo(() => {
     let method = action === "ADD" ? "POST" : action === "EDIT" ? "PUT" : "DELETE";
     let url = action === "ADD" ? `/school/role/create/` :
               action === "EDIT" ? `/school/role/update/${form.id}/` :
-                                   `/school/role/delete/${form.id}/${''}/`; // empty string to prevent error since delete endpoint doesn't need body
+                                   `/school/role/delete/${selectedSchool?.id}/${form.id}/${''}/`; // empty string to prevent error since delete endpoint doesn't need body
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server  
       sendRequest(url,method,form as any,RolesAndPermServerResp,true,!true)
@@ -341,11 +435,11 @@ const defaults = useMemo(() => {
     let method = action === "ADD" ? "POST" : action === "EDIT" ? "PUT" : "DELETE";
     let url = action === "ADD" ? `/school/permission/create/` :
     action === "EDIT" ? `/school/permission/update/${form.id}/`:
-    `/school/permission/delete/${form.id}/${''}/`; // empty string to prevent error since delete endpoint doesn't need body
+    `/school/permission/delete/${selectedSchool?.id}/${form.id}/${''}/`; // empty string to prevent error since delete endpoint doesn't need body
     if (!currentUser?.user?.pin_set){
       // Make the api call here  when user  need no pin to talk to server  
       sendRequest(url,method,form as any,RolesAndPermServerResp,true,!true)
-       return 
+       return  
     }
     setServerForm(form);
     setPendingAction({name:"PERMISSION",method:action,id:form?.id})
@@ -365,7 +459,7 @@ const defaults = useMemo(() => {
       let method = action === "ADD" ? "POST" : action === "EDIT" ? "PUT" : "DELETE";
       let url = action === "ADD" ? `/school/permission/create/` :
       action === "EDIT" ? `/school/permission/update/${id}/`:
-      `/school/permission/delete/${id}/${pins}/`; // empty string to prevent error since delete endpoint doesn't need body
+      `/school/permission/delete/${selectedSchool?.id}/${id}/${pins}/`; // empty string to prevent error since delete endpoint doesn't need body
       // Make the api call here  when user  need no pin to talk to server  
       sendRequest(url,method,{...serverForm,pin:pins} as any,RolesAndPermServerResp,true,!true)
       return ;
@@ -378,25 +472,28 @@ const defaults = useMemo(() => {
       let method = action === "ADD" ? "POST" : action === "EDIT" ? "PUT" : "DELETE";
       let url = action === "ADD" ? `/school/role/create/` :
       action === "EDIT" ? `/school/role/update/${id}/`:
-      `/school/role/delete/${id}/${pins}/`; // empty string to prevent error since delete endpoint doesn't need body
+      `/school/role/delete/${selectedSchool?.id}/${id}/${pins}/`; // empty string to prevent error since delete endpoint doesn't need body
       // Make the api call here  when user  need no pin to talk to server  
       sendRequest(url,method,{...serverForm,pin:pins} as any,RolesAndPermServerResp,true,!true)
       return ;
     }
     
-    if(activeTab === 'BOARD') {
-      sendRequest(`/director/school-detail/${selectedSchool.id}/`,"PUT",serverForm as any,TriggeredFunc,true,true)
+    if(pendingAction?.name === 'BOARD') {
+      sendRequest(`/school/school-detail/${selectedSchool.id}/`,"PUT",serverForm as any,TriggeredFuncBord,true,true)
     }
 
-    if(activeTab === 'ACADEMIC') {
-      if (financeAction === 'SETFEE'){
+    if(pendingAction?.name === 'ACADEMIC') {
+      if (pendingAction?.method === 'SETFEE'){
         let f = {...serverForm,pin:pins}
-        sendRequest(`/school_finance/school-fee-settings/set-fee-for-classes/`,"POST",f as any,TriggeredFunc,true,false)
-      }else if (financeAction === 'SETPROMOTION'){
+        sendRequest(`/school_finance/school-fee-settings/set-fee-for-classes/`,"POST",f as any,TriggeredFuncAcad,true,false)
+      }else if (pendingAction?.method === 'SETPROMOTION'){
         let f = {...serverForm,pin:pins}
-        sendRequest(`/director/class/promotion/`,"POST",f as any,TriggeredFunc,true,false)
+        sendRequest(`/director/class/promotion/`,"POST",f as any,TriggeredFuncAcad,true,false)
+      }else if (pendingAction?.method === 'CONFIGURATIONS'){
+        let f = {...serverForm,pin:pins}
+        sendRequest(`/school/config/`,"POST",f as any,TriggeredFuncAcad,true,false)
       }else{
-        sendRequest(`/director/academic-settings/${selectedSchool.id}/`,"PUT",serverForm as any,TriggeredFunc,true,true)
+        sendRequest(`/academics/academic-settings/${selectedSchool.id}/`,"PUT",serverForm as any,TriggeredFuncAcad,true,true)
         }
     }
     if(activeTab === 'SECURITY') {
@@ -453,12 +550,14 @@ const defaults = useMemo(() => {
           </h3>
           <nav className="flex flex-row md:flex-col overflow-x-auto md:overflow-visible no-scrollbar">
             <TabButton id="BOARD" label="Board Settings" icon="fa-solid fa-building-columns" />
-            <TabButton id="ACADEMIC" label="Academic" icon="fa-solid fa-book-open" />
-            <TabButton id="ROLES" label="Roles & Access" icon="fa-solid fa-users-gear" />
+            <TabButton id="ACADEMIC" label="Academic Settings" icon="fa-solid fa-book-open" />
+            {/* <TabButton id="SCHOOLFEE" label="School Fee Settings" icon="fa-solid fa-money-check-dollar" /> */}
+            <TabButton id="SCHOOLFEE" label="School Fee Settings" icon="fa-solid fa-money-bill-wave" />
+            <TabButton id="ROLES" label="Roles & Access Settings" icon="fa-solid fa-users-gear" />
             <TabButton id="TIMETABLE" label="Timetable Gen" icon="fa-solid fa-calendar-days" />
-            <TabButton id="FINANCE" label="Financial" icon="fa-solid fa-wallet" />
-            <TabButton id="SECURITY" label="Security" icon="fa-solid fa-shield-halved" />
-            <TabButton id="APPEARANCE" label="Appearance" icon="fa-solid fa-palette" />
+            <TabButton id="FINANCE" label="Financial Settings" icon="fa-solid fa-wallet" />
+            <TabButton id="SECURITY" label="Security Settings" icon="fa-solid fa-shield-halved" />
+            <TabButton id="APPEARANCE" label="Appearance Settings" icon="fa-solid fa-palette" />
             <TabButton id="TEMPLATES" label="Documents & Files" icon="fa-solid fa-file-contract" />
           </nav>
         </div>
@@ -468,7 +567,9 @@ const defaults = useMemo(() => {
           <FadeIn key={activeTab}>
           
 
-            {activeTab === 'BOARD' && <BoardSettings data={board} setData={setBoard} saveData = {saveBoard} originalData={defaultBord()} />}
+            
+            {activeTab === 'BOARD' && <BoardSettings       data={board} setData={setBoard} saveData = {saveBoard} originalData={defaultBord()} />}
+            {activeTab === 'SECURITY' && <SecuritySettings data={security} setData={setSecurity} saveData = {saveSecurity} originalData={defaultSecurity()}   />}
             {activeTab === 'ACADEMIC' && <AcademicSettings
               data={academic}          
               setData={setAcademic}          
@@ -476,6 +577,15 @@ const defaults = useMemo(() => {
               originalData={defaults.academic}          
               promotionMappings={promotionMappings}          
               setPromotionMappings={ setPromotionMappings}           
+            />}
+
+            {activeTab === 'SCHOOLFEE' && <SchoolFeeSettings
+              data={academic}          
+              setData={setAcademic}          
+              saveData = {saveAcademic}          
+              originalData={defaults.academic}   
+              feeSignal={feeSignal}
+              setFeeSignal ={setFeeSignal}       
             />}
             
             {activeTab === 'TIMETABLE' && (
@@ -491,7 +601,6 @@ const defaults = useMemo(() => {
             {activeTab === 'ROLES' && <RoleSettings roles={roles} permissions={permissions} onUpdateRoles={handleRolesSave} onUpdatePermissions={handlePermissionsSave} />}
           
             {activeTab === 'FINANCE' && <FinanceSettings data={finances} saveData={saveFinance} isFinanceFormOpen={isFinanceFormOpen} setIsFinanceFormOpen={setIsFinanceFormOpen} />}
-            {activeTab === 'SECURITY' && <SecuritySettings data={security} setData={setSecurity} saveData = {saveSecurity} originalData={defaults.security}   />}
             {activeTab === 'APPEARANCE' && <AppearanceSettings data={appearance} setData={setAppearance} />}
             {activeTab === 'TEMPLATES' && (
                 <TemplateSettings 

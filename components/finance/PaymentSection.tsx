@@ -25,7 +25,7 @@ const PaymentPage = ({
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
     }
     const [search, setSearch] = useState('');
-    const {setToast,isLoading,classRooms,schoolFees}= useContext(uiContext) ;
+    const {setToast,isLoading,classRooms,schoolFees,selectedSchool}= useContext(uiContext) ;
     const {sendRequest} = useRequest() ;
     const [selectedHistoryPayment,setSelectedHistoryPayment] = useState(null)
     
@@ -60,7 +60,7 @@ const PaymentPage = ({
       const allowSearch = useRef(true);
       useEffect(() => {
         if (search.length && !filteredStudents.length && allowSearch.current) {
-          sendRequest(`/director/search/student/${search}/`, "GET", null as any , TriggeredFunc, true, false)
+          sendRequest(`/student/search/${selectedSchool?.id}/${search}/`, "GET", null as any , TriggeredFunc, true, false)
           allowSearch.current = false;
           setTimeout(() => {
             allowSearch.current = true;
@@ -215,16 +215,16 @@ const PaymentPage = ({
                                                 <td className="px-6 py-4">
                                                         <p className="text-xs text-gray-600 font-medium">{p.students?.length} Student(s)</p>
                                                         
-                                                        {(p?.payment_method !== "CASH") && <div className="mt-1 space-y-0.5">
+                                                        {/* {(p?.payment_method !== "CASH") && <div className="mt-1 space-y-0.5">
                                                             <p className="text-xs text-gray-500">Phone: <span className="font-medium text-gray-700">{p.phone_number}</span></p>
                                                             <p className="text-xs text-gray-500">Bank: <span className="font-medium text-gray-700">{p.bank_name || 'N/A'}</span></p>
                                                             <p className="text-xs text-gray-500">Acct: <span className="font-medium text-gray-700">{p.account_number}</span></p>
-                                                        </div>}
+                                                        </div>} */}
 
-                                                        {(p?.payment_method === "CASH") && <div className="mt-1 space-y-0.5">
+                                                        {/* {(p?.payment_method === "CASH") && <div className="mt-1 space-y-0.5"> */}
                                                             <p className="text-xs text-gray-500">{p?.payment_method} </p>
-                                                        </div>}
-                                                        {p?.note && <p className="text-xs text-golden-600 italic mt-2 bg-golden-50 p-1.5 rounded border border-golden-100">Reason: {p?.note}</p>}
+                                                        {/* </div>} */}
+                                                        {/* {p?.note && <p className="text-xs text-golden-600 italic mt-2 bg-golden-50 p-1.5 rounded border border-golden-100">Reason: {p?.note}</p>} */}
                                                     </td>
                                                 <td className="px-6 py-4 text-sm text-gray-600">{p?.payer}</td> 
                                                 <td className="px-6 py-4 text-sm text-gray-600">{p?.ref_number}</td>
@@ -250,7 +250,7 @@ const PaymentPage = ({
                     </FadeIn>
                     
                     <Modal isOpen={isStudentSelectionModalOpen} onClose={() => setIsStudentSelectionModalOpen(false)} title={
-                        <div className='flex justify-between items-center '>
+                        <div className='flex justify-between items-center  '>
                             <p>Select or Search Student </p>
                             {paymentStudents?.length > 0 && 
                             <div className='flex gap-5'>
@@ -276,7 +276,7 @@ const PaymentPage = ({
                                                 
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
+                                        <div className="grid grid-cols1 sm:grid-cols-1 lg:grid-cols-2 gap-3  overflow-y-auto max-h-[75vh] h-full">
                                             {
                                                 filteredStudents?.map(student => {
                                                     let classes = classRooms.filter((cls)=> student?.active_class_rooms.includes(cls.id))
