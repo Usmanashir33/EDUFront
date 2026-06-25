@@ -5,7 +5,7 @@ import { uiContext } from '@/customContexts/UiContext';
 import useRequest from '@/customHooks/RequestHook';
 
 interface RegisterFormProps {
-  onNavigate: (view: ViewState) => void;
+  onNavigate: (view: string) => void;
   onLogin: (mode: 'director' | 'academic', response:any) => void;
 }
 type LoginProps = 'CREDENTIALS' | 'OTP' 
@@ -197,7 +197,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin})
             <p className="mt-1 text-sm text-gray-600">Complete the form below to register a new school entity.</p>
           </div>
           {step === "CREDENTIALS" && <button 
-            onClick={() => onNavigate(ViewState.LOGIN)}
+            onClick={() => onNavigate('/auth/login')}
             className="text-sm font-medium text-navy-600 hover:text-navy-800 flex items-center"
           >
             <i className="fa-solid fa-arrow-left mr-2"></i> Back to Login
@@ -378,7 +378,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onNavigate,onLogin})
           </div>
 
           <div className="flex items-center justify-end gap-4 pt-4 border-t border-gray-100">
-            <Button type="button" variant="outline" className="w-auto px-8" onClick={() => onNavigate(ViewState.LOGIN)}>
+            <Button type="button" variant="outline" className="w-auto px-8" onClick={() => onNavigate('/auth/login')}>
               Cancel
             </Button>
             <Button type="submit" isLoading={loading} variant="primary" className="w-auto px-10">

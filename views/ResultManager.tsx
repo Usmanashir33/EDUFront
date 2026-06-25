@@ -17,9 +17,9 @@ interface ResultManagerProps {
     subjects: Subject[];
     teachers: Teacher[];
     students: Student[];
-    onLogActivity: (action: ActivityLog['action'], module: ActivityLog['module'], description: string) => void;
 }
-type Tab = 'CLASS' | 'TEACHER' | 'SUBJECT' | 'FORM_TEACHER';
+type Tab =  'CLASS' | 'TEACHER' | 'SUBJECT' | 'FORM_TEACHER' | 'DIRECTOR_APPROVAL'| 'APPROVAL_HISTORY'|'RESULTS_VIEWER';
+
 type ViewState = 'DASHBOARD' | 'EDITOR' | 'FORM_TEACHER_EDITOR';
 
 // --- MOCK UTILS ---
@@ -27,12 +27,10 @@ type ViewState = 'DASHBOARD' | 'EDITOR' | 'FORM_TEACHER_EDITOR';
 const generateMockResults = (subjects,session_id,term_id ): ResultBatch[] => {
     const allBatches: ResultBatch[] = [];
             subjects.forEach((sub,index) => {
-                sub.class_rooms.forEach(classId => {
-                    const teacherId =  sub.teacher[0] || 'unassigned';
+                sub.class_rooms?.forEach(classId => {
+                    const teacherId =  sub.teachers?.find(d => d.classroom === classId)?.teacher || 'unassigned';
                     // Deterministic random to simulate different statuses per term
-                    let isUploaded = false;
-                    
-                    isUploaded = false; // 3rd term mostly empty
+
                     allBatches.push({
                         id: `res-${session_id}-${term_id}-${sub.id}-${classId}`.replace(/\s/g, ''),
                         subjectId: sub.id,
@@ -40,11 +38,11 @@ const generateMockResults = (subjects,session_id,term_id ): ResultBatch[] => {
                         teacherId: teacherId,
                         session: session_id,
                         term: term_id,
-                        isUploaded: isUploaded,
+                        isUploaded: false,
                         isLocked: false,
-                        lastUpdated: isUploaded ? new Date().toISOString() : undefined,
+                        lastUpdated: false ? new Date().toISOString() : undefined,
                         scores: [] ,
-                        status : index > 4 ? "APPROVED" : ""
+                        status :  ""
                     });
                 });
             });
@@ -52,38 +50,36 @@ const generateMockResults = (subjects,session_id,term_id ): ResultBatch[] => {
 };
 // Generate data for multiple sessions and terms to demonstrate filtering
 const generateMockSkills = (class_rooms,session_id,term_id ): ResultBatch[] => {
-    const allBatches = [];
-                class_rooms.forEach(classroom => {
-                    // Deterministic random to simulate different statuses per term
-                    let isUploaded = false;
-                    isUploaded = false; // 
-                    allBatches.push({
-                        id: `res-${session_id}-${term_id}-${classroom}`.replace(/\s/g, ''),
-                        classId: classroom.id,
-                        session: session_id,
-                        term: term_id,
-                        isUploaded: isUploaded,
-                        isLocked: false,
-                        lastUpdated: isUploaded ? new Date().toISOString() : undefined,
-                        charAndSkills: [] 
-                    });
-                });
+    const allBatches :any = [];
+        class_rooms.forEach(classroom => {
+            // Deterministic random to simulate different statuses per term
+            allBatches.push({
+                id: `res-${session_id}-${term_id}-${classroom.id}`.replace(/\s/g, ''),
+                classId: classroom.id,
+                session: session_id,
+                term: term_id,
+                isUploaded: false,
+                isLocked: false,
+                on_submit: false,
+                lastUpdated: false ? new Date().toISOString() : undefined,
+                charAndSkills: [] 
+            });
+        });
     return allBatches;
 };
 
-export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects, teachers, students, onLogActivity }) => {
+export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects, teachers, students }) => {
     const [activeTab, setActiveTab] = useState<Tab>('CLASS');
     const [viewState, setViewState] = useState<ViewState>('DASHBOARD');
     const [searchTerm, setSearchTerm] = useState('');
-    const {selectedSchool} = useContext(uiContext) ;
+    const {selectedSchool, setToast,marks,} = useContext(uiContext) ;
     const {currentUser} = useContext(authContext) ;
     const {sendRequest,sendFileRequest} = useRequest() ;
-    const [serverForm,setServerForm] =useState({})
+    const [serverForm,setServerForm] =useState<any|null>({})
     const [fileUploadTarget,setFileUploadTarget] = useState<"RESULT"|"CHAR"|null>('RESULT')
      // Context State
-    const [selectedSession, setSelectedSession] = useState(null);
-    const [selectedTerm, setSelectedTerm] = useState(null);
-    const [editorSkills, setEditorSkills] = useState<any[]>([]);
+    const [selectedSession, setSelectedSession] = useState<string|null>(null);
+    const [selectedTerm, setSelectedTerm] = useState<string|null>(null);
 
     const [results, setResults] = useState<ResultBatch[]>([]);
     const [approvalHistory, setApprovalHistory] = useState<ApprovalRecord[]>([]);
@@ -91,18 +87,53 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
     
     // Editor State
     const [currentBatch, setCurrentBatch] = useState<ResultBatch | null>(null);
-    const [currentSkillBatch, setCurrentSkillBatch] = useState<null>(null);
+    const [currentSkillBatch, setCurrentSkillBatch] = useState<null | any >(null);
+    const [isSkillDirty, setIsSkillDirty] = useState(false);
+    const [editorSkills, setEditorSkills] = useState<any[]>([]);
+
     const [editorScores, setEditorScores] = useState<StudentScore[]>([]);
     const [isDirty, setIsDirty] = useState(false);
-    const [isSkillDirty, setIsSkillDirty] = useState(false);
-    const [formTeacherClass, setFormTeacherClass] = useState<ClassRoom | null>(null);
+    const [formTeacherClass, setFormTeacherClass] = useState<ClassRoom | null |any >(null);
     
     
     // Modal State
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [uploadTargetBatch, setUploadTargetBatch] = useState<ResultBatch | null>(null);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-    const [skillBatches,setSkillBatches] = useState([])
+    const [skillBatches,setSkillBatches] = useState<any>([]);
+    // Add this state near your other useState hooks
+const [selectedFile, setSelectedFile] = useState(null);
+
+
+// Helper function
+const handleFileSelection = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        setSelectedFile(file);
+    }
+};
+
+const handleProceedUpload = () => {
+    if (!selectedFile) return;
+
+    const fakeEvent:any = {
+        target: {
+            files: [selectedFile]
+        }
+        
+    };
+
+    if (fileUploadTarget === "RESULT") {
+        handleFileUpload(fakeEvent);
+    } else if (fileUploadTarget === "CHAR") {
+        handleSkillFileUpload(fakeEvent);
+    }
+
+    setSelectedFile(null);
+};
+
+const handleCancelUpload = () => {
+    setSelectedFile(null);
+};
 
     // Derived Data
     const filteredResults = useMemo(() => {
@@ -116,8 +147,8 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
 
     // Security & Notification State
     const [showPinModal, setShowPinModal] = useState(false);
-    // const [selectedClass,setSelectedClass] = useState(null)
-    const [pendingAction,setPendingAction] = useState<'SAVE' | "UPLOAD"| "CHARUPLOAD"|"REPORTGENERATION" | "BATCHLOCK"| "BATCHAPPROVAL" |"CHAR_UPLOAD" | "SAVECHAR" |null >(null)
+    const [pendingAction,setPendingAction] = useState<'SAVE' | "UPLOAD"| "CHARUPLOAD"|"REPORTGENERATION" | "BATCHMANAGE"| "BATCHAPPROVAL" |"CHAR_UPLOAD" | "SAVECHAR" |null >(null)
+    
     const serverDownloader = async (resp, fileName) => {
         const blob = await resp.blob();
         const url = window.URL.createObjectURL(blob);
@@ -128,10 +159,11 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
         a.click();
         a.remove();
     }
-    const triggeredFunc = (res) => {
+    const triggeredFuncFetch = (res) => {
         console.log('res: ', res);
         setPendingAction(null)
         setServerForm({})
+
         if (res?.filteredBatches) { // we fetch current batch only on save, but we fetch all batches on session/term change, so we can use the same triggeredFunc for both actions
             setResults((prev) => { 
                 return prev.map(r => { 
@@ -150,35 +182,52 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
             });
             return ;
         }
-        if (res?.approvedResults) { // update the approved  Results data  list
-            setToast({message:res?.success, type:'success'})
+        if (res?.approvalHistories) { // update approval histories
+            setApprovalHistory(res.approvalHistories);
+            return ;
+        }
+    }
+    const triggeredFunc = (res) => {
+        console.log('res: ', res) 
+        setPendingAction(null)
+        setServerForm({})
+        if (res?.success)setToast({message:res?.success, type:'success'})
+        if (res?.manageResults) { // update the approved  Results data  list
+            let ar = res?.manageResults
+            setCurrentBatch(r => (ar.id === r?.id)? {...r,...ar} : r );
+            setResults(prev => prev.map(r => {
+                let updated = ar.id === r?.id
+                return updated? {...r,...ar} : r;
+            }));
+        }else if (res?.approvedResults) { // update the approved  Results data  list
             let ar = res?.approvedResults
             setResults(prev => prev.map(r => {
                 let updated = ar.find(res => res.id === r?.id)
-                return updated || r;
+                return updated? {...r,...updated} : r;
             }));
             let record = res?.history ;
             setApprovalHistory(prev => [record, ...prev]);
-            setToast({ message: `Result batch(es) approved successfully`, type: 'success' });
-            onLogActivity('UPDATE', 'RESULTS', `Director approved  result batches`);
             return ;
         }
-        if (res?.approvedSkills) { // update the approved  Skills data  list
-            setToast({message:res?.success, type:'success'});
+        if (res?.manageSkills) { 
+            let ar = res?.manageSkills ;
+            setCurrentSkillBatch(prev => (ar.id === prev?.id)? {...prev,...ar} : prev );
+            setSkillBatches(prev => prev.map(r => {
+                let updated = (ar.id === r?.id)? {...r,...ar} : r ;
+                return updated
+            }));
+        }else if (res?.approvedSkills) { 
             let ar = res?.approvedSkills ;
             setSkillBatches(prev => prev.map(r => {
                 let updated = ar.find(res => res.id === r?.id)
-                return updated || r;
+                return updated? {...r,...updated} : r;
             }));
             let record = res?.history ;
             setApprovalHistory(prev => [record, ...prev]);
-            setToast({ message: `Result batch(es) approved successfully`, type: 'success' });
-            onLogActivity('UPDATE', 'RESULTS', `Director approved  result batches`);
             return ;
         }
         if (res?.currentSkills) { // update response from save action
             let updated = res?.currentSkills ;
-            setToast({message:res?.success, type:'success'})
             setSkillBatches((prev) => prev.map((batch) => {
                 let classMatch =updated?.classId === batch.classId ;
                 let termMatch =updated?.term === batch.term ;
@@ -191,27 +240,23 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
             return ;
         }
         if (res?.currentBatch) { // update response from save action
-            setToast({message:res?.success, type:'success'})
             setCurrentBatch(res.currentBatch);
-            const classStudents = students.filter(s => s.active_class_rooms.includes(res.currentBatch.classId));
+            const classStudents = students.filter(s => s?.active_class_rooms?.includes(res.currentBatch.classId));
             // make sure all students are included 
             const existed_scores = classStudents.map(student => {
                 const existingScore = res.currentBatch.scores.find(s => s.studentId === student.id);
                 return existingScore || {
                     studentId: student.id,
-                    ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'N/A', remark: 'No Score'
+                    ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'N/A', remark: 'No Score',
+                    ca1Abs:false,ca2Abs:false,examAbs:false,
                 };
             });
             setEditorScores(existed_scores)  ;
-            setResults(prev => prev.map(r => r.id === currentBatch.id ? res.currentBatch : r));
-            onLogActivity('UPDATE', 'RESULTS', `Updated results for ${subjects.find(s => s.id === currentBatch.subjectId)?.name} (${selectedTerm})`);
+            setResults(prev => prev.map(r => r.id === currentBatch?.id ? res.currentBatch : r));
             setIsDirty(false) ;
             return ;
         }
-        if (res?.approvalHistories) { // update approval histories
-            setApprovalHistory(res.approvalHistories);
-            return ;
-        }
+        
     }
     useEffect(() => {
         // Whenever session or term changes, reset to dashboard view
@@ -220,6 +265,7 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
             setSelectedTerm(selectedSchool.terms?.find(t => t.is_current)?.name || 'Unknown Term');
         }
     }, [selectedSchool]);
+
     useEffect(() => {
         // Whenever session or term changes, reset to dashboard view
         if (subjects && selectedSession && selectedTerm && selectedSchool) {
@@ -230,123 +276,86 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
             // we call api here to fetch results for the selected session and term, but for now we generate mock data
             // API CALL HERE to fetch results for selectedSession and selectedTerm
             let url =`/result/result-batch/fetch/${selectedSchool.id}/${session_id}/${term_id}/`
-            sendRequest(url,"GET",null,triggeredFunc,true,false)
+            sendRequest(url,"GET",null as any,triggeredFuncFetch,true,false)
     }
     }, [selectedSession,selectedTerm,subjects]);
     
     useEffect(() => {
         // Whenever session or term changes, reset to dashboard view
-        if (selectedSession && selectedTerm && selectedSchool) {
+        if (selectedSession && selectedTerm ) {
             let session_id = selectedSchool?.sessions?.find(s => s.name === selectedSession)?.id || 'unknown_session';
             let term_id = selectedSchool?.terms?.find(t => t.name === selectedTerm)?.id || 'unknown_term';
-            setSkillBatches(generateMockSkills(classes,session_id, term_id));
-            // we call api here to fetch results for the selected session and term, but for now we generate mock data
+            let s = generateMockSkills(classes,session_id, term_id)
+            setSkillBatches(s) ;
             // API CALL HERE to fetch results for selectedSession and selectedTerm
             let url =`/result/result-skill/fetch/${selectedSchool.id}/${session_id}/${term_id}/`
-            sendRequest(url,"GET",null,triggeredFunc,true,false)
+            sendRequest(url,"GET",null as any,triggeredFuncFetch,true,false)
+
         }
         // fetch approval history here 
         if (!approvalHistory.length && selectedSchool){
-            let url =`/result/approval-history/fetch/${selectedSchool.id}`
-            sendRequest(url,"GET",null,triggeredFunc,true,false)
+            let url =`/result/approval-history/fetch/${selectedSchool.id}` ;
+            sendRequest(url,"GET",null as any,triggeredFuncFetch,true,false) ;
         }
-    }, [selectedSession,selectedTerm]);
+    }, [selectedSession,selectedTerm,selectedSchool]);
 
     const handleOpenFormTeacherEditor = (classRoom: ClassRoom) => {
         let  batch = skillBatches.find(b => b.classId  === classRoom.id)
         setFormTeacherClass(classRoom);
-        setCurrentSkillBatch(batch)
-        const classStudents = students.filter(s => s.active_class_rooms.includes(classRoom.id));
-        // make sure all students are included 
-        const initialScores = classStudents.map((student) => {
-            const existingScore = batch?.charAndSkills.find(sb => sb.studentId === student.id);
-            return existingScore ||  {
-                studentId: student.id,
-                punctuality : 0 ,
-                honesty : 0 ,
-                neatness : 0 ,
-                leadership : 0 ,
-                handwriting : 0 ,
-                verbal_fluency : 0 ,
-                creativity : 0 ,
-            }
-        });
+        setCurrentSkillBatch(batch);
         setIsSkillDirty(false);
-        setEditorSkills(initialScores) ;
         setViewState('FORM_TEACHER_EDITOR');
     };
-    // --- NAVIGATION HANDLERS ---
-    const handleOpenEditor = (batch: ResultBatch) => {
-        setCurrentBatch(batch);
-        // If batch has no scores yet, generate empty scores for current class students
-        if (! batch?.scores || batch?.scores?.length === 0) {
-            const classStudents = students.filter(s => s.active_class_rooms.includes(batch.classId));
-            const initialScores = classStudents.map(s => ({
-                studentId: s.id,
-                ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'N/A', remark: 'No Score'
-            }));
 
-            setEditorScores(initialScores) ;
-
-        } else {
-            const classStudents = students.filter(s => s.active_class_rooms.includes(batch.classId));
-            // make sure all students are included 
-            const existed_scores = classStudents.map(student => {
-                const existingScore = batch.scores.find(s => s.studentId === student.id);
-                return existingScore || {
-                    studentId: student.id,
-                    ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'N/A', remark: 'No Score'
-                };
-            });
-            setEditorScores(existed_scores)  ;
-
-        }
-        setIsDirty(false);
+    const handleOpenEditor = (batch: ResultBatch) => { 
+        setCurrentBatch(batch) ;
         setViewState('EDITOR');
     };
+    
      // --- HANDLE PIN SUCCESS ---
     const handlePinSuccess = (pins:string) => {
         setShowPinModal(false); 
-        let form = serverForm
-        form.pin = pins
+        // let form = serverForm
+        
         // Make the api call here  when pin is not needed by the user 
         if (pendingAction === 'SAVE') {
-            sendRequest(`/result/result-batch/upsert/`,"POST",form,triggeredFunc,true,false)
+            sendRequest(`/result/result-batch/upsert/`,"POST",{...serverForm,pin:pins} as any ,triggeredFunc,true,false)
             return ;
         }
         if (pendingAction === 'UPLOAD') {
             serverForm.append('pin', pins) ;
             let url = `/result/result-batch/upload/`
-            sendRequest(url ,"POST",serverForm,triggeredFunc,true,true) // is formdata, is secure
+            sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,true) // is formdata, is secure
             return ;
         }
         if (pendingAction === 'CHARUPLOAD') {
             serverForm.append('pin', pins) ;
             let url = `/result/result-skill/upload/`
-            sendRequest(url ,"POST",serverForm,triggeredFunc,true,true) // is formdata, is secure
+            sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,true) // is formdata, is secure
             return ;
         }
         if (pendingAction === 'REPORTGENERATION') {
             let url = `/result/result-batch/generate-report-sheets/`
-            sendRequest(url ,"POST",form,triggeredFunc,true,false) //
+            sendRequest(url ,"POST",{...serverForm,pin:pins} as any,triggeredFunc,true,false) //
             return ;
         }
         if (pendingAction === 'SAVECHAR') {
             let url = `/result/result-skill/save/`
-            sendRequest(url ,"POST",form,triggeredFunc,true,false) // is not  formdata, is secure
+            sendRequest(url ,"POST",{...serverForm,pin:pins} as any,triggeredFunc,true,false) // is not  formdata, is secure
             return ;
         }
-        if (pendingAction === 'BATCHLOCK') {
-            let url = `/result/result-editing/locking/`
-            sendRequest(url ,"POST",form,triggeredFunc,true,!true)
+        if (pendingAction === 'BATCHMANAGE') {
+            let url = `/result/result-editing/managing/`
+            sendRequest(url ,"POST",{...serverForm,pin:pins} as any ,triggeredFunc,true,!true)
             return ;
         }
         if (pendingAction === 'BATCHAPPROVAL') {
             let url = `/result/result-editing/approval/`
-            sendRequest(url ,"POST",form,triggeredFunc,true,!true)
+            sendRequest(url ,"POST",{...serverForm,pin:pins} as any,triggeredFunc,true,!true)
             return ;
         }
     };
+
     const handleSaveScores = () => { 
         if (!currentBatch) return;
         // Check if any score is actually entered to mark as uploaded
@@ -362,48 +371,87 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
             pin : ''
         };
         setServerForm(updatedBatch) ; 
+
         setPendingAction('SAVE') ;  
         if (!currentUser?.user?.pin_set){
-            sendRequest(`/result/result-batch/upsert/`,"POST",serverForm,triggeredFunc,true,false)
+            sendRequest(`/result/result-batch/upsert/`,"POST",serverForm as any ,triggeredFunc,true,false)
             return ;
         }
         setShowPinModal(true) 
         return ;
     };
-    const handleLockEdit = (pendingAction :"RESULT" | "CHAR") => {
+
+    const handleManageEdit = (pendingAction :"RESULT" | "CHAR",action:"LOCKING"|"SUBMISSION") => {
         const target = pendingAction
         let targetBatchId = target === 'RESULT'? currentBatch?.id : currentSkillBatch?.id 
         setServerForm({
             target,
+            action,
             school : selectedSchool?.id ,
             batch : targetBatchId ,
             pin : ""
         })
-        setPendingAction("BATCHLOCK")
+        setPendingAction("BATCHMANAGE");
         if (!currentUser?.user?.pin_set) {
-                // process file immediately if no pin is set
-                let url = `/result/result-editing/locking/`
-                sendRequest(url ,"POST",serverForm,triggeredFunc,true,!true)
-                return ;
-            }
-            setShowPinModal(true) ;
+            // process file immediately if no pin is set
+            let url = `/result/result-editing/managing/`
+            sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,!true)
+            return ;
+        }
+        setShowPinModal(true) ;
     }
-    const handleScoreChange = (studentId: string, field: 'ca1' | 'ca2' | 'exam', value: string) => {
-        const numVal = Math.min(Math.max(Number(value) || 0, 0), field === 'exam' ? 60 : 20); // Clamp values
-        
-        setEditorScores(prev => prev.map(s => {
-            if (s.studentId === studentId) {
-                const updated = { ...s, [field]: numVal };
-                updated.total = updated.ca1 + updated.ca2 + updated.exam;
-                const { grade, remark } = calculateGrade(updated.total);
+ 
+    
+    const handleScoreChange = (studentId: string,field: 'ca1' | 'ca2' | 'exam',value: string) => {
+        const absentField = `${field}Abs` as 'ca1Abs' | 'ca2Abs' | 'examAbs';
+
+        setEditorScores(prev =>
+            prev.map(score => {
+
+                if (score.studentId !== studentId) {
+                    return score;
+                }
+
+                const updated = { ...score };
+
+                // Handle ABS
+                // if (value.trim().toUpperCase() === "ABS") {
+                if (value.trim().toUpperCase() === "0A" || value.trim().toUpperCase() === "0B") {
+                    updated[field] = 0;
+                    updated[absentField] = true;
+
+                } else {
+
+                    const maxScore = field === "exam" ? marks.exam :field === "ca1" ? marks.ca1 : marks.ca2;
+
+
+                    const numVal = Math.min(
+                        Math.max(Number(value) || 0, 0),
+                        maxScore
+                    );
+
+                    updated[field] = numVal;
+                    updated[absentField] = false;
+                }
+
+                // Recalculate totals
+                updated.total =
+                    (updated.ca1 || 0) +
+                    (updated.ca2 || 0) +
+                    (updated.exam || 0);
+
+                const { grade, remark } =
+                    calculateGrade(updated.total);
+
                 updated.grade = grade;
                 updated.remark = remark;
+
                 return updated;
-            }
-            return s;
-        }));
+            })
+        );
+
         setIsDirty(true);
-    }; 
+    };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -423,12 +471,13 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
             if (!currentUser?.user?.pin_set) {
                 // process file immediately if no pin is set
                 let url = `/result/result-batch/upload/`
-                sendRequest(url ,"POST",serverForm,triggeredFunc,true,true)
+                sendRequest(url ,"POST",serverForm as any,triggeredFunc,true,true)
                 return ;
             }
             setShowPinModal(true) ;
         }
     };
+
     const handleSkillsChange = (studentId: string, skill: string, value: number) => {
         const numVal = Math.min(Math.max(Number(value) || 0, 0), 5); // Clamp values
         setEditorSkills(prev => prev.map((rec) => {
@@ -441,6 +490,7 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
         
         return setIsSkillDirty(true)
     };
+
     const handleSkillFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setPendingAction('CHARUPLOAD') ;
@@ -464,6 +514,7 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
             setShowPinModal(true) ;
         }
     };
+
     const handleApproveResult = (batchIds: string[] ,target: "RESULT" | "CHAR") => {
         setServerForm({
             target,
@@ -475,7 +526,7 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
         if (!currentUser?.user?.pin_set) {
                 // process file immediately if no pin is set
                 let url = `/result/result-editing/approval/`
-                sendRequest(url ,"POST",serverForm,triggeredFunc,true,!true)
+                sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,!true)
                 return ;
             }
             setShowPinModal(true) ;
@@ -495,11 +546,12 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
         if (!currentUser?.user?.pin_set) {
             // process file immediately if no pin is set
             let url = `/result/result-batch/generate-report-sheets/`
-            sendRequest(url ,"POST",serverForm,triggeredFunc,true,false)
+            sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,false)
             return ;
         }
         setShowPinModal(true) ;
     }
+
     const downloadCharSheet = (class_id:any ) => {
         setPendingAction("CHAR_UPLOAD")  
         let cls = classes.find((c) => c.id === class_id)
@@ -507,7 +559,7 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
         let termId = selectedSchool?.terms.find(t => t.name === selectedTerm)?.id ;
         let url = `/result/result-skill/download/${selectedSchool?.id}/${sessionId}/${termId}/${class_id}/`
         let fileName = `${cls?.name}_Psychomotor&skills`;
-        sendFileRequest(url, 'GET', null, serverDownloader,fileName, true, !true);
+        sendFileRequest(url, 'GET', null as any, serverDownloader,fileName, true, !true);
         
         return ;
     }
@@ -520,7 +572,7 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
             class_room : formTeacherClass?.id ,
             session : sessionId ,
             term : termId,
-            teacher : formTeacherClass?.form_teacher ,
+            teacher : formTeacherClass?.form_teacher  ,
             charAndSkills : scores
         }
         setServerForm(SaveForm)
@@ -534,27 +586,26 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
 
     return (
         <>
-        <PinModal isOpen={showPinModal} onClose={() => { setShowPinModal(false); setPendingAction(null); }} onSuccess={handlePinSuccess} title={'Confirm Action'} />
+        <PinModal isOpen={showPinModal} onClose={() => { setShowPinModal(false); setPendingAction(null as any); }} onSuccess={handlePinSuccess} title={'Confirm Action'} />
         <div className="animate-fadeIn h-full flex flex-col reletive ">
             
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+            {/* {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null as any)} />} */}
             
             {viewState === 'DASHBOARD' ? (
                     <ResultDashboard 
                         activeTab={activeTab}
                         searchTerm={searchTerm}
-                        classes={classes}
                         teachers={teachers}
                         subjects={subjects}
                         results={filteredResults}
                         skills = {skillBatches}
                         students={students}
-                        selectedSession={selectedSession}
+                        selectedSession={selectedSession || ''}
                         approvalHistory={approvalHistory}
                         onOpenFormTeacherEditor={handleOpenFormTeacherEditor}
                         onApproveResult={handleApproveResult}
                         onTabChange={setActiveTab}
-                        selectedTerm={selectedTerm}
+                        selectedTerm={selectedTerm || ''}
                         onOpenEditor={handleOpenEditor}
                         onSearchChange={setSearchTerm}
                         onSessionChange={setSelectedSession}
@@ -566,13 +617,12 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
                 currentBatch && (
                     <ResultEditor 
                         batch={currentBatch}
-                        classes={classes}
-                        subjects={subjects}
-                        students={students}
+                        setEditorScores={setEditorScores}
+                        setIsDirty ={setIsDirty}    
                         editorScores={editorScores}
                         isDirty={isDirty}
-                        selectedSession={selectedSession}
-                        selectedTerm={selectedTerm}
+                        selectedSession={selectedSession || ''}
+                        selectedTerm={selectedTerm || ''}
                         onClose={() => setViewState('DASHBOARD')}
                         onSave={handleSaveScores}
                         onScoreChange={handleScoreChange}
@@ -580,16 +630,20 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
                             setUploadTargetBatch(currentBatch); 
                             setShowUploadModal(true); 
                         }}
-                        onLockEdit ={handleLockEdit}
+                        onManageEdit ={handleManageEdit}
                     />
                 )
             ) : viewState === 'FORM_TEACHER_EDITOR' ? (
-                formTeacherClass && (
+                (formTeacherClass && currentSkillBatch) && (
                     <FormTeacherEditor 
                         batch={currentSkillBatch}
-                        initialSkills = {editorSkills}
                         classRoom={formTeacherClass} 
-                        students={students.filter(s => s.active_class_rooms.includes(formTeacherClass.id))}
+
+                        initialSkills = {editorSkills}
+                        setEditorSkills={setEditorSkills}
+                        isDirty = {isSkillDirty}
+                        setIsDirty = {setIsSkillDirty}
+
                         handleSkillsChange = {handleSkillsChange}
                         onClose={() => setViewState('DASHBOARD')}
                         onHandleSave = {handleSaveChar}
@@ -598,41 +652,112 @@ export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects,
                             setFileUploadTarget("CHAR") 
                             setShowUploadModal(true); 
                         }}
-                        onLockEdit = {handleLockEdit}
-                        isDirty = {isSkillDirty}
+                        onManageEdit = {handleManageEdit}
+                       
                     />
                 )
-            ) : null}
+            ) : null as any}
 
             {/* CSV UPLOAD MODAL */}
-            <Modal isOpen={showUploadModal} onClose={() => setShowUploadModal(false)}
-             title={`Upload ${fileUploadTarget} Batch`} 
-             icon="fa-solid fa-cloud-arrow-up">
-                <div className="space-y-2 text-center p-2">
-                    <div className="w-16 h-16 bg-navy-50 rounded-full flex items-center justify-center mx-auto text-navy-600 text-2xl mb-2">
-                        <i className="fa-solid fa-file-csv"></i>
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-navy-900">Select CSV File</h4>
-                        {fileUploadTarget === "RESULT" && <p className="text-sm text-gray-500">Ensure the file matches the template format (S/N,Name, AdmNo, CA1, CA2, Exam).</p>}
-                        {fileUploadTarget === "CHAR" && <p className="text-sm text-gray-500">Ensure the file matches the students list with ratings (1-5) </p>}
-                    </div>
-                    
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-2 bg-gray-50 hover:bg-white transition-colors relative">
-                        {fileUploadTarget === "RESULT" && <input type="file" accept=".xlsx,.xls,.csv" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={handleFileUpload} />}
-                        {fileUploadTarget === "CHAR" && <input type="file" accept=".xlsx,.xls,.csv" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full border" onChange={handleSkillFileUpload} />}
-                        
-                        <div className="pointer-events-none">
-                            <span className="bg-navy-900 text-white px-4 py-2 rounded text-sm font-bold shadow-md">Browse Files</span>
-                            <p className="text-xs text-gray-400 mt-3">or drag and drop here</p>
+            <Modal
+                    isOpen={showUploadModal}
+                    onClose={() => {
+                        setShowUploadModal(false);
+                        setSelectedFile(null);
+                    }}
+                    title={`Upload ${fileUploadTarget} Batch`}
+                    icon="fa-solid fa-cloud-arrow-up"
+                >
+                    <div className="space-y-3 text-center p-2">
+
+                        <div className="w-16 h-16 bg-navy-50 rounded-full flex items-center justify-center mx-auto text-navy-600 text-2xl">
+                            <i className="fa-solid fa-file-csv"></i>
                         </div>
+
+                        <div>
+                            <h4 className="font-bold text-navy-900">
+                                Select CSV / Excel File
+                            </h4>
+
+                            {fileUploadTarget === "RESULT" && (
+                                <p className="text-sm text-gray-500">
+                                    Ensure the file matches the template format
+                                    (S/N, Name, AdmNo, CA1, CA2, Exam).
+                                </p>
+                            )}
+
+                            {fileUploadTarget === "CHAR" && (
+                                <p className="text-sm text-gray-500">
+                                    Ensure the file matches the students list with ratings (1-5).
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 bg-gray-50 hover:bg-white transition-colors relative">
+
+                            <input
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                onChange={handleFileSelection}
+                            />
+
+                            <div className="pointer-events-none">
+                                <span className="bg-navy-900 text-white px-4 py-2 rounded text-sm font-bold shadow-md">
+                                    Browse Files
+                                </span>
+
+                                <p className="text-xs text-gray-400 mt-3">
+                                    or drag and drop here
+                                </p>
+                            </div>
+                        </div>
+
+                        {selectedFile && (
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-left">
+
+                                <div className="flex items-center gap-2 text-green-700">
+                                    <i className="fa-solid fa-file-circle-check"></i>
+
+                                    <div className="flex-1">
+                                        <p className="font-semibold break-all">
+                                            {selectedFile?.name}
+                                        </p>
+
+                                        <p className="text-xs text-green-600">
+                                            {(selectedFile?.size / 1024).toFixed(2)} KB
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 mt-4">
+
+                                    <button
+                                        onClick={handleProceedUpload}
+                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition-colors"
+                                    >
+                                        <i className="fa-solid fa-check mr-2"></i>
+                                        Proceed
+                                    </button>
+
+                                    <button
+                                        onClick={handleCancelUpload}
+                                        className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition-colors"
+                                    >
+                                        <i className="fa-solid fa-xmark mr-2"></i>
+                                        Cancel
+                                    </button>
+
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="text-left bg-blue-50 p-3 rounded border border-blue-100 text-xs text-blue-800">
+                            <i className="fa-solid fa-circle-info mr-2"></i>
+                            Uploading will <b>overwrite</b> any existing data for this entry.
+                        </div>
+
                     </div>
-                    
-                    <div className="text-left bg-blue-50 p-3 rounded border border-blue-100 text-xs text-blue-800">
-                        <i className="fa-solid fa-circle-info mr-2"></i>
-                        Uploading will <b>overwrite</b> any existing data for this entry.
-                    </div>
-                </div>
             </Modal>
         </div>
         </>

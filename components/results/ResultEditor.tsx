@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ResultBatch, StudentScore, ClassRoom, Subject, Student } from '../../types';
-import { Button } from '../UI';
+import { Button, Modal } from '../UI';
 import { calculateGrade, generateResultCSV } from './ResultUtils';
 import { getCompletenessStats } from './ResultUtils';
 
@@ -9,19 +9,17 @@ import { uiContext } from '@/customContexts/UiContext';
 import useRequest from '@/customHooks/RequestHook';
 
 interface ResultEditorProps { 
-    batch: ResultBatch;
-    classes: ClassRoom[];
-    subjects: Subject[];
-    students: Student[];
+    batch: ResultBatch | any ;
     editorScores: StudentScore[];
+    setEditorScores:any;
+    setIsDirty: (data:boolean) => void;
     isDirty: boolean;
     onClose: () => void;
     onSave: () => void;
     onScoreChange: (studentId: string, field: 'ca1' | 'ca2' | 'exam', value: string) => void;
     onImportClick: () => void;
-    onLockEdit: () => void;
-    onToast: (msg: any) => void;
-    selectedSession: string;
+    onManageEdit: (a:any,b:any) => void;
+    selectedSession: string ;
     selectedTerm: string;
 }
 const renderProgressBar = (stats: { scored: number, total: number, percentage: number, status: string }) => {
@@ -42,18 +40,65 @@ const renderProgressBar = (stats: { scored: number, total: number, percentage: n
         );
     };
 export const ResultEditor: React.FC<ResultEditorProps> = ({
-    batch, classes, subjects, students, editorScores, isDirty,
-    onClose, onSave, onScoreChange, onImportClick,onLockEdit, onToast ,selectedSession, selectedTerm
+    batch, 
+    editorScores,
+    setEditorScores,
+    isDirty,
+    setIsDirty,
+    onClose, onSave, onScoreChange, onImportClick,onManageEdit ,selectedSession, selectedTerm
 }) => {
-    const {teachers} = React.useContext(uiContext)
-    const cls = classes.find(c => c.id === batch.classId);
+    const {teachers,classRooms, subjects, students,isLoading,setToast} = React.useContext(uiContext);
+    const cls = classRooms.find(c => c.id === batch.classId);
     const sub = subjects.find(s => s.id === batch.subjectId);
-    const teacher = teachers.find((t) => t.id === sub?.teacher[0])
-    const teacher_name = `${teacher?.title} ${teacher?.first_name} ${teacher?.last_name} ${teacher?.middle_name}`
-    const { sendFileRequest } = useRequest();
-    const {selectedSchool,getFormattedDate} = React.useContext(uiContext)
-    const stats = getCompletenessStats(batch ,students);
 
+    const teacherId = sub?.teachers.find(d => d.classroom === cls.id)?.teacher
+    const teacher = teachers.find(d => d.id === teacherId)
+    const teacher_name = teacher ? `${teacher?.title} ${teacher?.first_name} ${teacher?.last_name} ${teacher?.middle_name}`: 'unassigned'
+    const { sendFileRequest,sendRequest } = useRequest();
+    const {selectedSchool,getFormattedDate} = React.useContext(uiContext)
+    const stats = getCompletenessStats(batch ,cls.studentsCount || 1);
+
+    const [classStudents,setClassStudents] = useState(students.filter(s => s.active_class_rooms.includes(batch.classId)))
+    const [showSubmitModal,setShowSubmitModal] = useState(false)
+    const disabled = batch.on_submit || batch.isLocked  
+    const TriggeredFunc = (resp) => {
+        // console.log('resp: ', resp);
+        if (resp?.classStudents){
+            setClassStudents(resp?.classStudents);
+        }
+    }
+    useEffect(() => {
+        if (! batch?.scores || batch?.scores?.length === 0) {
+            // const classStudents : any[] = students.filter(s => s?.active_class_rooms.includes(batch.classId));
+            const initialScores = classStudents.map(s => ({
+                studentId: s.id,
+                ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'N/A', remark: 'No Score',
+                ca1Abs:false,ca2Abs:false,examAbs:false
+            }));
+            setEditorScores(initialScores) ;
+
+        } else {
+            // make sure all students are included 
+            const existed_scores = classStudents.map(student => {
+                const existingScore = batch.scores.find(s => s.studentId === student.id);
+                return existingScore || {
+                    studentId: student.id,
+                    ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'N/A', remark: 'No Score',
+                    ca1Abs:false,ca2Abs:false,examAbs:false
+                };
+            });
+            setEditorScores(existed_scores);
+
+        }
+        setIsDirty(false);
+       
+    },[classStudents,batch]);
+    useEffect(() => {
+         // fetch the remaining class students pls 
+        let url = `/student/all-students/${selectedSchool?.id}/${batch?.classId}/`
+        sendRequest(url,"GET",null as any ,TriggeredFunc,true,true)
+
+    },[])
     const serverDownloader = async (resp, fileName) => {
         const blob = await resp.blob();
         const url = window.URL.createObjectURL(blob);
@@ -70,8 +115,9 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
         let termId = selectedSchool?.terms.find(t => t.name === selectedTerm)?.id ;
         let url = `/result/result-batch/download/${selectedSchool?.id}/${sessionId}/${termId}/${batch.classId}/${batch.subjectId}/`
         let fileName = `${cls?.name}_${sub?.name}`;
-        sendFileRequest(url, 'GET', null, serverDownloader,fileName, true, !true);
+        sendFileRequest(url, 'GET', null as any , serverDownloader,fileName, true, !true);
     };
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, rowIndex: number, colIndex: number) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -110,38 +156,86 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <button 
+                    <Button 
                         onClick={onImportClick}
-                        disabled={batch.isLocked} 
+                        disabled={disabled} 
                         className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-2 rounded flex items-center"
                     >
                         <i className="fa-solid fa-file-csv mr-2"></i> Upload CSV
-                    </button>
+                    </Button>
                     <button 
                         onClick={handleDownloadTemplate}
                         className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-2 rounded flex items-center"
                     >
                         <i className="fa-solid fa-download mr-2"></i> Template
                     </button>
-                    {batch.isLocked && <button 
-                        onClick={() => {onLockEdit("RESULT")}}
-                        className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-2 rounded flex items-center">
-                        <i className="fa-solid fa-lock-close mr-2"></i> Unlock Edit
-                    </button>}
-                    {!batch.isLocked && <button 
-                        onClick={() => {onLockEdit("RESULT")}}
-                        className="bg-red-600 hover:bg-red-800 text-white text-xs font-bold px-3 py-2 rounded flex items-center">
-                        <i className="fa-solid fa-lock-close "></i> Lock Edit
-                    </button>}
-                    <Button 
-                        className={`w-auto px-6 py-2 text-xs ${isDirty ? 'bg-gold-500 text-navy-900 hover:bg-gold-400' : 'bg-green-600 hover:bg-green-500'}`}
-                        onClick={onSave}
-                        disabled={batch.isLocked}
-
+                    {(!disabled) && <button
+                        onClick={() => {
+                            if (isDirty) return setToast({message:"Save the changes first!",type:'info'})
+                            setShowSubmitModal(true)
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
                     >
-                        <i className={`fa-solid ${isDirty ? 'fa-save' : 'fa-check'} mr-2`}></i> {isDirty ? 'Save Changes' : 'Saved'}
-                    </Button>
+                        <i className="fa-solid fa-paper-plane mr-2"></i>
+                        Submit
+                    </button>}
                     
+                    {/* make the staff able to resubmit even if its locked here by rejecting it  */}
+                    {/* {(batch.on_submit || disabled) && <button
+                        onClick={() => setShowSubmitModal(true)}
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
+                    >
+                        <i className="fa-solid fa-paper-plane mr-2"></i>
+                    </button>} */}
+                    {batch.on_submit && <button
+                        onClick={() => {
+                            if (isDirty) return setToast({message:"Save the changes first!",type:'info'})
+                            setShowSubmitModal(true)
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
+                    >
+                        <i className="fa-solid fa-paper-plane mr-2"></i>
+                        Reject
+                    </button>}
+
+                    {batch.isLocked && (
+                        <button
+                            onClick={() => onManageEdit("RESULT","LOCKING")}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
+                        >
+                            <i className="fa-solid fa-lock-open mr-2"></i>
+                            Unlock Edit
+                        </button>
+                    )}
+
+                    {!batch.isLocked && (
+                        <button
+                            onClick={() => onManageEdit("RESULT","LOCKING")}
+                            className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
+                        >
+                            <i className="fa-solid fa-lock mr-2"></i>
+                            Lock Edit
+                        </button>
+                    )}
+
+                    <Button
+                        className={`w-auto px-6 py-2 text-xs font-bold ${
+                            isDirty
+                                ? 'bg-amber-600 text-white hover:bg-amber-700'
+                                : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
+                        onClick={onSave}
+                        disabled={disabled}
+                    >
+                        <i
+                            className={`fa-solid ${
+                                isDirty ? 'fa-floppy-disk' : 'fa-circle-check'
+                            } mr-2`}
+                        ></i>
+
+                        {isDirty ? 'Save Changes' : 'Saved'}
+                    </Button>
+                                        
                 </div>
             </div>
 
@@ -167,7 +261,7 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm">
                             {editorScores.map((score, idx) => {
-                                const student = students.find(s => s.id === score.studentId);
+                                const student = classStudents.find(s => s.id === score.studentId);
                                 return (
                                     <tr key={score.studentId} className="hover:bg-gray-50 transition-colors">
                                         <td className="p-3 text-center text-gray-400">{idx + 1}</td>
@@ -177,10 +271,15 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                                             <input 
                                                 id={`input-${idx}-0`}
                                                 onKeyDown={(e) => handleKeyDown(e, idx, 0)}
-                                                type="number" 
+                                                type="text" 
                                                 className={`w-16 p-1 text-center border rounded focus:ring-2 focus:ring-navy-900 outline-none ${score.ca1 > 20 ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300'}`}
-                                                value={score.ca1}
-                                                disabled={batch.isLocked}
+                                                // value={score.ca1}
+                                                value={
+                                                    score[`${'ca1'}Abs`]
+                                                        ? "ABS"
+                                                        : score['ca1']
+                                                }
+                                                disabled={disabled}
                                                 onChange={(e) => onScoreChange(score.studentId, 'ca1', e.target.value)}
                                                 max={20}
                                             />
@@ -189,10 +288,15 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                                             <input 
                                                 id={`input-${idx}-1`}
                                                 onKeyDown={(e) => handleKeyDown(e, idx, 1)}
-                                                type="number" 
+                                                type="text" 
                                                 className={`w-16 p-1 text-center border rounded focus:ring-2 focus:ring-navy-900 outline-none ${score.ca2 > 20 ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300'}`}
-                                                value={score.ca2}
-                                                disabled={batch.isLocked}
+                                                // value={score.ca2}
+                                                value={
+                                                    score[`${'ca2'}Abs`]
+                                                        ? "ABS"
+                                                        : score['ca2']
+                                                }
+                                                disabled={disabled}
                                                 onChange={(e) => onScoreChange(score.studentId, 'ca2', e.target.value)}
                                                 max={20}
                                             />
@@ -201,10 +305,15 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                                             <input 
                                                 id={`input-${idx}-2`}
                                                 onKeyDown={(e) => handleKeyDown(e, idx, 2)}
-                                                type="number" 
+                                                type="text" 
                                                 className={`w-16 p-1 text-center border rounded focus:ring-2 focus:ring-navy-900 outline-none ${score.exam > 60 ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-300'}`}
-                                                value={score.exam}
-                                                disabled={batch.isLocked}
+                                                // value={score.exam}
+                                                value={
+                                                    score[`${'exam'}Abs`]
+                                                        ? "ABS"
+                                                        : score['exam']
+                                                }
+                                                disabled={disabled}
                                                 onChange={(e) => onScoreChange(score.studentId, 'exam', e.target.value)}
                                                 max={60}
                                             />
@@ -227,6 +336,55 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                     <span><i className="fa-solid fa-circle-info mr-1"></i> Changes are saved locally until you click "Save".</span>
                 </div>
             </div>
+            <Modal
+                                isOpen={showSubmitModal}
+                                onClose={() => {
+                                    setShowSubmitModal(false);
+                                }}
+                                title={`Confirm Submission`}
+                                icon="fa-solid fa-cloud-arrow-up"
+                            >
+                                <div className="space-y-3 text-center p-2">
+                                    <div>
+                                        <h4 className="font-bold text-blue-900">
+                                            Are you sure  you want submit the scores for compilation ?
+                                        </h4>
+            
+                                    </div>
+                                   
+                                        <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-left">
+                                            <div className="flex gap-3 mt-4">
+            
+                                                <button
+                                                    // disabled={isLoading}
+                                                    onClick={() => {
+                                                        onManageEdit("RESULT","SUBMISSION");
+                                                        setShowSubmitModal(false)
+                                                    }}
+                                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition-colors"
+                                                >
+                                                    <i className="fa-solid fa-check mr-2"></i>
+                                                    Proceed
+                                                </button>
+                                                <button
+                                                    // disabled={isLoading}
+                                                    onClick={()=> setShowSubmitModal(false)}
+                                                    className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition-colors"
+                                                >
+                                                    <i className="fa-solid fa-xmark mr-2"></i>
+                                                    Cancel
+                                                </button>
+            
+                                            </div>
+                                        </div>
+            
+                                    <div className="text-left bg-red-50 p-3 rounded border text-red-600 border-blue-100 text-xs text-blue-800">
+                                        <i className="fa-solid fa-circle-info mr-2"></i>
+                                        submition will <b>{!batch.on_submit? 'LOCK':"UNLOCK"} EditMode</b> for this scores.
+                                    </div>
+            
+                                </div>
+            </Modal>
         </div>
     );
 };

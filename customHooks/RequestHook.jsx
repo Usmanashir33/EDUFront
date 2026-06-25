@@ -142,19 +142,16 @@ const useRequest = () => {
                 if (resp.ok) {
                     return resp.json();
                 }
-                setIsLoading(false);
             })
                 .then((data) => {
                     if (data?.error) {
-                        console.log('data?.error: ', data?.error);
                         return setToast({ message: data?.error, type: 'error' });
                     }
                     triggeredFunc(data)
                     setIsLoading(false);
                 }).catch((err) => {
-                    //    show error here 
                     setIsLoading(false);
-                    console.log(err.message)
+                    return setToast({ message: err, type: 'error' });
                 })
                 .finally(() => {
                     setTimeout(() => {

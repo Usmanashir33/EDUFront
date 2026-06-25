@@ -6,7 +6,7 @@ import useRequest from '@/customHooks/RequestHook';
 import { uiContext } from '@/customContexts/UiContext';
 
 interface LoginFormProps {
-  onNavigate: (view: ViewState) => void;
+  onNavigate: (view: string) => void;
   onLogin: (mode: 'director' | 'academic', response:any) => void;
 }
 interface formDataType {
@@ -222,7 +222,7 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
                     <div className="absolute top-0 right-0">
                     <button 
                         type="button"
-                        onClick={() => onNavigate(ViewState.FORGOT_PASSWORD)}
+                        onClick={() => onNavigate("/auth")}
                         className="text-xs font-semibold text-navy-600 hover:text-navy-800"
                         >
                         Forgot password?
@@ -241,7 +241,7 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
                 <p className="text-sm text-gray-600">
                     Need to register a new school?{'  '}
                     <button
-                    onClick={() => onNavigate(ViewState.REGISTER)}
+                    onClick={() => onNavigate('/auth/register')}
                     className="font-bold text-navy-700 hover:text-navy-900 transition-colors decoration-2 decoration-gold-400 hover:decoration-gold-500"
                     >   Director Registration
                     </button>

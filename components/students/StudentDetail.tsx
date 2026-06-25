@@ -327,7 +327,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
                         <button onClick={() => setTermViewTab("RECORDS")} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${termViewTab === "RECORDS" ? "bg-white text-navy-900 shadow-sm" : "text-gray-500 hover:text-navy-700"}`}>
                           Term Records
                         </button>
-                      </div>
+                      </div> 
 
                       {/* REPORT VIEW */}
                       {termViewTab === "REPORT" && <StudentReport reportData={reportData} 

@@ -2,6 +2,8 @@ import React ,{useContext} from 'react';
 import { TemplateConfig, SectionStyle } from './types';
 import urls from '@/customHooks/ServerUrls';
 import BarcodeImage from "../template-editor/sampleBarcodeImage.png";
+import Barcode from 'react-barcode';
+import QRCode from 'react-qr-code';
 
 
 interface TemplatePreviewProps {
@@ -46,7 +48,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({config,tempData
         signatureStyle,
         footerStyleObj
     } = config;
-
+    const resultVerificationPage = window.location.origin + '/resultverification'
     const getStyleString = (style: SectionStyle, isGlobal: boolean = false) => {
         const fontFamily = style.fontFamily === 'inherit' && !isGlobal ? globalFontFamily : style.fontFamily;
         return `
@@ -110,7 +112,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({config,tempData
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            // background-color: white;
+            
         }
         .doc-header {
             display: flex;
@@ -636,9 +638,9 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({config,tempData
                                 {tempData.academics.map((sub: any, i: number) => (
                                 <tr key={i} className="even:bg-gray-50/50">
                                     <td className="border border-gray-300 px-2 py-1.5 font-medium" style={{textAlign : 'left'}}>{sub.subject} ({sub.code})</td>
-                                    <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub.ca1}</td>
-                                    <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub.ca2}</td>
-                                    <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub.exam}</td>
+                                    <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub?.ca1Abs? "ABS" : sub.ca1}</td>
+                                    <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub?.ca2Abs? "ABS" : sub.ca2}</td>
+                                    <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub?.examAbs? "ABS" : sub.exam}</td>
                                     <td className="border border-gray-300 px-2 py-1.5 text-center font-bold text-navy-900" style={{fontWeight: 600}}>{sub.total}</td>
                                     <td
                                         className="border border-gray-300 px-3 py-2 text-center"
@@ -727,27 +729,48 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({config,tempData
                 {/* Footer Signatures */}
                 {config.visibleSections?.footer !== false && signatures && signatures.length > 0 && (
                     <div className="doc-footer items-center" style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', position: 'relative' }}>
-                        {showBarcode ? (
-                            <img 
-                                src={tempData?.data.barcode && urls.BASE_URL + tempData?.data.barcode || BarcodeImage} 
+                        {(showBarcode && !tempData?.data.barcode)&& <img 
+                                src={BarcodeImage} 
                                 alt="Sample Barcode" 
                                 className="doc-barcode-placeholder" 
-                                style={config.barcodeStyle ? {
+                                style={config.barcodeStyle && {
                                     opacity: (config.barcodeStyle.opacity || 100) / 100,
                                     borderRadius: config.barcodeStyle.borderRadius,
                                     width: config.barcodeStyle.width || '120px',
                                     height: config.barcodeStyle.height || '40px',
                                     border: config.barcodeStyle.border || '1px solid #ccc',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '10px',
-                                letterSpacing: '2px'
-                            } : {}}/>
-                                
-                        ) : (
-                            <div style={{ width: showStudentPhoto ? '100px' : '0' }}></div> // Spacer
-                        )}
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '10px',
+                                    letterSpacing: '2px'
+                                }}/>
+                        }
+                        {(showBarcode &&  tempData?.data.barcode)&&
+                         <div
+                                style={{
+                                    opacity: (config.barcodeStyle?.opacity || 100) / 100,
+                                    borderRadius: config.barcodeStyle?.borderRadius || "0px",
+                                    border: config.barcodeStyle?.border || "1px solid #ccc",
+                                    width: config.barcodeStyle?.width || "120px",
+                                    height: config.barcodeStyle?.height || "120px",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <QRCode
+                                    value={`${resultVerificationPage}/?${tempData?.data.barcode}` || ""}
+                                    size={
+                                        Math.min(
+                                            parseInt(config.barcodeStyle?.width || "120"),
+                                            parseInt(config.barcodeStyle?.height || "120")
+                                        ) - 8
+                                    }
+                                />
+                            </div>
+                         } 
                         <div className="relative flex flex-col items-center" >
                             {(config.showStamp ?? true) && (
                                 <div className="doc-stamp">

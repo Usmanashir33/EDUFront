@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Toggle, Button, ImageUpload, Modal, Toast, Input, PinModal } from '../UI';
 import { TemplateEditor } from './template-editor/TemplateEditor';
 import { TemplateConfig } from './template-editor/types';
@@ -22,18 +22,12 @@ interface DocTemplate {
 }
 
 interface TemplateSettingsProps {
-    data: any;
-    setData: (d: any) => void;
-    boardName: string;
-    boardAddress: string;
-    boardEmail: string;
-    boardPhone: string;
-    academicSession: string;
-    onToast: (msg: any) => void;
+    // data: any;
+    // setData: (d: any) => void;
 }
 
 export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
-    data, setData, boardName, boardAddress, boardEmail, boardPhone, academicSession, onToast 
+    // data, setData
 
 }) => {
 
@@ -47,9 +41,9 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
     const [showPinModal,setShowPinModal] = useState(false)
     const [editorPin,setEditorPin] = useState(false)
     const [defaultNewDocType, setDefaultNewDocType] = useState<'Form' | 'Report' | 'Transcript' | 'Certificate' | 'Other'>('Report');
-    
+    const [pendingAction,setPendingAction] = useState<{name?:string,id?:any}>({name:"",id:''})
     const {currentUser} = React.useContext(authContext);
-    const {selectedSchool} = React.useContext(uiContext);
+    const {selectedSchool,setToast,templates,setTemplates:setData} = React.useContext(uiContext);
     const {sendRequest} = useRequest() ;
     const tempTypes = [
         {name:"Form",type:'Form'},
@@ -58,50 +52,61 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
         {name:"Certificate",type:'Certificate'},
         {name:"Other",type:'Other Docs'},
     ]
+    const data = useMemo(()=> {
+        return {
+        headerImage: '', 
+          useCustomHeader: true,
+          documents: templates || []
+        }
+    },[templates])
 
     const triggeredFunc = (resp) => {
         setConfiguringDoc(null) ;
-        onToast({ message: resp?.success, type: 'success' }) ;
+        setPendingAction({name:'',id:''})
+
+        setToast({ message: resp?.success, type: 'success' }) ;
         console.log('resp: ', resp);
 
         if (resp?.new_temp){ // new template 
             const updated = [...data.documents,resp.new_temp]
-            setData({ ...data, documents: updated });
+            setData(updated);
             return ;
         }
         if (resp?.updated_temp){ // updating template 
-            const updated = data.documents.map((d: DocTemplate) => 
-            d.id === resp.updated_temp.id ? resp.updated_temp : d
-            );
-            setData({ ...data, documents: updated });
+            let u = resp?.updated_temp
+            let isActive = u.isActive 
+            const updated = data.documents.map((d: DocTemplate) => d.id === u.id ? {...u} : isActive ? {...d,isActive:false} : d);
+            setData(updated);
             return ;
         }
         if (resp?.deleted_temp){ // deleted template
             const updated = data.documents.filter((d: DocTemplate) => d.id !== resp.deleted_temp.id);
-            setData({ ...data, documents: updated });
+            setData(updated) ;
             return ;
         }
     }
 
     const handlePinSuccess = (pins:string) => {
         serverForm.append('pin',pins)
+        
         if (configuringDoc?.id){
             setEditorPin(false)
         }else{
             setShowPinModal(false);
         }
+
         if (pendingRequests === "Create"){
             let url = `/school/template/${selectedSchool.id}/`
-            sendRequest(url,"POST",serverForm,triggeredFunc,true,true) 
+            sendRequest(url,"POST",serverForm as any ,triggeredFunc,true,true) 
         }
         else if (pendingRequests === "Update") {
-            let url = `/school/template/${selectedSchool.id}/${configuringDoc?.id}/`
-            sendRequest(url,"PUT",serverForm,triggeredFunc,true,true) 
+            let url = `/school/template/${selectedSchool.id}/${pendingAction?.id}/`
+            sendRequest(url,"PUT",serverForm as any ,triggeredFunc,true,true) ;
+            setPendingAction({name:'',id:''})
         }
         else if (pendingRequests === "Delete") {
             let url = `/school/template/${selectedSchool.id}/${deletingDoc?.id}/${pins}/`
-            console.log('deletingDoc: ', deletingDoc);
-            sendRequest(url,"DELETE",serverForm,triggeredFunc,true,!true) 
+            sendRequest(url,"DELETE",serverForm as any ,triggeredFunc,true,!true) 
             setDeletingDoc(null); // to close the modal 
             return ;
 
@@ -110,14 +115,16 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
     }
 
     const saveTemplate = (config:any, htmlContent:any) => {
-        console.log('htmlContent: ', htmlContent);
+        // console.log('htmlContent: ', htmlContent);
+        setPendingAction({name:'DOC',id:configuringDoc?.id}); // used if pin is required 
+
         let form:any = new FormData()
 
         form.append('config', JSON.stringify(config))
         form.append("school", selectedSchool?.id)
         form.append("name",   configuringDoc?.name)
         form.append("type",configuringDoc?.type)
-        console.log('configuringDoc: ', configuringDoc);
+        // console.log('configuringDoc: ', configuringDoc);
         form.append("filetype",configuringDoc?.fileType)
         // form.append("htmlContent",htmlContent)
         
@@ -125,12 +132,12 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
         // Make the api call here  when user  need no pin to talk to server  
         if (!currentUser?.user?.pin_set && pendingRequests === "Create"){
             let url = `/school/template/${selectedSchool.id}/`
-            sendRequest(url,"POST",serverForm,triggeredFunc,true,true) 
+            sendRequest(url,"POST",serverForm as any ,triggeredFunc,true,true) 
             return ;
         }
         if (!currentUser?.user?.pin_set && pendingRequests === "Update"){
             let url = `/school/template/${selectedSchool.id}/${configuringDoc?.id}/`
-            sendRequest(url,"PUT",serverForm,triggeredFunc,true,true) 
+            sendRequest(url,"PUT",serverForm as any ,triggeredFunc,true,true) 
             return ;
         }
         if (configuringDoc?.id){
@@ -147,7 +154,7 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
             let pins = null 
             if (!currentUser?.user?.pin_set){
                 let url = `/school/template/${selectedSchool.id}/${deletingDoc?.id}/${pins}/`
-                sendRequest(url,"DELETE",serverForm,triggeredFunc,true,!true) 
+                sendRequest(url,"DELETE",serverForm as any ,triggeredFunc,true,!true) 
                 return ;
             }
             setShowPinModal(true);
@@ -156,7 +163,7 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
 
     const handleActivateTemplate = (doc:DocTemplate) => {
         setPendingRequests("Update");
-        setConfiguringDoc(doc); // used if pin is required 
+        setPendingAction({name:'DOC',id:doc.id}); // used if pin is required 
         
         let form:any = new FormData()
         form.append("isActive",true)
@@ -164,7 +171,7 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
        
         if (!currentUser?.user?.pin_set){
             let url = `/school/template/${selectedSchool.id}/${doc?.id}/`
-            sendRequest(url,"PUT",serverForm,triggeredFunc,true,true) 
+            sendRequest(url,"PUT",serverForm as any ,triggeredFunc,true,true) 
             return ;
         }
         setShowPinModal(true);
@@ -222,6 +229,7 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
                                         onClick={() => {
                                             setPendingRequests("Update");
                                             setConfiguringDoc(doc);
+
                                         }}
                                         className="text-gold-600 text-xs font-bold border border-gold-300 px-2 py-1 rounded hover:bg-gold-50 flex-1 flex items-center justify-center"
                                     >
@@ -231,7 +239,8 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     {activeId !== doc.id && (
                                         <button 
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                // e.stopPropagation();
                                                 handleActivateTemplate(doc);
                                             }}
                                             className="text-green-600 text-xs font-bold border border-green-300 px-2 py-1 rounded hover:bg-green-50 flex-1 flex items-center justify-center"

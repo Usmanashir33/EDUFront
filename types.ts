@@ -39,7 +39,8 @@ export enum ViewState {
   VERIFY = 'VERIFY',
   SELECT_SCHOOL = 'SELECT_SCHOOL',
   DASHBOARD = 'DASHBOARD',
-  FORGOT_PASSWORD = 'FORGOT_PASSWORD'
+  FORGOT_PASSWORD = 'FORGOT_PASSWORD',
+  RESULT_VERIFICATION = "RESULT_VERIFICATION"
 }
 
 // --- DJANGO MODEL MAPPINGS ---
@@ -258,6 +259,11 @@ export interface StudentScore {
   ca1: number; // e.g. 20
   ca2: number; // e.g. 20
   exam: number; // e.g. 60
+
+  ca1Abs?: boolean; // e.g. if value is 'ABS'
+  ca2Abs?: boolean; // e.g. if value is 'ABS'
+  examAbs?: boolean; // e.g. if value is 'ABS'
+
   total: number; // Calculated
   grade: string; // A, B, C...
   remark: string;

@@ -20,6 +20,13 @@ const UiContextProvider = ({ children }) => {
     const [promotionLogs, setPromotionLogs] = useState([]);
     const [permissions, setPermissions] = useState([]);
     const [roles, setRoles] = useState([]);
+    const [marks, setMarks] = useState(
+        {
+            ca1: 20,
+            ca2: 20,
+            exam: 60
+        }
+    )
 
     const [templates, setTemplates] = useState([])
     const [teachers, setTeachers] = useState([]);
@@ -53,14 +60,14 @@ const UiContextProvider = ({ children }) => {
     }
 
     const findSessionById = (sessionId) => {
-        if (!selectedSchool?.sessions.length) return;
-        let s = selectedSchool?.sessions.find((t) => t.id === sessionId);
+        if (!selectedSchool?.sessions.length) return null;
+        let s = selectedSchool?.sessions.find((t) => t.id === sessionId || t.name === sessionId);
         return s;
 
     }
     const findTermById = (termId) => {
         if (!selectedSchool?.terms.length) return;
-        let s = selectedSchool?.terms.find((t) => t.id === termId);
+        let s = selectedSchool?.terms.find((t) => t.id === termId || t.name === termId);
         return s;
 
     }
@@ -128,7 +135,8 @@ const UiContextProvider = ({ children }) => {
             promotionLogs, setPromotionLogs,
             activities, setActivities,
             permissions, setPermissions,
-            roles, setRoles
+            roles, setRoles,
+            marks, setMarks,
 
         }}>
             {children}

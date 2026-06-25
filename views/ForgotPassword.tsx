@@ -5,7 +5,7 @@ import { uiContext } from '@/customContexts/UiContext';
 import useRequest from '@/customHooks/RequestHook';
 
 interface ForgotPasswordProps {
-  onNavigate: (view: ViewState) => void;
+  onNavigate: (view: string) => void;
 }
 
 type Step = 'EMAIL' | 'OTP' | 'NEW_PASSWORD' | 'SUCCESS';
@@ -115,7 +115,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
               error={errors.email}
             />
             <Button type="submit" isLoading={isLoading}>Send Recovery Code</Button>
-            <button type="button" onClick={() => onNavigate(ViewState.LOGIN)} className="w-full text-sm text-navy-600 hover:text-navy-800 font-medium mt-4">
+            <button type="button" onClick={() => onNavigate('/auth/login')} className="w-full text-sm text-navy-600 hover:text-navy-800 font-medium mt-4">
               Back to Login
             </button>
           </form>
@@ -184,7 +184,7 @@ export const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onNavigate }) =>
             </div>
             <h2 className="text-2xl font-bold text-navy-900 mb-2">Password Updated!</h2>
             <p className="text-gray-600 mb-8">Your password has been securely reset. You can now login.</p>
-            <Button onClick={() => onNavigate(ViewState.LOGIN)}>Return to Login</Button>
+            <Button onClick={() => onNavigate('/auth/login')}>Return to Login</Button>
           </div>
         );
     }

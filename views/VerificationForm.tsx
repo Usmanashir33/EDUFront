@@ -4,7 +4,7 @@ import { ViewState } from '../types';
 
 interface VerificationFormProps {
   email: string;
-  onNavigate: (view: ViewState) => void;
+  onNavigate: (view: string) => void;
 }
 
 export const VerificationForm: React.FC<VerificationFormProps> = ({ email, onNavigate }) => {
@@ -39,7 +39,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({ email, onNav
     // Simulate verification API
     setTimeout(() => {
       setLoading(false);
-      onNavigate(ViewState.LOGIN);
+      onNavigate('/auth/login');
     }, 1500);
   };
 
@@ -95,7 +95,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({ email, onNav
              <button
                 type="button"
                 className="text-xs text-gray-400 hover:text-gray-600"
-                onClick={() => onNavigate(ViewState.REGISTER)}
+                onClick={() => onNavigate('/auth/register')}
             >
                 Incorrect email? Start Over
             </button>

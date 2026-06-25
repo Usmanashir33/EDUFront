@@ -9,20 +9,19 @@ export const calculateGrade = (total: number) => {
     return { grade: 'F', remark: 'Fail' };
 };
 
-export const getCompletenessStats = (batch: ResultBatch, students) => {
+export const getCompletenessStats = (batch: ResultBatch, totalStudents) => {
     // Filter students actually enrolled in this class
-    const classStudents = students.filter(s => s.class_rooms.map(cls => cls.class_room).includes(batch?.classId));
-    const totalStudents = classStudents.length;
+    // const classStudents = students.filter(s => s.active_class_rooms.includes(batch?.classId));
+    // const totalStudents = classStudents.length;
 
     if (totalStudents === 0) return { scored: 0, total: 0, percentage: 0, status: 'EMPTY' };
 
-    // Count students who have a recorded score (Total > 0 or explicitly marked)
+    // Count students who have a recorded score(Total > 0 or explicitly ABS)
     // We check if the student ID exists in the batch scores and has a valid entry
-    const scoredCount = classStudents.reduce((acc, student) => {
-        const score = batch.scores?.find(s => s.studentId === student.id);
-        // We consider it "scored" if there is a total > 0 or exam > 0
+    const scoredCount = batch?.scores?.reduce((acc, score) => {
         // Adjust logic based on your specific "is recorded" definition
-        if (score && (score.total > 0 || score.exam > 0 || score.ca1 > 0)) {
+        let hasAbs = score.ca1Abs || score.ca2Abs || score.examAbs
+        if (score && (score.total > 0 || hasAbs)) {
             return acc + 1;
         }
         return acc;
@@ -36,24 +35,12 @@ export const getCompletenessStats = (batch: ResultBatch, students) => {
 
     return { scored: scoredCount, total: totalStudents, percentage, status };
 };
-export const getCompleteSkillStats = (batch: any, students) => {
-    // Filter students actually enrolled in this class
-    const classStudents = students.filter(s => s.class_rooms.map(cls => cls.class_room).includes(batch?.classId));
-    const totalStudents = classStudents.length;
-
+export const getCompleteSkillStats = (batch: any, totalStudents) => {
     if (totalStudents === 0) return { scored: 0, total: 0, percentage: 0, status: 'EMPTY' };
 
     // Count students who have a recorded score (Total > 0 or explicitly marked)
     // We check if the student ID exists in the batch scores and has a valid entry
-    const scoredCount = classStudents.reduce((acc, student) => {
-        const skill = batch.charAndSkills?.find(s => s.studentId === student.id);
-        // We consider it "scored" if there is a any of the skill marked 
-        // Adjust logic based on your specific"is recorded" definition
-        if (skill && (skill.punctuality > 0 || skill.honesty > 0 || skill.neatness > 0 || skill.handwriting > 0 || skill.verbal_fluency)) {
-            return acc + 1;
-        }
-        return acc;
-    }, 0);
+    const scoredCount = batch?.charAndSkills?.filter((char) => char?.is_submitted === true).length
 
     const percentage = Math.round((scoredCount / totalStudents) * 100);
 

@@ -6,9 +6,12 @@ import { useReactToPrint } from "react-to-print";
 import { TemplatePreview } from "../settings/template-editor/TemplatePreview";
 interface StudentReportProps {
   reportData: any;
+  selectedSchool: any;
+  activeTemplate : any;
+  onCancel? : (d:any) => void ;
 }
 
-const StudentReport: React.FC<StudentReportProps> = ({reportData}) => {
+const StudentReport: React.FC<StudentReportProps> = ({reportData,selectedSchool,activeTemplate,onCancel}) => {
   // Print Handler
   const reportRef = useRef<HTMLDivElement>(null);
  
@@ -17,8 +20,6 @@ const StudentReport: React.FC<StudentReportProps> = ({reportData}) => {
   documentTitle: "Student Report",
 });
   
-  const {selectedSchool,templates} = React.useContext(uiContext);
-  const activeTemplate = templates?.find((t) => (t.type === "Report" && t.isActive));
   return (
     <>
         {/* THE REPORT CARD CONTAINER */}
@@ -26,7 +27,7 @@ const StudentReport: React.FC<StudentReportProps> = ({reportData}) => {
         {`
         @media print {
           @page {
-            size: A4 portrait;
+            size: A4 portrait !important;
             margin: 8mm;
           }
 
@@ -60,24 +61,30 @@ const StudentReport: React.FC<StudentReportProps> = ({reportData}) => {
         }
       `}
       </style>
-              <div className="flex justify-between items-center mb-6 no-print">
+              <div className="flex justify-between items-center mb-6 no-print  mt-2 ">
 
-                <div>
-                  <h3 className="font-bold text-xl text-navy-900">Result Sheet</h3>
-                  <p className="text-xs text-gray-500">
+                <div className="bg-navy-900 rounded-sm p-2 text-white flex gap-5 items-center">
+                  <h3 className="font-bold text-xl ">Result Sheet</h3>
+                  <h3 className="text-sm text-white">
                     {reportData.data.term} • {reportData.data.session} 
-                  </p>
+                  </h3>
                 </div>
-                <Button onClick={() => {handlePrint()}} className="w-auto px-4 gap-2">
-                  <i className="fa-solid fa-print"></i> Print
-                </Button>
+                <div className="flex gap-5">
+                  <Button onClick={() => {onCancel(false)}} className="w-auto px-4 gap-2 bg-red-50 text-red-900 hover:bg-red-100 hover:text-red-700">
+                    <i className="fa-solid fa-multiply"></i> Cancel
+                  </Button>
+                  <Button onClick={() => {handlePrint()}} className="w-auto px-4 gap-2">
+                    <i className="fa-solid fa-print"></i> Print
+                  </Button>
+
+                </div>
               </div>
 
-              <div className="relative border border-gray-200 rounded-lg overflow-hidden bg-gray-50 shadow-inner flex-1 no-print">
-                <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-2">
+              <div className="relative border border-gray-200 rounded-lg overflow-hidden bg-gray-50 shadow-inner flex-1 no-print w-full mx-auto max-w-[75vw]">
+                <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-2 ">
+
                   {/* THE REPORT CARD CONTAINER */}
-                  {/* <div ref={reportRef} id="report-card-containe" className="bg-white p-8 border-4 border-double border-navy-900/20 shadow-xl relative min-h-[800px] text-navy-900 w-full"> */}
-                  <div ref={reportRef} id="report-card-containe" className="bg-white border-4 border-double border-navy-900/20 relative min-h-[800px] h-full w-full ">
+                  <div ref={reportRef} id="report-card-containe" className="bg-white border-4 p-2 border-double border-navy-900/20 relative min-h-[800px] h-full w-full ">
                   {
                     activeTemplate && <TemplatePreview config={activeTemplate.config} tempData={reportData} selectedSchool={selectedSchool} />
                   }
@@ -150,36 +157,16 @@ const StudentReport: React.FC<StudentReportProps> = ({reportData}) => {
                               {reportData.academics.map((sub: any, i: number) => (
                                 <tr key={i} className="even:bg-gray-50/50">
                                   <td className="border border-gray-300 px-2 py-1.5 font-medium">{sub.subject} ({sub.code})</td>
-                                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub.ca1}</td>
-                                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub.ca2}</td>
-                                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub.exam}</td>
+                                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub?.ca1Abs? "ABS" : sub.ca1}</td>
+                                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub?.ca2Abs? "ABS" : sub.ca2}</td>
+                                  <td className="border border-gray-300 px-2 py-1.5 text-center text-gray-600">{sub?.examAbs? "ABS" : sub.exam}</td>
                                   <td className="border border-gray-300 px-2 py-1.5 text-center font-bold text-navy-900">{sub.total}</td>
                                   <td className={`border border-gray-300 px-2 py-1.5 text-center font-bold ${sub.grade === "F" ? "text-red-600" : "text-green-700"}`}>{sub.grade}</td>
                                   <td className="border border-gray-300 px-2 py-1.5 text-xs italic text-gray-600">{sub.remark}</td>
                                 </tr>
                               ))}
-                              {reportData.academics.map((sub: any, i: number) => (
-                                <tr key={i} className="even:bg-gray-50/50">
-                                  <td className="border border-gray-300 p-2 font-medium">{sub.subject} ({sub.code})</td>
-                                  <td className="border border-gray-300 p-2 text-center text-gray-600">{sub.ca1}</td>
-                                  <td className="border border-gray-300 p-2 text-center text-gray-600">{sub.ca2}</td>
-                                  <td className="border border-gray-300 p-2 text-center text-gray-600">{sub.exam}</td>
-                                  <td className="border border-gray-300 p-2 text-center font-bold text-navy-900">{sub.total}</td>
-                                  <td className={`border border-gray-300 p-2 text-center font-bold ${sub.grade === "F" ? "text-red-600" : "text-green-700"}`}>{sub.grade}</td>
-                                  <td className="border border-gray-300 p-2 text-xs italic text-gray-600">{sub.remark}</td>
-                                </tr>
-                              ))}
-                              {reportData.academics.slice(3).map((sub: any, i: number) => (
-                                <tr key={i} className="even:bg-gray-50/50">
-                                  <td className="border border-gray-300 p-2 font-medium">{sub.subject} ({sub.code})</td>
-                                  <td className="border border-gray-300 p-2 text-center text-gray-600">{sub.ca1}</td>
-                                  <td className="border border-gray-300 p-2 text-center text-gray-600">{sub.ca2}</td>
-                                  <td className="border border-gray-300 p-2 text-center text-gray-600">{sub.exam}</td>
-                                  <td className="border border-gray-300 p-2 text-center font-bold text-navy-900">{sub.total}</td>
-                                  <td className={`border border-gray-300 p-2 text-center font-bold ${sub.grade === "F" ? "text-red-600" : "text-green-700"}`}>{sub.grade}</td>
-                                  <td className="border border-gray-300 p-2 text-xs italic text-gray-600">{sub.remark}</td>
-                                </tr>
-                              ))}
+                              
+                              
                             </tbody>
                           </table>
                           <div className="w-full flex justify-between px-4 ">

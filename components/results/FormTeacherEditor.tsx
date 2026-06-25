@@ -1,22 +1,28 @@
 import React, { useState, useRef, useEffect ,useContext } from 'react';
 import { ClassRoom, Student } from '../../types';
-import { Button } from '../UI';
+import { Button, Modal } from '../UI';
 import { getCompleteSkillStats } from './ResultUtils';
 import { uiContext } from '@/customContexts/UiContext';
+import { AnyAaaaRecord } from 'dns';
+import useRequest from '@/customHooks/RequestHook';
 
 
 interface FormTeacherEditorProps {
     batch : any ;
-    initialSkills: any ;
     classRoom: ClassRoom;
-    students: Student[];
+
+    initialSkills: any ;
+    setEditorSkills : any,
+    isDirty :boolean ;
+    setIsDirty : any,
+
     handleSkillsChange : (studentId: string, skill: string, value: number) => void ;
     onClose: () => void;
-    onHandleSave: () => void;
+    onHandleSave: (data:AnyAaaaRecord) => void;
     onImportClick: () => void;
     onDownloadCharSheet: (t: string) => void;
-    onLockEdit : () => void ;
-    isDirty :boolean ;
+    onManageEdit : (a:any,b:any) => void ;
+    
 }
 
 // type SkillScores = Record<string, number>;
@@ -105,7 +111,7 @@ const renderProgressBar = (stats: { scored: number, total: number, percentage: n
             <div className="w-full mt-2">
                 <div className="flex justify-between text-[10px] uppercase font-bold text-gray-500 mb-1">
                     <span>{stats.status}</span>
-                    <span>{stats.scored}/{stats.total} Recorded</span>
+                    <span> {stats.scored}/{stats.total} Recorded</span>
                 </div>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${stats.percentage}%` }}></div>
@@ -116,21 +122,36 @@ const renderProgressBar = (stats: { scored: number, total: number, percentage: n
 
 export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
     batch ,
+    classRoom,
     initialSkills:scores ,
-    classRoom, students,
+    isDirty,
+    setEditorSkills,
+    setIsDirty,
     handleSkillsChange ,
-    onClose,onHandleSave,
+    onClose,
+    onHandleSave,
     onImportClick,
     onDownloadCharSheet,
-    onLockEdit,
-    isDirty ,
+    onManageEdit,
 }) => {
     // Skills list for navigation order
-    const psychomotorSkills = ['punctuality', 'honesty','neatness', 'leadership'];
-    const otherSkills = ['handwriting', 'verbal_fluency', 'creativity'];
-    const allSkills = [...psychomotorSkills, ...otherSkills];
-    const {getFormattedDate} = useContext(uiContext);
-
+    const psychomotorSkills = ['punctuality', 'honesty','neatness', 'leadership'] ;
+    const otherSkills = ['handwriting', 'verbal_fluency', 'creativity'] ;
+    const allSkills = [...psychomotorSkills, ...otherSkills] ;
+    const [showSubmitModal,setShowSubmitModal] = useState(false) ;
+    const {getFormattedDate,setToast,students,selectedSchool} = useContext(uiContext) ;
+    const [classStudents,setClassStudents] = useState(students.filter(s => s.active_class_rooms.includes(batch.classId)) );
+    const {sendRequest} = useRequest() ;
+    const disabled = batch.on_submit || batch.isLocked 
+    const stat = getCompleteSkillStats(batch,classStudents.length || 0) ;
+    
+    
+    const TriggeredFunc = (resp) => {
+        // console.log('resp: ', resp);
+        if (resp?.classStudents){
+            setClassStudents(resp?.classStudents);
+        }
+    }
     const handleNavigate = (studentIndex: number, skillIndex: number, direction: 'next' | 'prev' | 'down' | 'up') => {
         let nextStudentIndex = studentIndex;
         let nextSkillIndex = skillIndex;
@@ -154,8 +175,8 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
         }
 
         // Boundary checks
-        if (nextStudentIndex >= 0 && nextStudentIndex < students.length) {
-            const nextStudentId = students[nextStudentIndex].id;
+        if (nextStudentIndex >= 0 && nextStudentIndex < classStudents?.length) {
+            const nextStudentId = classStudents[nextStudentIndex].id;
             const nextSkill = allSkills[nextSkillIndex];
             const elementId = `rating-${nextStudentId}-${nextSkill}`;
             document.getElementById(elementId)?.focus();
@@ -170,8 +191,34 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
         }));
         onHandleSave(formatted)
     };
-    const stat = getCompleteSkillStats( batch,students)
-
+    useEffect(() => {
+            if (batch) {
+                // make sure all students are included 
+                const initialScores = classStudents.map((student) => {
+                const existingScore = batch?.charAndSkills.find(sb => sb.studentId === student.id);
+                return existingScore ||  {
+                    studentId: student.id,
+                    punctuality : 0 ,
+                    honesty : 0 ,
+                    neatness : 0 ,
+                    leadership : 0 ,
+                    handwriting : 0 ,
+                    verbal_fluency : 0 ,
+                    creativity : 0 ,
+                }
+                });
+                setEditorSkills(initialScores) ;
+    
+            }
+            setIsDirty(false);
+           
+        },[classStudents,batch]);
+    useEffect(() => {
+         // fetch the remaining class students pls 
+        let url = `/student/all-students/${selectedSchool?.id}/${batch?.classId}/`
+        sendRequest(url,"GET",null as any ,TriggeredFunc,true,true)
+    
+    },[])
 
     return (
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm h-full flex flex-col">
@@ -184,18 +231,18 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                     <button onClick={onClose} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-bold text-xs transition-colors">
                         Cancel
                     </button>
-                    {batch.isLocked && <button 
-                        onClick={() => {onLockEdit("CHAR")}}
+                    {(batch?.isLocked && !batch.on_submit && !batch.approved) && <button 
+                        onClick={() => {onManageEdit("CHAR","LOCKING")}} // SUBMISSION for Submit 
                         className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-2 rounded flex items-center">
                         <i className="fa-solid fa-lock-close mr-2"></i> Unlock Edit
                     </button>}
-                    {!batch.isLocked && <button 
-                        onClick={() => {onLockEdit("CHAR")}}
+                    {(!batch?.isLocked && !batch.on_submit && !batch.approved) && <button 
+                        onClick={() => {onManageEdit("CHAR","LOCKING")}}
                         className="bg-red-500 hover:bg-red-400 text-white text-xs font-bold px-3 py-2 rounded flex items-center">
                         <i className="fa-solid fa-lock-close "></i> Lock Edit
                     </button>}
                     <button 
-                        disabled={batch.isLocked} 
+                        disabled={disabled} 
                         onClick={onImportClick}
                         className="bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold px-3 py-2 rounded flex items-center"
                     >
@@ -207,10 +254,30 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                     >
                         <i className="fa-solid fa-download mr-2"></i> Template
                     </button>
+                    {(!disabled && !batch.approved) && <button
+                        onClick={() => {
+                            if (isDirty) return setToast({message:"Save the changes first!",type:'info'})
+                            setShowSubmitModal(true)
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
+                    >
+                        <i className="fa-solid fa-paper-plane mr-2"></i>
+                        Submit
+                    </button>}
+                    {(batch?.on_submit || batch.approved) && <button
+                        onClick={() => {
+                            // if (isDirty) return setToast({message:"Save the changes first!",type:'info'})
+                            setShowSubmitModal(true)
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
+                    >
+                        <i className="fa-solid fa-paper-plane mr-2"></i>
+                        Reject
+                    </button>}
                     <Button 
                         className={`w-auto px-6 py-2 text-xs ${isDirty ? 'bg-gold-500 text-navy-900 hover:bg-gold-400' : 'bg-green-600 hover:bg-green-500'}`}
                         onClick={handleSave}
-                        disabled={batch.isLocked || !isDirty }
+                        disabled={batch?.isLocked || !isDirty }
                     >
                         <i className={`fa-solid ${isDirty ? 'fa-save' : 'fa-check'} mr-2`}></i> {isDirty ? 'Save Changes' : 'Saved'}
                     </Button>
@@ -235,7 +302,7 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {students.map((student, sIdx) => (
+                        {classStudents?.map((student, sIdx) => (
                             <tr key={student.id} className={`${sIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/50 transition-colors`}>
                                 <td className="p-2 border-r border-gray-100 font-medium text-navy-800 whitespace-nowrap sticky left-0 z-10 bg-inherit shadow-[1px_0_0_0_#f3f4f6]">
                                     <div className="flex flex-col bg-gray-100 rounded-sm -ml-1 p-1">
@@ -275,7 +342,7 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                                 ))}
                             </tr>
                         ))}
-                        {students.length === 0 && (
+                        {classStudents.length === 0 && (
                             <tr>
                                 <td colSpan={9} className="p-4 text-center text-gray-500 italic">
                                     No students found in this class.
@@ -287,7 +354,7 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
             </div>
             <div className="mt-1 flex items-center justify-between text-[10px] text-gray-500">
                 <p><i className="fa-solid fa-circle-info mr-1"></i> Use Arrow Keys or Enter to navigate. Type 1-5 to rate.</p>
-                <p>Total Students: {students.length}</p>
+                <p>Total Students: {classStudents.length}</p>
             </div>
             <div className="p-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
                     {!batch.isUploaded && <span className="text-yellow-500 text-md" ><b className="fa-solid fa-circle-info mr-1"></b> No Record Found</span>}
@@ -295,7 +362,56 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                     {!batch?.isLocked && <span className="text-green-500 text-md"><b className="fa-solid fa-check mr-1"></b> EDIT MODE ACTIVATED .</span>}
                     {batch?.isLocked && <span className="text-yellow-500 text-md"><b className="fa-solid fa-circle-info mr-1"></b> The Batch is locked and cannot be edited.</span>}
                     <span><i className="fa-solid fa-circle-info mr-1"></i> Changes are saved locally until you click "Save".</span>
-                </div>
+            </div>
+            <Modal
+                                            isOpen={showSubmitModal}
+                                            onClose={() => {
+                                                setShowSubmitModal(false);
+                                            }}
+                                            title={`Confirm Submission`}
+                                            icon="fa-solid fa-cloud-arrow-up"
+                                        >
+                                            <div className="space-y-3 text-center p-2">
+                                                <div>
+                                                    <h4 className="font-bold text-blue-900">
+                                                        Are you sure  you want submit the traits for compilation ?
+                                                    </h4>
+                        
+                                                </div>
+                                               
+                                                    <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-left">
+                                                        <div className="flex gap-3 mt-4">
+                        
+                                                            <button
+                                                                // disabled={isLoading}
+                                                                onClick={() => {
+                                                                    onManageEdit("CHAR","SUBMISSION");
+                                                                    setShowSubmitModal(false)
+                                                                }}
+                                                                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition-colors"
+                                                            >
+                                                                <i className="fa-solid fa-check mr-2"></i>
+                                                                Proceed
+                                                            </button>
+                                                            <button
+                                                                // disabled={isLoading}
+                                                                onClick={()=> setShowSubmitModal(false)}
+                                                                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition-colors"
+                                                            >
+                                                                <i className="fa-solid fa-xmark mr-2"></i>
+                                                                Cancel
+                                                            </button>
+                        
+                                                        </div>
+                                                    </div>
+                        
+                                                <div className="text-left bg-red-50 p-3 rounded border text-red-600 border-blue-100 text-xs text-blue-800">
+                                                    <i className="fa-solid fa-circle-info mr-2"></i>
+                                                    submition will <b>{!batch.on_submit? 'Lock':"Unlock"} EditMode</b> for this scores.
+                                                </div>
+                        
+                                            </div>
+                        </Modal>
         </div>
     );
 }

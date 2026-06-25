@@ -103,7 +103,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
     setPinModal,
     handlePinSuccess
 }) => {
-    const {selectedSchool} = React.useContext(uiContext);
+    const {selectedSchool,classRooms} = React.useContext(uiContext);
     const [config, setConfig] = useState<TemplateConfig>(() => {
         const type = initialConfig?.templateType || 'Report';
         
@@ -151,8 +151,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
     const [zoomMode, setZoomMode] = useState < 'fit' | 'manual' > ('fit');
 
     const mockData = config.templateType === "Report" ? 
-        generateStudentReportData(studentMockReportData) : {}
-
+        generateStudentReportData(studentMockReportData,selectedSchool,classRooms) : {}
     
     React.useEffect(() => {
         const container = previewContainerRef.current;
@@ -758,9 +757,6 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
                     </div>
                 </div>
             <div/>
-
-
-
             </div>
 
         </div>

@@ -10,13 +10,15 @@ export const StudentInfoFieldsAvailable = [
     'classRoom',
     'term',
 ]
-export const generateStudentReportData = (reportData) => {
+
+export const generateStudentReportData = (reportData,) => {
     // Deterministic random based on student ID and term
+    // const { terms, sessions } = school ? school : { terms: [], sessions: [] }
     const seed = 0;
     let student = reportData?.student || {}
-    let studentClass = reportData?.class_room?.name
-    let session = reportData?.session?.name
-    let term = reportData?.term?.name
+    let studentClass = reportData.className || '';
+    let session = reportData.sessionName || '';
+    let term = reportData.termName || '';
     let skills = reportData?.skills
 
     return {
@@ -26,12 +28,13 @@ export const generateStudentReportData = (reportData) => {
             positionInClass: reportData?.position,
             totalMarks: reportData?.total_marks,
             averageMark: reportData?.average_marks,
-            totalClassStudents: reportData?.classTotalStudents,
+            totalClassStudents: reportData?.totalClassStudents,
             classRoom: studentClass,
             session: session,
             term: term,
             generatedAt: reportData?.generated_at,
-            updatedAt: reportData?.last_updated
+            updatedAt: reportData?.last_updated,
+            barcode: reportData?.barcode_value
         },
         studentDetails: {
             name: `${student.first_name} ${student.middle_name || ""} ${student.last_name} `,
@@ -52,29 +55,35 @@ export const generateStudentReportData = (reportData) => {
                 subject: s.subject_name,
                 code: s.subject_code,
                 ca1: s.ca1,
+                ca1Abs: s.ca1Abs,
                 ca2: s.ca2,
+                ca2Abs: s.ca2Abs,
                 exam: s.exam,
-                total: s.ca1 + s.ca2 + s.exam,
+                examAbs: s.examAbs,
+                total: s.total,
                 grade: s.grade,
-                remark: s.remark, classAvg: 0
+                remark: s.remark,
+                classAvg: 0
             };
-        }),
+        }) || [],
 
         affective: [
-            { trait: "Punctuality", rating: skills?.punctuality || 3 },
-            { trait: "Honesty", rating: skills?.honesty || 3 },
-            { trait: "Neatness", rating: skills?.neatness || 3 },
+            { trait: "Punctuality", rating: skills?.punctuality || 0 },
+            { trait: "Honesty", rating: skills?.honesty || 0 },
+            { trait: "Neatness", rating: skills?.neatness || 0 },
         ],
 
         psychomotor: [
-            { skill: "Handwriting", rating: skills?.handwriting || 3 },
-            { skill: "Verbal Fluency", rating: skills?.verbal_fluency || 3 },
-            { skill: "Creativity", rating: skills?.creativity || 3 },
+            { skill: "Handwriting", rating: skills?.handwriting || 0 },
+            { skill: "Verbal Fluency", rating: skills?.verbal_fluency || 0 },
+            { skill: "Creativity", rating: skills?.creativity || 0 },
         ],
 
         remarks: {
-            teacher: "A disciplined and focused student. Shows great promise in sciences.",
-            principal: "Result is satisfactory. Promoted to the next class.",
+            // teacher: "A disciplined and focused student. Shows great promise in sciences.",
+            // principal: "Result is satisfactory. Promoted to the next class.",
+            teacher: reportData?.form_teacher_comment || '',
+            principal: reportData?.head_teacher_comment || "",
         },
         // Extra records for the "Records" tab
         termRecords: {
@@ -360,7 +369,35 @@ export const studentMockReportData = {
             "remark": "Excellent"
         },
         {
-            "id": 33,
+            "id": 1133,
+            "studentId": "09feae73-b318-4efe-8527-51fa89049bde",
+            "student_name": "Jamila Muhammad Ashir",
+            "subject_name": "Mutaliah",
+            "subject_code": "ARA2",
+            "subject_credits": 2,
+            "ca1": 13,
+            "ca2": 20,
+            "exam": 60,
+            "total": 93,
+            "grade": "A",
+            "remark": "Excellent"
+        },
+        {
+            "id": 3300,
+            "studentId": "09feae73-b318-4efe-8527-51fa89049bde",
+            "student_name": "Jamila Muhammad Ashir",
+            "subject_name": "Mutaliah",
+            "subject_code": "ARA2",
+            "subject_credits": 2,
+            "ca1": 13,
+            "ca2": 20,
+            "exam": 60,
+            "total": 93,
+            "grade": "A",
+            "remark": "Excellent"
+        },
+        {
+            "id": 303,
             "studentId": "09feae73-b318-4efe-8527-51fa89049bde",
             "student_name": "Jamila Muhammad Ashir",
             "subject_name": "Mutaliah",

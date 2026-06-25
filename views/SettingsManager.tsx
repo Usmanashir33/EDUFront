@@ -36,7 +36,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const {selectedSchool,
     setSelectedSchool,
-    templates:configuredTemp,
+    // templates:configuredTemp,
     finances,
     setFinances ,
     teachers,
@@ -49,6 +49,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
     setRoles,
     setPermissions
   } = React.useContext(uiContext);
+
   const {currentUser,setCurrentUser} = React.useContext(authContext);
   let [serverForm,setServerForm] = useState(new FormData());
   const {sendRequest} = useRequest();
@@ -137,7 +138,7 @@ return {
       templates: {
           headerImage: '', 
           useCustomHeader: true,
-          documents: configuredTemp ,
+          // documents: configuredTemp ,
       }
   };
 },[selectedSchool])
@@ -149,35 +150,17 @@ return {
   const [security, setSecurity] = useState(() => defaultSecurity());
 
   const [appearance, setAppearance] = useState(defaults.appearance);
-  const [templates, setTemplates] = useState( defaults.templates);
+  // const [templates, setTemplates] = useState( defaults.templates);
  
   const TriggeredFuncBord = (res) => {
     setPendingAction({name:"",method:"ADD",id:null})
     if (res?.updated_school) { 
-      // try {
-      //   const session =  JSON.parse(localStorage.getItem('session') as any);
-      //   if (!session) throw new Error("No session found in localStorage");
-      //   localStorage.setItem('session', JSON.stringify({
-      //     ...session,
-      //     school: {...session?.school,...res.updated_school}
-      //     }))
-      //   }catch(e){
-      //       console.error("Failed to update session in localStorage: ", e);
-      //   }
+    
         setSelectedSchool(prev => ({...prev,...res.updated_school})) ;
     }
     if (res?.updated_user) { 
       let u = res?.updated_user
-      // try {
-      //   const session =  JSON.parse(localStorage.getItem('session') as any );
-      //   if (!session) throw new Error("No session found in localStorage");
-      //   localStorage.setItem('session', JSON.stringify({
-      //     ...session,
-      //     user: {...session.user,...u}
-      //   }))
-      // }catch(e){
-      //     console.error("Failed to update session in localStorage: ", e);
-      // }
+      
       setCurrentUser(prev => ({...prev,...u})) ;
       
     }
@@ -281,12 +264,11 @@ return {
 
     
 
-  }
+  } 
 
   const saveBoard = () => {
     
     Object.entries(board).forEach(([key, value]) => {
-      // console.log(key, value);
         serverForm.append(key, value);
     });
     if (!currentUser?.user?.pin_set){
@@ -343,7 +325,6 @@ return {
     }else if (operation === "CONFIGURATIONS"){
       setPendingAction({name:"ACADEMIC",method:"CONFIGURATIONS",id:''})
       setServerForm(fdata);
-      // console.log('fdata: ', fdata);
     }
     if (!fdata){return setToast({type:'error',message:"form not ready"})}
     
@@ -602,18 +583,7 @@ return {
           
             {activeTab === 'FINANCE' && <FinanceSettings data={finances} saveData={saveFinance} isFinanceFormOpen={isFinanceFormOpen} setIsFinanceFormOpen={setIsFinanceFormOpen} />}
             {activeTab === 'APPEARANCE' && <AppearanceSettings data={appearance} setData={setAppearance} />}
-            {activeTab === 'TEMPLATES' && (
-                <TemplateSettings 
-                    data={templates} 
-                    setData={setTemplates} 
-                    boardName={board.name} 
-                    boardAddress={board.address} 
-                    boardEmail={board.email} 
-                    boardPhone={board.phone} 
-                    academicSession={academic.session} 
-                    onToast={setToast} 
-                />
-            )}
+            {activeTab === 'TEMPLATES' && (<TemplateSettings />)}
           </FadeIn>
         </div>
         

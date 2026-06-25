@@ -294,7 +294,7 @@ const {sendRequest} = useRequest() ;
 
         <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
             {navigation.map((item : any ) => (
-            <Link to={`director/${item?.id.toLowerCase()}/`} key={item.id} onClick={() => {setActiveModule(item.id as Module); setMobileMenuOpen(false); }} className={`w-full flex items-center rounded-lg transition-all duration-200 group relative mb-1 ${sidebarExpanded ? 'px-4 py-3' : 'justify-center py-3 px-2'} ${isActiveTab === item.id ? 'bg-navy-800 text-white shadow-lg' : 'text-navy-300 hover:bg-white/10 hover:text-white'}`} title={!sidebarExpanded ? item.label : ''}>
+            <Link to={`/director/${item?.id.toLowerCase()}/`} key={item.id} onClick={() => {setActiveModule(item.id as Module); setMobileMenuOpen(false); }} className={`w-full flex items-center rounded-lg transition-all duration-200 group relative mb-1 ${sidebarExpanded ? 'px-4 py-3' : 'justify-center py-3 px-2'} ${isActiveTab === item.id ? 'bg-navy-800 text-white shadow-lg' : 'text-navy-300 hover:bg-white/10 hover:text-white'}`} title={!sidebarExpanded ? item.label : ''}>
                     {isActiveTab === item.id && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gold-500 rounded-r-md"></div>}
                     <i className={`${item.icon} text-lg transition-colors ${sidebarExpanded ? 'mr-3' : ''} ${isActiveTab === item?.id ? 'text-gold-500' : 'text-navy-400 group-hover:text-white'}`}></i>
                     {(sidebarExpanded || mobileMenuOpen) && <span className="font-medium text-sm whitespace-nowrap">{item.label}</span>}
@@ -352,15 +352,15 @@ const {sendRequest} = useRequest() ;
             {/* Director Modules */}
             {/* {userRole === 'director' && activeModule === 'STUDENTS' && <StudentManager students={students} onUpdateStudents={setStudents} classRooms={classRooms} subjects={subjects} initialStudentId={targetStudentId} onClearInitial={() => setTargetStudentId(null)} />} */}
 
-            <Routes>
+            <Routes> 
                 <Route path="/" element={<Navigate to="/director/overview/" replace />} />
-                <Route path='director/overview/' element =
+                <Route path='/director/overview/' element =
                     {<RenderOverview />}
                 />
-                <Route path='director/students/' element =
+                <Route path='/director/students/' element =
                     {<StudentManager initialStudentId={targetStudentId} onClearInitial={() => setTargetStudentId(null)} />}
                 />
-                <Route path='director/identity/' element =
+                <Route path='/director/identity/' element =
                     { <IdentityManager students={students} teachers={teachers} staff={staff} identities={identities} onUpdateIdentities={setIdentities}/>}
                 />
                 <Route path='director/devices/' element =

@@ -12,6 +12,9 @@ import { Input, Button, FadeIn ,Toast,PageLoader ,Spinner } from './components/U
 import { uiContext, } from './customContexts/UiContext';
 import ProtectedRoute from './customProtectors/ProtectedRoute';
 import useRequest from './customHooks/RequestHook';
+import { ResultVerification } from './views/ResultVerification';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import UnProtectedRoutes from './customProtectors/UnProtectedRoutes';
 
 // Layout for Authentication Pages
 const AuthLayout = ({ children }: { children?: React.ReactNode }) => {
@@ -26,8 +29,7 @@ const AuthLayout = ({ children }: { children?: React.ReactNode }) => {
   }
 }, [toast]);
   return (
-    <>
-      <ProtectedRoute>
+    <><UnProtectedRoutes>
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
           {pageLoading && <PageLoader />}
           {isLoading && <div className="fixed z-[999999] top-14 w-full flex items-center justify-center mb-8">
@@ -72,7 +74,7 @@ const AuthLayout = ({ children }: { children?: React.ReactNode }) => {
               </div>
             </div>
           </div>
-      </ProtectedRoute>
+      </UnProtectedRoutes>
     </>
   );
 } ;
@@ -107,6 +109,7 @@ const DashboardLayout = ({ children }: { children?: React.ReactNode }) => {
 const App: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>('');
   const [isLoginSession ,setIsLoginSession] = useState(false);
+  const navigate = useNavigate();
   const { currentUser,setCurrentUser,
           getCurrentUser,getToken,
           userRole, setUserRole,
@@ -116,11 +119,11 @@ const App: React.FC = () => {
   const {sendRequest} = useRequest();
   const fetchedRef = useRef(false);
 
-  const {currentView, setCurrentView,setPageLoading,selectedSchool, setSelectedSchool} = useContext(uiContext)
+  const {setCurrentView,setPageLoading,selectedSchool, setSelectedSchool} = useContext(uiContext)
   
   
-  const handleNavigate = (view: ViewState) => {
-    setCurrentView(view);
+  const handleNavigate = (view: string) => {
+    navigate(view,);
   };
 
   const handleLogin = (mode:String, response:any) => {
@@ -163,8 +166,7 @@ const App: React.FC = () => {
       setUserRole(role);
       setCurrentUser(responseData) // user instance data base on the role 
       setIsAuthenticated(true);
-      setCurrentView(nextView);
-      // Save Session
+      navigate('/',{replace:true})
     const session: SessionData = {
         role,
         user: responseData,
@@ -273,54 +275,13 @@ const App: React.FC = () => {
   };
 
   // Router
-  const renderView = () => {
-    switch (currentView) {
-
-      case ViewState.LOGIN:
-        return (
-          <AuthLayout>
-              <LoginForm onNavigate={handleNavigate} onLogin={handleLogin} />
-          </AuthLayout>
-        );
-
-      case ViewState.REGISTER:
-        return (
-          <AuthLayout>
-                <RegisterForm onNavigate={handleNavigate} onLogin={handleLogin} />
-          </AuthLayout>
-        );
-
-      case ViewState.VERIFY:
-        return (
-          <AuthLayout>
-                <VerificationForm email={userEmail || 'user@example.com'} onNavigate={handleNavigate} />
-          </AuthLayout>
-        );
-
-      case ViewState.FORGOT_PASSWORD:
-        return (
-            <AuthLayout>
-                <ForgotPassword onNavigate={handleNavigate} />
-            </AuthLayout>
-        );
-      case ViewState.SELECT_SCHOOL:
-        return (
-           <div className="min-h-screen bg-navy-50 flex items-center justify-center p-4">
-               <div className="w-full max-w-5xl">
-                  <ProtectedRoute>
-                    <SchoolSelection 
-                          onNavigate={handleNavigate} 
-                          onSelectSchool={handleSelectSchool} 
-                    />
-                  </ProtectedRoute>
-               </div>
-           </div>
-        );
-      case ViewState.DASHBOARD:
-        return (
-            <DashboardLayout>
+  return(
+    <Routes>
+        {/* <Route path="/" element={<Navigate to="/director/overview/" replace />} /> */}
+        <Route path='/*' element ={
+          <DashboardLayout>
               <ProtectedRoute>
-                  {selectedSchool ? (
+                    {selectedSchool ? (
                     <Dashboard
                       userRole={userRole}
                       onLogout={handleLogout}
@@ -330,14 +291,46 @@ const App: React.FC = () => {
                   )} 
               </ProtectedRoute>
            </DashboardLayout>
-        );
-        
-      default:
-        return <div>View not found</div>;
-    }
-  };
- 
-  return renderView();
+        }/>
+        <Route path='/auth' element ={
+            <AuthLayout>
+              <ForgotPassword onNavigate={handleNavigate} />
+          </AuthLayout>
+        }/>
+        <Route path='/auth/login' element ={
+            <AuthLayout>
+                <LoginForm onNavigate={handleNavigate} onLogin={handleLogin} />
+          </AuthLayout>
+        }/>
+        <Route path='/auth/register' element ={
+            <AuthLayout>
+              <RegisterForm onNavigate={handleNavigate} onLogin={handleLogin} />
+          </AuthLayout>
+        }/>
+        <Route path='/auth/verify' element ={
+            <AuthLayout>
+              <VerificationForm email={userEmail || 'user@example.com'} onNavigate={handleNavigate} />
+          </AuthLayout>
+        }/>
+        <Route path='/auth/selection' element ={
+            <div className="min-h-screen bg-navy-50 flex items-center justify-center p-4">
+               <div className="w-full max-w-5xl">
+                  <ProtectedRoute>
+                    <SchoolSelection 
+                          onNavigate={handleNavigate} 
+                          onSelectSchool={handleSelectSchool} 
+                    />
+                  </ProtectedRoute>
+               </div>
+           </div>
+        }/>
+        <Route path='/resultverification' element ={
+            <DashboardLayout>
+                <ResultVerification onNavigate={handleNavigate} />
+            </DashboardLayout>
+        }/>
+    </Routes>
+  )
 };
 
 export default App;

@@ -1,11 +1,10 @@
 import React, { useState ,useContext} from 'react';
-import { School, ViewState } from '../types';
 import { FadeIn, Button } from '../components/UI';
 import urls from '@/customHooks/ServerUrls';
 import { authContext } from '@/customContexts/AuthContext';
 
 interface SchoolSelectionProps {
-    onNavigate: (view: ViewState) => void;
+    onNavigate?: (view: string) => void;
     onSelectSchool: (id: string) => void; 
     // schools: School[];
 }

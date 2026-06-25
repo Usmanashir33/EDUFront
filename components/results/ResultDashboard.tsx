@@ -3,24 +3,24 @@ import React ,{useContext,useEffect,useState} from 'react';
 import { getCompletenessStats,getCompleteSkillStats } from './ResultUtils';
 import { uiContext } from '@/customContexts/UiContext';
 import { ClassRoom, Subject, Teacher, ResultBatch, Student, ApprovalRecord } from '../../types';
+import { ResultsViewer } from './ResultsViewer';
 import { Modal } from '../UI';
 
 interface ResultDashboardProps {
-    activeTab: 'CLASS' | 'TEACHER' | 'SUBJECT' | 'FORM_TEACHER';
+    activeTab: 'CLASS' | 'TEACHER' | 'SUBJECT' | 'FORM_TEACHER' | 'DIRECTOR_APPROVAL'| 'APPROVAL_HISTORY'| 'RESULTS_VIEWER';
     searchTerm: string;
-    classes: ClassRoom[];
-    teachers: Teacher[];
-    subjects: Subject[];
-    results: ResultBatch[];
-    skills : [];
+    teachers: Teacher[] | any ;
+    subjects: Subject[] | any ;
+    results: any[] ;
+    skills : any[];
     students: Student[];
     selectedSession: string;
     selectedTerm: string;
     approvalHistory?: ApprovalRecord[];
     onOpenEditor: (batch: ResultBatch) => void; 
     onOpenFormTeacherEditor?: (classRoom: ClassRoom) => void;
-    onApproveResult?: (batchIds: string[]) => void;
-    onTabChange: (tab: 'CLASS' | 'TEACHER' | 'SUBJECT' | 'FORM_TEACHER' | 'DIRECTOR_APPROVAL') => void;
+    onApproveResult?: (batchIds: string[] ,target: "RESULT" | "CHAR") => void;
+    onTabChange: (tab: 'CLASS' | 'TEACHER' | 'SUBJECT' | 'FORM_TEACHER' | 'DIRECTOR_APPROVAL'| 'APPROVAL_HISTORY'| 'RESULTS_VIEWER') => void;
     onSearchChange: (term: string) => void;
     onSessionChange: (s: string) => void;
     onTermChange: (t: string) => void;
@@ -28,21 +28,22 @@ interface ResultDashboardProps {
 }
 
 export const ResultDashboard : React.FC<ResultDashboardProps> = ({
-    activeTab, searchTerm, classes, teachers, subjects, results, skills ,students,
+    activeTab, searchTerm, teachers,
+    subjects, results, skills,
     selectedSession, selectedTerm, approvalHistory = [],
     onOpenEditor, onTabChange, onSearchChange, 
     onSessionChange, onTermChange,onOpenFormTeacherEditor,onApproveResult,onGenerateReportSheet,
 }) => {
-    const {selectedSchool} = useContext(uiContext)
+    const {selectedSchool,classRooms:classes,findSessionById,findTermById} = useContext(uiContext)
     const sessions = selectedSchool?.sessions || [];
     const terms = selectedSchool?.terms || [];
     
-    const [skillDisplay,setSkillsDisplay] = useState({length:null,progress:null})
+    const [skillDisplay,setSkillsDisplay] = useState({length:0,progress:0})
     const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
     const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
-    const lockedResults = results?.filter(r => r?.status === "COMPLETE"  && !r.approved) ;
-    const lockedSkills = skills?.filter(s => s?.status === "COMPLETE"  && !s.approved);
+    const lockedResults = results?.filter(r => r?.on_submit  && !r.approved) ;
+    const lockedSkills = skills?.filter(s => s?.on_submit  && !s.approved);
 
     const totalApprovals = lockedResults?.length + lockedSkills?.length
 
@@ -71,11 +72,18 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
             return ;
         }
     };
-    const renderStatusBadge = (status: 'DRAFT' | 'LOCKED' | 'APPROVED' | any ) => {
+    const renderStatusBadge = (status: 'DRAFT' | 'LOCKED' | 'APPROVED'|'SUBMITTED' | any ) => {
         if (status === 'APPROVED') {
             return (
                 <div className="absolute top-1/4 right-2 bg-gradient-to-r from-gold-400 to-gold-600 text-white mt-2 text-xs font-bol px-2 py-0.1 rounded-full shadow-md flex items-center gap-1 z-10 border-2 border-white opacity-90">
                     <i className="fa-solid fa-certificate"></i> Approved 
+                </div>
+            );
+        }
+        if (status === 'SUBMITTED') {
+            return (
+                <div className="absolute top-1/4 right-2 bg-gradient-to-r from-green-400 to-green-600 text-white mt-2 text-xs font-bol px-2 py-0.1 rounded-full shadow-md flex items-center gap-1 z-10 border-2 border-white opacity-90">
+                    <i className="fa-solid fa-certificate"></i> submitted 
                 </div>
             );
         }
@@ -107,7 +115,8 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
     };
     useEffect(() => {
         if (activeTab === "FORM_TEACHER" && skills.length > 0 ){
-            const fullyUploadedSkillBatches = skills.filter(r => getCompleteSkillStats(r, students).status === 'COMPLETE').length;
+            // const fullyUploadedSkillBatches = skills.filter(r => getCompleteSkillStats(r, students).status === 'COMPLETE').length;
+            const fullyUploadedSkillBatches = skills.filter(r => r.status === 'COMPLETE').length || 0;
             const overallSkillProgress = skills?.length > 0 ? (fullyUploadedSkillBatches / skills?.length) * 100 : 0;
             setSkillsDisplay(
                 {length : fullyUploadedSkillBatches , progress:overallSkillProgress}
@@ -115,22 +124,24 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
         }
         
     },[activeTab,skills])
+    let sessionId = findSessionById(selectedSession)?.id
+    let termId = findTermById(selectedTerm)?.id ;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative  ">
             {/* Header Controls: Filters & Search */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4">
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-md flex flex-col gap-4 sticky -top-8 z-[999]">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     {/* View Switcher */}
                     <div className="flex gap-2 bg-gray-100 p-1 rounded-lg overflow-x-auto">
-                        {(['CLASS','FORM_TEACHER', 'DIRECTOR_APPROVAL','APPROVAL_HISTORY'] as const).map(t => (
+                        {(['CLASS','FORM_TEACHER', 'DIRECTOR_APPROVAL','RESULTS_VIEWER','APPROVAL_HISTORY'] as const).map(t => (
                             
                             <button
                                 key={t}
                                 onClick={() => onTabChange(t)}
                                 className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${activeTab === t ? 'bg-navy-900 text-white shadow' : 'text-gray-500 hover:text-navy-900'}`}
                             >
-                                {t==="APPROVAL_HISTORY"? "History":t === 'FORM_TEACHER' ? 'Form Teacher' : t === 'DIRECTOR_APPROVAL' ? `Director Approval(${totalApprovals})` : `By ${t.charAt(0) + t.slice(1).toLowerCase()}`}
+                                {t==="APPROVAL_HISTORY"? "History":t === 'RESULTS_VIEWER' ? 'Student Results':t === 'FORM_TEACHER' ? 'Char&Atti' : t === 'DIRECTOR_APPROVAL' ? `Director Approval ⟪ ${totalApprovals} ⟫` : `Classes`}
                             </button>
                         ))}
                     </div>
@@ -140,7 +151,7 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                         <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         <input  
                             type="text" 
-                            placeholder="Search..." 
+                            placeholder="Search...." 
                             value={searchTerm}
                             onChange={e => onSearchChange(e.target.value)}
                             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:border-navy-900 focus:ring-0"
@@ -149,10 +160,10 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                 </div>
 
                 {/* Session & Term Selectors (Context Bar) */}
-                <div className="flex flex-col sm:flex-row items-center justify-between bg-navy-50 p-3 rounded-lg border border-navy-100 gap-3">
+                {activeTab !== 'APPROVAL_HISTORY' && <div className="flex flex-col sm:flex-row items-center justify-between bg-navy-50 p-3 rounded-lg border border-navy-100 gap-3">
                     <div className="flex items-center gap-2 text-navy-900 font-medium text-sm">
                         <i className="fa-solid fa-filter text-gold-500"></i>
-                        <span>Viewing Results For:</span>
+                        <span>Filter For:</span>
                     </div>
                     <div className="flex gap-3 w-full sm:w-auto">
                         <select 
@@ -161,7 +172,6 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                             className="flex-1 sm:w-40 p-2 text-sm border border-gray-300 rounded-md focus:border-navy-900 focus:ring-1 focus:ring-navy-900 bg-white font-bold text-navy-800"
                         >
                             {/* map sessions to options here */}
-
                             {sessions.map((s)  => (
                                 <option key={s.id} value={s.name}>{s.name}</option>
                             ))}
@@ -178,28 +188,33 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                             ))}
                         </select>
                     </div>
-                </div>
+                </div>}
             </div>
 
             {/* Content Grid */}
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 mb-4">
 
                 {/* BY CLASS VIEW */}
-                { activeTab === 'CLASS' && classes.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())).map(cls => {
+                { activeTab === 'CLASS' && classes.filter(c => c.name.toLowerCase().includes(
+                    searchTerm.toLowerCase()
+                )
+            ).map(cls => {
                     // Filter results specifically for this class from the already filtered `results` prop
-                    const classResults = results.filter(r => r.classId === cls.id);
+                    const classResults = results.filter(r => (
+                        r.classId === cls.id && r.session === sessionId && r.term === termId
+                    ));
 
                     // We must determine how many subjects SHOULD exist for this class to calculate true progress
                     // This is Subjects that contain this class ID
-                    const expectedSubjects = subjects.filter(s => s.class_rooms.includes(cls.id));
+                    const expectedSubjects = subjects.filter(s => s?.class_rooms?.includes(cls.id));
                     const totalBatches     = expectedSubjects.length;
                     
                     // Count how many have 'COMPLETE' status
-                    const fullyUploadedBatches = classResults.filter(r => getCompletenessStats(r, students).status === 'COMPLETE').length;
+                    const fullyUploadedBatches = classResults.filter(r => getCompletenessStats(r, cls?.studentsCount).status === 'COMPLETE').length;
                     const overallProgress = totalBatches > 0 ? (fullyUploadedBatches / totalBatches) * 100 : 0;
 
                     return (
-                        <div key={cls.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+                        <div key={cls.id} className="bg-white mb-2  border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
                             <div className="bg-navy-50 px-6 py-3 border-b border-gray-100 flex justify-between items-center">
                                 <h3 className="font-bold text-navy-900 flex items-center gap-2">
                                     <i className="fa-solid fa-chalkboard text-navy-500"></i> {cls.name}
@@ -215,24 +230,25 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                                 <div className="text-xs font-bold text-gray-500">{fullyUploadedBatches}/{totalBatches} Subjects Complete</div>
                             </div>
                             <div className="px-6 py-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                     {expectedSubjects.map(sub => {
                                         // Find the result batch for this subject if it exists in our filtered list
-                                        const res = classResults.find(r => r.subjectId === sub.id) ;
+                                        const res :any  = classResults.find(r => r.subjectId === sub.id) ;
                                         let approved = res?.approved ? "APPROVED" : "DRAFT"
+                                        let submitted = res?.on_submit ? "SUBMITTED" : "DRAFT"
                                         let locked = res?.isLocked ? "LOCKED" : "DRAFT"
-                                        const assignment = sub.assignments?.find(a => a.classId === cls.id);
-                                        const teacherId = assignment?.teacherId || sub.teacher[0];
-                                        const teacher = teachers.find(t => t.id === teacherId);
+                                        const teacherId = sub?.teachers?.find(d => d.classroom === cls.id)?.teacher;
+                                        const teacher :any = teachers.find(t => t.id === teacherId);
                                         
                                         // If no result exists yet (e.g. mock data gap), show empty state logic
-                                        const stats = getCompletenessStats(res, students);
+                                        const stats = getCompletenessStats(res, cls?.studentsCount);
                                         
 
                                         return (
                                             <div key={sub.id} className={`p-3 relative border rounded group transition-all cursor-pointer hover:shadow-sm bg-white border-gray-100 hover:border-navy-200 `}>
-                                                {res && renderStatusBadge(approved || 'DRAFT')}
-                                                {res && renderStatusBadge(locked || 'DRAFT')}
+                                                {res && renderStatusBadge(approved )}
+                                                {res && renderStatusBadge(locked )}
+                                                {res && renderStatusBadge(submitted )}
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
                                                         <p className="text-sm font-bold text-navy-800">{sub.name}</p>
@@ -260,33 +276,35 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                  {/* FORM TEACHER VIEW */}
                 { activeTab === 'FORM_TEACHER' && (
                     <div className="relative">
-                        <div className="flex justify-end ">
-                            <div className="text-md font-bold text-gray-900">{skillDisplay?.length}/{skills?.length} Skills & Character Completed</div>
+                        <div className="flex justify-end my-1">
+                            <div className="text-md font-bold text-white bg-green-600 rounded-md p-1">{skillDisplay?.length}/{skills?.length} Skills & Character Completed</div>
                         </div>
 
-                        <div className="grid grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {classes.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase())).map(cls => {
-                                const classStudents = students.filter(s => s.active_class_rooms.includes(cls.id));
-                                const formTeacher = teachers.find(t => t.id === cls.form_teacher);
+                        <div className="grid grid-cols-2 mb-5 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {classes.filter(c => (
+                                c.name.toLowerCase().includes(searchTerm.toLowerCase() &&
+                                c.term === termId && c.session === sessionId 
+                            ))).map(cls => {
+                                const formTeacher = cls?.form_teacher;
                                 const skillBatch = skills?.find((skill) => skill.classId === cls.id );
                                 let approved = skillBatch?.approved ? "APPROVED" : "DRAFT"
+                                let submitted = skillBatch?.on_submit ? "SUBMITTED" : "DRAFT"
                                 let locked = skillBatch?.isLocked ? "LOCKED" : "DRAFT"
-                                const stats = getCompleteSkillStats(skillBatch, students);
-
+                                const stats = getCompleteSkillStats(skillBatch, cls?.studentsCount);
                                 // Count how many have 'COMPLETE' status
-                                
                                 return (
                                     <div key={cls.id} className="relative  bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
                                         
-                                            {skillBatch && renderStatusBadge(approved || 'DRAFT')}
-                                            {skillBatch && renderStatusBadge(locked || 'DRAFT')}
+                                            {skillBatch && renderStatusBadge(approved)}
+                                            {skillBatch && renderStatusBadge(locked)}
+                                            {skillBatch && renderStatusBadge(submitted)}
                                         <div className ='relative'>
                                             <div className="flex justify-between items-start mb-3">
                                                 <h3 className="font-bold text-navy-900 text-lg flex items-center gap-2">
                                                     <i className="fa-solid fa-users-rectangle text-navy-500"></i> {cls.name}
                                                 </h3>
                                                 <span className="bg-navy-50 text-navy-600 text-xs font-bold px-2 py-1 rounded">
-                                                    {classStudents.length} Students
+                                                    {cls.studentsCount || 0} Students
                                                 </span>
                                             </div>
                                             <p className="text-sm text-gray-500 mb-4">
@@ -345,12 +363,12 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                 {lockedResults?.map(res => {
                                     const sub = subjects.find(s => s.id === res.subjectId);
                                     const cls = classes.find(c => c.id === res.classId);
                                     const teacher = teachers.find(t => t.id === res.teacherId);
-                                    const stats = getCompletenessStats(res, students);
+                                    // const stats = getCompletenessStats(res, students);
                                     const isSelected = selectedBatches.includes(res.id);
 
                                     return (
@@ -441,11 +459,11 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                                     </div>
                                 )}
                             </div>
-                            <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                 {lockedSkills?.map(res => {
                                     const cls = classes.find(c => c.id === res.classId);
-                                    const teacher = teachers.find(t => t.id === cls.form_teacher);
-                                    const stats = getCompleteSkillStats(res, students);
+                                    const teacher = cls.form_teacher ;
+                                    // const stats = getCompleteSkillStats(res, students);
                                     const isSelected = selectedSkills.includes(res.id);
 
                                     return (
@@ -464,7 +482,7 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                                             </div>
                                             <div className="flex justify-between items-start mb-4 pl-2 pr-6">
                                                 <div>
-                                                    <p className="text-sm text-gray-500 font-medium">{cls?.name}</p>
+                                                    <p className="text-lg text-navy-800 font-medium font-bold">{cls?.name}</p>
                                                 </div>
                                             </div>
                                             
@@ -546,6 +564,15 @@ export const ResultDashboard : React.FC<ResultDashboardProps> = ({
                         </div>
                         
                     </div>
+                )}
+                
+                {/* RESULTS VIEWER VIEW */}
+                {activeTab === 'RESULTS_VIEWER' && (
+                    <ResultsViewer
+                        selectedSession={selectedSession}
+                        selectedTerm={selectedTerm}
+                        searchTerm={searchTerm}
+                    />
                 )}
 
             </div>
