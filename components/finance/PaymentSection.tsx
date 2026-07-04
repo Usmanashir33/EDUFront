@@ -83,7 +83,7 @@ const PaymentPage = ({
                                     <h3 className="font-bold text-navy-900 text-lg">Initiate Fee Payment</h3>
                                     <Button
                                         disabled={isLoading}
-                                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-navy-900 text-white rounded-lg hover:bg-navy-600 transition w-fit animate-pulse"
+                                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-navy-900 text-white rounded-lg hover:bg-navy-600 transition w-fit animate-pulse max-w-fit"
                                         onClick={() => {
                                             setIsStudentSelectionModalOpen(true);
                                             }} variant = "primary"  
@@ -215,11 +215,7 @@ const PaymentPage = ({
                                                 <td className="px-6 py-4">
                                                         <p className="text-xs text-gray-600 font-medium">{p.students?.length} Student(s)</p>
                                                         
-                                                        {/* {(p?.payment_method !== "CASH") && <div className="mt-1 space-y-0.5">
-                                                            <p className="text-xs text-gray-500">Phone: <span className="font-medium text-gray-700">{p.phone_number}</span></p>
-                                                            <p className="text-xs text-gray-500">Bank: <span className="font-medium text-gray-700">{p.bank_name || 'N/A'}</span></p>
-                                                            <p className="text-xs text-gray-500">Acct: <span className="font-medium text-gray-700">{p.account_number}</span></p>
-                                                        </div>} */}
+                                                        
 
                                                         {/* {(p?.payment_method === "CASH") && <div className="mt-1 space-y-0.5"> */}
                                                             <p className="text-xs text-gray-500">{p?.payment_method} </p>
@@ -279,7 +275,7 @@ const PaymentPage = ({
                                         <div className="grid grid-cols1 sm:grid-cols-1 lg:grid-cols-2 gap-3  overflow-y-auto max-h-[75vh] h-full">
                                             {
                                                 filteredStudents?.map(student => {
-                                                    let classes = classRooms.filter((cls)=> student?.active_class_rooms.includes(cls.id))
+                                                    let classes = classRooms.filter((cls)=> student?.active_class_rooms?.includes(cls.id))
                                                     return (
                                                         <label key={student.id} className={`flex items-center p-2 border rounded-xl cursor-pointer transition-all ${paymentStudents.includes(student.id) ? 'bg-navy-50 border-navy-500 ring-1 ring-navy-500' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
                                                             <div className=''>
@@ -294,7 +290,7 @@ const PaymentPage = ({
                                                             <div className='flex justify-between flex-1'>
                                                                 <div>
                                                                     <p className="font-bold text-navy-900">{student?.first_name} {student?.last_name}</p>
-                                                                    <p className="text-xs text-gray-500">{student?.user?.is_active ? 'Active' : 'N/A'}-{student?.admission_number}</p>
+                                                                    <p className="text-xs text-gray-500">{student?.is_active ? 'Active' : 'N/A'}-{student?.admission_number}</p>
                                                                 </div>
                                                                 {classes?.map(cls => {
                                                                     let clsfee = schoolFees.find(sf => sf.class_rooms.includes(cls.id))?.amount || "null"

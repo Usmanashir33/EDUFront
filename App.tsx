@@ -15,6 +15,8 @@ import useRequest from './customHooks/RequestHook';
 import { ResultVerification } from './views/ResultVerification';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import UnProtectedRoutes from './customProtectors/UnProtectedRoutes';
+import { TeacherDashboard } from './views/TeacherDashboard';
+import { ParentDashboard } from './views/ParentDashboard';
 
 // Layout for Authentication Pages
 const AuthLayout = ({ children }: { children?: React.ReactNode }) => {
@@ -29,7 +31,8 @@ const AuthLayout = ({ children }: { children?: React.ReactNode }) => {
   }
 }, [toast]);
   return (
-    <><UnProtectedRoutes>
+    <>
+    <UnProtectedRoutes>
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
           {pageLoading && <PageLoader />}
           {isLoading && <div className="fixed z-[999999] top-14 w-full flex items-center justify-center mb-8">
@@ -127,10 +130,10 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (mode:String, response:any) => {
+    // console.log('response: ', response);
     const responseData = response?.data
-    // console.log('response login : ', response?.data);
     let role:string = 'director';
-    let nextView = ViewState.SELECT_SCHOOL;
+    let nextView = '/auth/selection';
     let initialSchool: School | null | any = null;
 
     if (mode === 'director') {
@@ -138,13 +141,14 @@ const App: React.FC = () => {
         role = 'director';
         // check if its one school 
         if(responseData?.directorschools?.length > 1 ){
-          nextView = ViewState.SELECT_SCHOOL;
+          nextView = '/auth/selection';
+
         }
         // DIRECTLY to Dashboard
         initialSchool = responseData?.directorschools[0] ;
         role = mode?.toLowerCase() 
         setSelectedSchool(initialSchool) ;
-        nextView = ViewState.DASHBOARD ;
+        nextView = '/' ;
 
         
     } else {
@@ -152,11 +156,12 @@ const App: React.FC = () => {
           initialSchool = responseData?.school ;
           role = mode?.toLowerCase() 
           setSelectedSchool(initialSchool) ;
-          nextView = ViewState.DASHBOARD ;
+          nextView = '/' ;
     }
     // set is Authenticated true 
       localStorage.setItem('a_token',response?.tokens?.access);
       localStorage.setItem('r_token',response?.tokens?.refresh);
+
       if (role === 'director'){
         localStorage.setItem('directorschools',JSON.stringify(responseData?.directorschools));
       }else{
@@ -174,7 +179,6 @@ const App: React.FC = () => {
         timestamp: Date.now()
     };
     localStorage.setItem('session', JSON.stringify(session));
-      // set currentUser
   }
     
 
@@ -183,7 +187,9 @@ const App: React.FC = () => {
     const school = directorschools.find(s => s?.id === schoolId);
     if (school) { 
       setSelectedSchool(school); // this will trigger session update in the authcontext 
-      setCurrentView(ViewState.DASHBOARD);
+      // setCurrentView(ViewState.DASHBOARD);
+      handleNavigate('/auth/selection');
+
       // Update session with school selection
       const stored = localStorage.getItem('session');
       if (stored) {
@@ -233,7 +239,6 @@ const App: React.FC = () => {
                     return;
                 }
                 if (session?.school?.id) {
-                    // const school = directorschools?.find(s => s.id === session.school?.id);
                     const school = session?.school;
                     if (school) {
                         // fetch school big data  records here           //
@@ -242,15 +247,15 @@ const App: React.FC = () => {
                           let role = session?.role?.toLowerCase()
                           sendRequest(`/school/school-detail/${role}/${school?.id}/`,'GET',null as any , setSchoolData,false,false,true) ;
                         }
-                    } else if (session.role === 'director' && directorschools ) { // but school not selected 
-                        setCurrentView(ViewState.SELECT_SCHOOL);
+                    } else if (session.role === 'director' && directorschools?.length>1 ) { // but school not selected 
+                        handleNavigate('/auth/selection');
                     }else{
                       // If student/staff has no school 
-                      setCurrentView(ViewState.LOGIN);
+                      handleNavigate('/auth/login');
                     }
                 } else {
                     // If student/staff has no school 
-                    setCurrentView(ViewState.LOGIN);
+                    handleNavigate('/auth/login');
                 }
             } catch (e) {
                 console.error("Failed to parse session", e);
@@ -264,6 +269,7 @@ const App: React.FC = () => {
       localStorage.removeItem('session') ;
       localStorage.removeItem('a_token') ;
       localStorage.removeItem('r_token') ;
+      localStorage.removeItem('school') ;
       localStorage.removeItem('directorschools') ;
       setIsAuthenticated(false) ;
       setCurrentUser(null) ;
@@ -278,7 +284,7 @@ const App: React.FC = () => {
   return(
     <Routes>
         {/* <Route path="/" element={<Navigate to="/director/overview/" replace />} /> */}
-        <Route path='/*' element ={
+        <Route path='/director/*' element ={
           <DashboardLayout>
               <ProtectedRoute>
                     {selectedSchool ? (
@@ -287,7 +293,33 @@ const App: React.FC = () => {
                       onLogout={handleLogout}
                     />
                   ) : (
-                      <PageLoader />
+                    <PageLoader />
+                  )} 
+              </ProtectedRoute>
+           </DashboardLayout>
+        }/>
+        <Route path='/teacher/*' element ={
+          <DashboardLayout>
+              <ProtectedRoute>
+                    {selectedSchool ? (
+                    <TeacherDashboard
+                      onLogout={handleLogout}
+                    />
+                  ) : (
+                    <PageLoader />
+                  )} 
+              </ProtectedRoute>
+           </DashboardLayout>
+        }/>
+        <Route path='/parent/*' element ={
+          <DashboardLayout>
+              <ProtectedRoute>
+                    {selectedSchool ? (
+                    <ParentDashboard
+                      onLogout={handleLogout}
+                    />
+                  ) : (
+                    <PageLoader />
                   )} 
               </ProtectedRoute>
            </DashboardLayout>
@@ -299,12 +331,12 @@ const App: React.FC = () => {
         }/>
         <Route path='/auth/login' element ={
             <AuthLayout>
-                <LoginForm onNavigate={handleNavigate} onLogin={handleLogin} />
+                <LoginForm onNavigate={handleNavigate} onLogin={handleLogin}/>
           </AuthLayout>
         }/>
         <Route path='/auth/register' element ={
             <AuthLayout>
-              <RegisterForm onNavigate={handleNavigate} onLogin={handleLogin} />
+              <RegisterForm onNavigate={handleNavigate} onLogin={handleLogin}/>
           </AuthLayout>
         }/>
         <Route path='/auth/verify' element ={

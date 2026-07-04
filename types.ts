@@ -56,6 +56,9 @@ export interface SchoolSection {
 
 export interface ClassRoom {
   id: string;
+  studentsCount?: number;
+  teachersCount?: number;
+  subjectsCount?: number;
   name: string; // e.g. "SS1 A"
   sectionId: string; // ForeignKey to SchoolSection
   classTeacherId?: string; // ForeignKey to Teacher (Class Head Teacher)
@@ -255,6 +258,12 @@ export interface AcademicRecord {
 }
 // --- RESULT / GRADEBOOK TYPES ---
 export interface StudentScore {
+  student_name: string;
+  student_admission_number: string;
+  subject_name: string;
+  subject_code: string;
+  subject_credits: string;
+
   studentId: string;
   ca1: number; // e.g. 20
   ca2: number; // e.g. 20
@@ -289,7 +298,9 @@ export interface ResultBatch {
   isLocked: boolean;
   lastUpdated?: string;
   scores: StudentScore[];
-  status: string
+  status: string,
+  totalStudents: number,
+  markedStudents?: number,
 }
 
 export interface Student {

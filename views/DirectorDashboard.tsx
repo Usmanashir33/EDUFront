@@ -141,135 +141,6 @@ const {sendRequest} = useRequest() ;
             </div>
           );
       } 
-      
-      if (userRole === 'student') {
-          return (
-              <div className="space-y-6 animate-fadeIn">
-                  <div className="bg-gradient-to-br from-blue-600 to-navy-900 text-white rounded-2xl p-8 shadow-xl relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                      <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
-                          <div>
-                              <h2 className="text-3xl font-bold mb-2">Hello, {currentUserFullname()}! 👋</h2>
-                              <p className="text-blue-100">"Education is the passport to the future."</p>
-                              <div className="mt-6 flex gap-3">
-                                  <Button variant="secondary" className="w-auto px-6 text-sm" onClick={() => setActiveModule('ACADEMICS')}>View Timetable</Button>
-                                  <Button className="w-auto px-6 text-sm bg-white/20 hover:bg-white/30 border-none" onClick={() => setActiveModule('FINANCE')}>Check Fees</Button>
-                              </div>
-                          </div>
-                          {/* Next Class Widget */}
-                          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl w-full md:w-64 text-center">
-                              <p className="text-xs text-blue-200 uppercase font-bold mb-1">Next Class Starts In</p>
-                              <div className="text-4xl font-bold font-mono my-2">00:45</div>
-                              <p className="text-sm font-semibold">Mathematics <span className="text-xs opacity-75">• Room 301</span></p>
-                          </div>
-                      </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                          <h3 className="font-bold text-navy-900 mb-4 flex items-center"><i className="fa-solid fa-chart-pie mr-2 text-gold-500"></i> Attendance</h3>
-                          <div className="flex items-center justify-center py-4">
-                              <div className="relative w-32 h-32">
-                                  <svg className="w-full h-full" viewBox="0 0 36 36">
-                                      <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" strokeWidth="3" />
-                                      <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#4ade80" strokeWidth="3" strokeDasharray="92, 100" />
-                                  </svg>
-                                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                      <span className="text-2xl font-bold text-navy-900">92%</span>
-                                      <span className="text-[10px] text-gray-500 uppercase">Present</span>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      
-                      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm md:col-span-2">
-                          <div className="flex justify-between items-center mb-4">
-                              <h3 className="font-bold text-navy-900"><i className="fa-solid fa-list-check mr-2 text-blue-500"></i> Pending Assignments</h3>
-                              <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">2 Due Soon</span>
-                          </div>
-                          <div className="space-y-3">
-                              {[{ sub: 'Physics', title: 'Lab Report: Motion', due: 'Tomorrow, 9 AM' }, { sub: 'English', title: 'Essay on Macbeth', due: 'Fri, 23 Oct' }].map((a, i) => (
-                                  <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-100">
-                                      <div className="flex items-center gap-3">
-                                          <div className="w-10 h-10 rounded bg-white flex items-center justify-center text-navy-600 font-bold text-xs border border-gray-200">{a.sub.slice(0,3)}</div>
-                                          <div><p className="text-sm font-bold text-navy-900">{a.title}</p><p className="text-xs text-gray-500">{a.sub}</p></div>
-                                      </div>
-                                      <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded">{a.due}</span>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          );
-      }
-
-      if (userRole === 'teacher') {
-          return (
-              <div className="space-y-6 animate-fadeIn">
-                  <div className="flex flex-col md:flex-row gap-6">
-                      {/* Teacher Profile Card */}
-                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex-1 flex items-center gap-6">
-                          <div className="w-20 h-20 bg-navy-100 rounded-full flex items-center justify-center text-3xl text-navy-600">
-                              {currentUser?.picture ? <img src={currentUser.picture} alt='Profile' className="w-full h-full rounded-full object-cover"/> : <i className="fa-solid fa-chalkboard-user"></i>}
-                          </div>
-                          <div>
-                              <h2 className="text-xl font-bold text-navy-900">{currentUserFullname()}</h2>
-                              <p className="text-sm text-gray-500">Senior Lecturer • Mathematics Dept</p>
-                              <div className="flex gap-2 mt-3">
-                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">On Duty</span>
-                                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">ID: TEA-001</span>
-                              </div>
-                          </div>
-                      </div>
-                      
-                      {/* Quick Stats */}
-                      <div className="flex-1 grid grid-cols-2 gap-4">
-                          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                              <p className="text-xs text-blue-500 font-bold uppercase">Classes Today</p>
-                              <h3 className="text-2xl font-bold text-navy-900 mt-1">4</h3>
-                          </div>
-                          <div className="bg-gold-50 p-4 rounded-xl border border-gold-100">
-                              <p className="text-xs text-gold-600 font-bold uppercase">Pending Grading</p>
-                              <h3 className="text-2xl font-bold text-navy-900 mt-1">12</h3>
-                          </div>
-                      </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      {/* Today's Schedule */}
-                      <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                          <div className="flex justify-between items-center mb-6">
-                              <h3 className="font-bold text-navy-900">Today's Schedule</h3>
-                              <p className="text-xs text-gray-500">{new Date().toLocaleDateString()}</p>
-                          </div>
-                          <div className="space-y-4">
-                              {[{ time: '08:00 - 08:45', class: 'JSS 1 A', sub: 'Mathematics', status: 'Done' }, { time: '09:30 - 10:15', class: 'SSS 1 Science', sub: 'Physics', status: 'Ongoing' }, { time: '12:30 - 13:15', class: 'JSS 2 B', sub: 'Mathematics', status: 'Upcoming' }].map((s, i) => (
-                                  <div key={i} className={`flex items-center p-4 rounded-lg border-l-4 ${s.status === 'Ongoing' ? 'bg-navy-50 border-navy-900' : 'bg-white border-gray-200 shadow-sm'}`}>
-                                      <div className="w-24 shrink-0 font-mono text-xs font-bold text-gray-500">{s.time}</div>
-                                      <div className="flex-1 px-4">
-                                          <h4 className="font-bold text-navy-900">{s.sub}</h4>
-                                          <p className="text-xs text-gray-500">{s.class}</p>
-                                      </div>
-                                      <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${s.status === 'Ongoing' ? 'bg-green-100 text-green-700' : s.status === 'Done' ? 'bg-gray-100 text-gray-500' : 'bg-gold-100 text-gold-700'}`}>{s.status}</span>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-
-                      {/* Notifications */}
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                          <h3 className="font-bold text-navy-900 mb-4">Notice Board</h3>
-                          <ul className="space-y-3">
-                              <li className="text-sm text-gray-600 border-b border-gray-50 pb-2"><span className="text-xs text-red-500 font-bold block mb-1">Important</span>Staff meeting scheduled for Friday at 2 PM.</li>
-                              <li className="text-sm text-gray-600 border-b border-gray-50 pb-2"><span className="text-xs text-blue-500 font-bold block mb-1">Academic</span>Submit mid-term questions by Wednesday.</li>
-                          </ul>
-                      </div>
-                  </div>
-              </div>
-          );
-      }
-
       return null;
   };
 
@@ -300,13 +171,11 @@ const {sendRequest} = useRequest() ;
                     {(sidebarExpanded || mobileMenuOpen) && <span className="font-medium text-sm whitespace-nowrap">{item.label}</span>}
                 </Link>
             ))}
-            {userRole === 'director' && (
                 <button onClick={() => { setActiveModule('PROFILE'); setMobileMenuOpen(false); }} className={`w-full flex items-center rounded-lg transition-all duration-200 group relative mb-1 ${sidebarExpanded ? 'px-4 py-3' : 'justify-center py-3 px-2'} ${activeModule === 'PROFILE' ? 'bg-navy-800 text-white shadow-lg' : 'text-navy-300 hover:bg-white/10 hover:text-white'}`} title={!sidebarExpanded ? 'My Profile' : ''}>
                     {activeModule === 'PROFILE' && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gold-500 rounded-r-md"></div>}
                     <i className={`fa-solid fa-user-circle text-lg transition-colors ${sidebarExpanded ? 'mr-3' : ''} ${activeModule === 'PROFILE' ? 'text-gold-500' : 'text-navy-400 group-hover:text-white'}`}></i>
                     {(sidebarExpanded || mobileMenuOpen) && <span className="font-medium text-sm whitespace-nowrap">My Profile</span>}
                 </button>
-            )}
         </nav>
 
         <div className="p-4 border-t border-navy-800 flex flex-col gap-2">
@@ -348,63 +217,50 @@ const {sendRequest} = useRequest() ;
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8 relative ">
-            
-            {/* Director Modules */}
-            {/* {userRole === 'director' && activeModule === 'STUDENTS' && <StudentManager students={students} onUpdateStudents={setStudents} classRooms={classRooms} subjects={subjects} initialStudentId={targetStudentId} onClearInitial={() => setTargetStudentId(null)} />} */}
 
             <Routes> 
                 <Route path="/" element={<Navigate to="/director/overview/" replace />} />
-                <Route path='/director/overview/' element =
+                <Route path='overview/' element =
                     {<RenderOverview />}
                 />
-                <Route path='/director/students/' element =
+                <Route path='students/' element =
                     {<StudentManager initialStudentId={targetStudentId} onClearInitial={() => setTargetStudentId(null)} />}
                 />
-                <Route path='/director/identity/' element =
+                <Route path='identity/' element =
                     { <IdentityManager students={students} teachers={teachers} staff={staff} identities={identities} onUpdateIdentities={setIdentities}/>}
                 />
-                <Route path='director/devices/' element =
+                <Route path='devices/' element =
                     {<DeviceManager devices={devices} onUpdateDevices={setDevices}/>}
                 />
-                <Route path='director/teachers/' element =
+                <Route path='teachers/' element =
                     {<TeacherManager onUpdateTeachers={setTeachers}/>}
                 />
-                <Route path='director/staffs/' element =
+                <Route path='staffs/' element =
                     {<StaffManager staff={staff}/>}
                 />
-                <Route path='director/academics/' element =
+                <Route path='academics/' element =
                     {<AcademicManager onNavigateToStudent={(id) => { setTargetStudentId(id); navigate('director/students/'); }} />}
                 />
-                <Route path='director/settings/' element =
+                <Route path='settings/' element =
                     {<SettingsManager />}
                 />
-                <Route path='director/finance/' element =
+                <Route path='finance/' element =
                     {<FinanceManager  />}
                 />
-                <Route path='director/attendance/' element =
+                <Route path='attendance/' element =
                     {<AttendanceManager students={students} teachers={teachers} staff={staff} attendanceRecords={attendanceRecords} onUpdateAttendance={setAttendanceRecords} />}
                 />
-                <Route path='director/results/' element =
+                <Route path='results/' element =
                     {<ResultManager classes={classRooms} subjects={subjects} teachers={teachers} students={students} />}
                 />
                 {/* Director Profile */}
-                <Route path='director/profile/' element =
+                <Route path='profile/' element =
                     {<DirectorProfile  />}
                 />
                 <Route path="*" element={<Navigate to="/director/overview/" replace />} />
 
             </Routes>
 
-            {/* Teacher Modules */}
-            {/* {userRole === 'teacher' && activeModule === 'MY_CLASSES' && <TeacherClassesView />} */}
-            {userRole === 'teacher' && activeModule === 'ACADEMICS' && <AcademicManager sections={sections} classRooms={classRooms} subjects={subjects} students={students} teachers={teachers} onUpdateSections={()=>{}} onUpdateClassRooms={()=>{}} onUpdateSubjects={()=>{}} onUpdateStudents={()=>{}} />}
-            {userRole === 'teacher' && activeModule === 'FINANCE'   && <FinanceManager students={students} teachers={teachers} staff={staff} personalMode={true} currentUserId={currentUser.id} currentUserRole="teacher" />}
-
-            {/* Student Modules */}
-            {userRole === 'student' && activeModule === 'ACADEMICS' && <AcademicManager  onUpdateSections={()=>{}} onUpdateClassRooms={()=>{}} onUpdateSubjects={()=>{}} onUpdateStudents={()=>{}}  />}
-            {userRole === 'student' && activeModule === 'FINANCE'   && <FinanceManager  personalMode={true} currentUserId={currentUser.id} currentUserRole="student" />}
-
-            {/* {activeModule === 'PROFILE' && <div className="p-8 bg-white rounded-xl border border-gray-200 text-center"><h2 className="text-xl font-bold mb-2">My Profile</h2><p className="text-gray-500">Profile management is currently active in the modal view.</p></div>} */}
         </main>
       </div>
 

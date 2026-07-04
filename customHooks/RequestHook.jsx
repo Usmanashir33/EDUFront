@@ -16,9 +16,6 @@ const useRequest = () => {
         if (load) {
             setIsLoading(true);
         }
-        // if (isBigQuery) {
-        //     setPageLoading(true)
-        // }
         let token = await getToken()
         if (!token) {
             return setToast({ message: "Log out and login again", type: 'error' });
@@ -28,7 +25,8 @@ const useRequest = () => {
             method: method,
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${token}`,
+                // "ngrok-skip-browser-warning": "true"
             }
         }
         if (method !== "GET" && method !== "DELETE") {
@@ -116,19 +114,22 @@ const useRequest = () => {
     }
 
     const sendAuthRequest = async (url, method, formdata = "", triggeredFunc, load = false, is_formData = false) => {
-        // console.log('formdata: ', formdata); 
         if (load) {
             setIsLoading(true);
         }
         let options = {
             signal: Aborter.signal,
             method: method,
-            headers: {}
+            headers: {
+                // "ngrok-skip-browser-warning": "true"
+
+            }
         }
         if (method !== "GET" && method !== "DELETE") {
             if (!is_formData) {
                 options.body = JSON.stringify(formdata)
                 options.headers = {
+                    ...options.headers,
                     "Content-Type": " application/json ",
                 }
             }
@@ -151,7 +152,7 @@ const useRequest = () => {
                     setIsLoading(false);
                 }).catch((err) => {
                     setIsLoading(false);
-                    return setToast({ message: err, type: 'error' });
+                    return setToast({ message: err.message, type: 'error' });
                 })
                 .finally(() => {
                     setTimeout(() => {

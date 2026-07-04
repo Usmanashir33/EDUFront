@@ -9,36 +9,35 @@ export const calculateGrade = (total: number) => {
     return { grade: 'F', remark: 'Fail' };
 };
 
-export const getCompletenessStats = (batch: ResultBatch, totalStudents) => {
+export const getCompletenessStats = (batch: ResultBatch) => {
     // Filter students actually enrolled in this class
-    // const classStudents = students.filter(s => s.active_class_rooms.includes(batch?.classId));
-    // const totalStudents = classStudents.length;
-
-    if (totalStudents === 0) return { scored: 0, total: 0, percentage: 0, status: 'EMPTY' };
+    if (batch?.totalStudents === 0) return { scored: 0, total: 0, percentage: 0, status: 'EMPTY' };
 
     // Count students who have a recorded score(Total > 0 or explicitly ABS)
     // We check if the student ID exists in the batch scores and has a valid entry
-    const scoredCount = batch?.scores?.reduce((acc, score) => {
-        // Adjust logic based on your specific "is recorded" definition
-        let hasAbs = score.ca1Abs || score.ca2Abs || score.examAbs
-        if (score && (score.total > 0 || hasAbs)) {
-            return acc + 1;
-        }
-        return acc;
-    }, 0);
+    // const scoredCount = batch?.scores?.reduce((acc, score) => {
+    //     // Adjust logic based on your specific "is recorded" definition
+    //     let hasAbs = score.ca1Abs || score.ca2Abs || score.examAbs
+    //     if (score && (score.total > 0 || hasAbs)) {
+    //         return acc + 1 ;
+    //     }
+    //     return acc;
+    // }, 0);markedStudents
 
-    const percentage = Math.round((scoredCount / totalStudents) * 100);
+
+    const percentage = Math.round(((batch?.markedStudents || 0) / batch?.totalStudents) * 100);
 
     let status: 'EMPTY' | 'PARTIAL' | 'COMPLETE' = 'EMPTY';
     if (percentage === 100) status = 'COMPLETE';
     else if (percentage > 0) status = 'PARTIAL';
 
-    return { scored: scoredCount, total: totalStudents, percentage, status };
+    return { scored: (batch?.markedStudents || 0), total: batch?.totalStudents, percentage, status };
 };
+
+
 export const getCompleteSkillStats = (batch: any, totalStudents) => {
     if (totalStudents === 0) return { scored: 0, total: 0, percentage: 0, status: 'EMPTY' };
 
-    // Count students who have a recorded score (Total > 0 or explicitly marked)
     // We check if the student ID exists in the batch scores and has a valid entry
     const scoredCount = batch?.charAndSkills?.filter((char) => char?.is_submitted === true).length
 

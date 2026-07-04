@@ -10,7 +10,8 @@ const LiveContextProvider = ({ children }) => {
         pendingPayments,
         setPendingPayments,
         setPromotionLogs,
-        setActivities
+        setActivities,
+        setReportsRecord
 
     } = useContext(uiContext);
     useEffect(() => {
@@ -34,11 +35,24 @@ const LiveContextProvider = ({ children }) => {
     useEffect(() => {
         if (schoolSocketRef.current) {
             schoolSocketRef.current.onmessage = async (e) => {
-                let res = JSON.parse(e.data)
+                let res = JSON.parse(e.data);
                 // console.log('res: ', res);
                 if (res?.promotion_log) {
                     setPromotionLogs((prev) => {
                         const newLog = res.promotion_log;
+                        const exists = prev.some(log => log.id === newLog.id);
+                        if (exists) {
+                            return prev.map(log =>
+                                log.id === newLog.id ? newLog : log
+                            );
+                        }
+                        return [newLog, ...prev];
+                    });
+                    return;
+                }
+                if (res?.report_record) {
+                    setReportsRecord((prev) => {
+                        const newLog = res.report_record;
                         const exists = prev.some(log => log.id === newLog.id);
                         if (exists) {
                             return prev.map(log =>

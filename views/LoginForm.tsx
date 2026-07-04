@@ -1,13 +1,16 @@
 
 import React, { useState,useEffect } from 'react';
-import { Input, Button, FadeIn ,PageLoader } from '../components/UI';
-import { ViewState } from '../types';
+import { Input, Button, FadeIn } from '../components/UI';
+// import { ViewState } from '../types';
 import useRequest from '@/customHooks/RequestHook';
 import { uiContext } from '@/customContexts/UiContext';
 
+type LoginMode = 'director' | 'student'| 'parent'|"teacher"|'staff'|'academic';
+type LoginStep = 'CREDENTIALS' | 'OTP';
+
 interface LoginFormProps {
   onNavigate: (view: string) => void;
-  onLogin: (mode: 'director' | 'academic', response:any) => void;
+  onLogin: (mode: LoginMode, response:any) => void;
 }
 interface formDataType {
     username_field : string; 
@@ -15,8 +18,6 @@ interface formDataType {
     otp: string | null ;
 }
 
-type LoginMode = 'director' | 'academic';
-type LoginStep = 'CREDENTIALS' | 'OTP';
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onNavigate, onLogin }) => {
 
@@ -24,7 +25,7 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
   const [loginMode, setLoginMode] = useState<LoginMode>('director');
   const {sendAuthRequest} = useRequest();
   const [url,setUrl] = useState<string>("/authuser/loginRequest/");
-  const {setToast,isLoading,pageLoading,} = React.useContext(uiContext);
+  const {setToast,isLoading} = React.useContext(uiContext);
   const [oldResent, setOldResent] = useState<number>(20); // initial 20 seconds
   const [resent, setResent] = useState<number>(0); 
   
@@ -107,31 +108,26 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
   };
 
   const TriggeredFunc = (data: any) => {
-    // console.log('data: ', data);
     if (data?.incomplete_registration) { // users email is not verified on his account
-            setToast({message:data?.success, type: 'info'});
-            setResent(oldResent);
-            setStep('OTP');
-            setUrl(data?.redirect_to) ;
+        setToast({message:data?.success, type: 'info'});
+        setResent(oldResent);
+        setStep('OTP');
+        setUrl(data?.redirect_to) ;
+
     }else if (data?.otp_sent || data?.success === 'otp_sent'){
         setToast({message:data?.success, type: 'success'});
         setResent(oldResent) ;
         setStep('OTP') ;
         if (data?.otp_sent) setUrl(data?.redirect_to) ;
+
     }else if(data?.logged_user){ // log user in here
         setToast({message: data?.success, type: 'success'});
-        let userRole = data?.logged_user?.role?.toLowerCase()
-        if (userRole === 'director'){
-            return onLogin('director',data?.logged_user) ;
-        }else{
-            return onLogin(loginMode,data?.logged_user) ;
-        }
-
+        let userRole = data?.logged_user?.role?.toLowerCase() as LoginMode;
+        return onLogin(userRole,data?.logged_user);
     }else {
         // Handle error (for simplicity, setting a generic error)
-        setToast({ message: data.error || 'An error occurred. Please try again.', type: 'error' });
+        setToast({ message: data.error || 'An error occurred.Please try again.', type: 'error'});
     }
-    
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -146,13 +142,13 @@ const [step, setStep] = useState<LoginStep>('CREDENTIALS');
     if (step === 'CREDENTIALS') {
         if (!validateCredentials()) return;
         // Simulate API Credential Check
-        sendAuthRequest(url,"POST",formDetails as any ,TriggeredFunc,true,false);
+        sendAuthRequest(url,"POST",formDetails as any ,TriggeredFunc,true,false) ;
     } else { // OTP Step
         if (otp.some(d => d === '')) {
-            setErrors({ otp: 'Please enter the complete 5-digit code.' });
+            setErrors({ otp: 'Please enter the complete 5-digit code.' }) ;
             return;
         }
-        sendAuthRequest(url,"POST",formDetails as any ,TriggeredFunc,true,false); 
+        sendAuthRequest(url,"POST",formDetails as any ,TriggeredFunc,true,false) ; 
     }
   };
 

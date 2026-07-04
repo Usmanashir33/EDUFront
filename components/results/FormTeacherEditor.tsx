@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect ,useContext } from 'react';
 import { ClassRoom, Student } from '../../types';
 import { Button, Modal } from '../UI';
-import { getCompleteSkillStats } from './ResultUtils';
+import { getCompletenessStats } from './ResultUtils';
 import { uiContext } from '@/customContexts/UiContext';
 import { AnyAaaaRecord } from 'dns';
 import useRequest from '@/customHooks/RequestHook';
@@ -9,6 +9,7 @@ import useRequest from '@/customHooks/RequestHook';
 
 interface FormTeacherEditorProps {
     batch : any ;
+    setBatch :any ;
     classRoom: ClassRoom;
 
     initialSkills: any ;
@@ -16,12 +17,12 @@ interface FormTeacherEditorProps {
     isDirty :boolean ;
     setIsDirty : any,
 
-    handleSkillsChange : (studentId: string, skill: string, value: number) => void ;
     onClose: () => void;
     onHandleSave: (data:AnyAaaaRecord) => void;
     onImportClick: () => void;
     onDownloadCharSheet: (t: string) => void;
     onManageEdit : (a:any,b:any) => void ;
+    accessData:any
     
 }
 
@@ -122,17 +123,18 @@ const renderProgressBar = (stats: { scored: number, total: number, percentage: n
 
 export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
     batch ,
+    setBatch,
     classRoom,
     initialSkills:scores ,
     isDirty,
     setEditorSkills,
     setIsDirty,
-    handleSkillsChange ,
     onClose,
     onHandleSave,
     onImportClick,
     onDownloadCharSheet,
     onManageEdit,
+    accessData
 }) => {
     // Skills list for navigation order
     const psychomotorSkills = ['punctuality', 'honesty','neatness', 'leadership'] ;
@@ -143,79 +145,111 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
     const [classStudents,setClassStudents] = useState(students.filter(s => s.active_class_rooms.includes(batch.classId)) );
     const {sendRequest} = useRequest() ;
     const disabled = batch.on_submit || batch.isLocked 
-    const stat = getCompleteSkillStats(batch,classStudents.length || 0) ;
-    
+    const stat = getCompletenessStats(batch) ; 
+    const handleSkillsChange = (studentId: string, skill: string, value: number) => {
+        const numVal = Math.min(Math.max(Number(value) || 0, 0), 5); // Clamp values
+        setEditorSkills(prev => prev.map((rec) => {
+            if (rec.studentId === studentId){
+                let updated = {...rec,[skill]:numVal}
+                return updated
+            }
+            return rec
+        }));
+        
+        return setIsDirty(true)
+    };
     
     const TriggeredFunc = (resp) => {
         // console.log('resp: ', resp);
-        if (resp?.classStudents){
-            setClassStudents(resp?.classStudents);
+        if (resp?.batch){
+            let sts = resp?.batchAllstudents ;
+            setBatch(prev => prev.id === resp.batch?.id ? {...resp.batch} : prev) ;
+            setClassStudents(prev => {
+                return sts ;
+            });
         }
     }
     const handleNavigate = (studentIndex: number, skillIndex: number, direction: 'next' | 'prev' | 'down' | 'up') => {
-        let nextStudentIndex = studentIndex;
-        let nextSkillIndex = skillIndex;
+    let nextStudentIndex = studentIndex;
+    let nextSkillIndex = skillIndex;
 
-        if (direction === 'next') {
-            nextSkillIndex++;
-            if (nextSkillIndex >= allSkills.length) {
-                nextSkillIndex = 0;
-                nextStudentIndex++;
-            }
-        } else if (direction === 'prev') {
-            nextSkillIndex--;
-            if (nextSkillIndex < 0) {
-                nextSkillIndex = allSkills.length - 1;
-                nextStudentIndex--;
-            }
-        } else if (direction === 'down') {
+    const allSkills = [...psychomotorSkills, ...otherSkills]; // Ensure allSkills matches your full array structure
+
+    if (direction === 'next') {
+        nextSkillIndex++;
+        if (nextSkillIndex >= allSkills.length) {
+            nextSkillIndex = 0;
             nextStudentIndex++;
-        } else if (direction === 'up') {
+        }
+    } else if (direction === 'prev') {
+        nextSkillIndex--;
+        if (nextSkillIndex < 0) {
+            nextSkillIndex = allSkills.length - 1;
             nextStudentIndex--;
         }
+    } else if (direction === 'down') {
+        nextStudentIndex++;
+    } else if (direction === 'up') {
+        nextStudentIndex--;
+    }
 
-        // Boundary checks
-        if (nextStudentIndex >= 0 && nextStudentIndex < classStudents?.length) {
-            const nextStudentId = classStudents[nextStudentIndex].id;
-            const nextSkill = allSkills[nextSkillIndex];
-            const elementId = `rating-${nextStudentId}-${nextSkill}`;
-            document.getElementById(elementId)?.focus();
+    // ✅ FIX 1: Check against scores length because that is what's rendering your rows
+    if (nextStudentIndex >= 0 && nextStudentIndex < (scores?.length || 0)) {
+        const nextSkill = allSkills[nextSkillIndex];
+        
+        // ✅ FIX 2: Generate the exact element ID structure used in your JSX (index-based)
+        const elementId = `rating-${nextStudentIndex}-${nextSkill}`;
+        
+        const targetElement = document.getElementById(elementId);
+        if (targetElement) {
+            targetElement.focus();
         }
-    };
+    }
+};
+
 
     const handleSave = () => {
         // we neet thi data i he back 
-        const formatted = Object.entries(scores).map(([studentId, value]) => ({
+        const formatted  = Object.entries(scores).map(([studentId, value]) => ({
             studentId ,
             ...(value as object || {})
-        }));
+        })) as any ;
         onHandleSave(formatted)
     };
     useEffect(() => {
             if (batch) {
                 // make sure all students are included 
-                const initialScores = classStudents.map((student) => {
-                const existingScore = batch?.charAndSkills.find(sb => sb.studentId === student.id);
-                return existingScore ||  {
-                    studentId: student.id,
-                    punctuality : 0 ,
-                    honesty : 0 ,
-                    neatness : 0 ,
-                    leadership : 0 ,
-                    handwriting : 0 ,
-                    verbal_fluency : 0 ,
-                    creativity : 0 ,
+                    // make sure all students are included 
+            // 1. Get a fast-lookup set of all student IDs already present in this batch
+                const existingStudentIds = new Set(batch?.charAndSkills?.map(s => s.studentId)) || [];
+                // 2. Filter out classStudents missing from the batch, and create empty templates for them
+                const missingStudentsMocked = classStudents
+                    .filter(student => !existingStudentIds.has(student.id))
+                    .map(student => ({
+                        studentId: student.id,
+                        student_name : student.first_name + " " + student.last_name,
+                        student_admission_number : student.admission_number,
+
+                        punctuality : 0 ,
+                        honesty : 0 ,
+                        neatness : 0 ,
+                        leadership : 0 ,
+                        handwriting : 0 ,
+                        verbal_fluency : 0 ,
+                        creativity : 0 ,
+                    }));
+
+                // 3. Create the final combined scores list (Existing Batch Students + Missing Mocked Students)
+                const finalScoresList = [...batch?.charAndSkills || [], ...missingStudentsMocked];
+                setEditorSkills(finalScoresList) ;
+        
                 }
-                });
-                setEditorSkills(initialScores) ;
-    
-            }
             setIsDirty(false);
            
         },[classStudents,batch]);
     useEffect(() => {
-         // fetch the remaining class students pls 
-        let url = `/student/all-students/${selectedSchool?.id}/${batch?.classId}/`
+        // fetch the remaining class students pls 
+        let url = `/result/result-skill/detail/${selectedSchool?.id}/${batch.session}/${batch.term}/${batch.classId}/`;
         sendRequest(url,"GET",null as any ,TriggeredFunc,true,true)
     
     },[])
@@ -264,7 +298,7 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                         <i className="fa-solid fa-paper-plane mr-2"></i>
                         Submit
                     </button>}
-                    {(batch?.on_submit || batch.approved) && <button
+                    {((batch?.on_submit || batch.approved) && accessData.canApprove) && <button
                         onClick={() => {
                             // if (isDirty) return setToast({message:"Save the changes first!",type:'info'})
                             setShowSubmitModal(true)
@@ -302,23 +336,23 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {classStudents?.map((student, sIdx) => (
-                            <tr key={student.id} className={`${sIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/50 transition-colors`}>
+                        {scores?.map((sc, sIdx) => (
+                            <tr key={`st-${sc.studentId}`} className={`${sIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/50 transition-colors`}>
                                 <td className="p-2 border-r border-gray-100 font-medium text-navy-800 whitespace-nowrap sticky left-0 z-10 bg-inherit shadow-[1px_0_0_0_#f3f4f6]">
                                     <div className="flex flex-col bg-gray-100 rounded-sm -ml-1 p-1">
-                                        <span className="text-sm b">{student.first_name} {student.last_name}  </span>
-                                        <span className="text-[10px] text-gray-500 font-mono">{student.admission_number}</span>
+                                        <span className="text-sm b">{sc.student_name}  </span>
+                                        <span className="text-[10px] text-gray-500 font-mono">{sc.student_admission_number}</span>
                                     </div>
                                 </td>
                                 {/* Psychomotor */}
                                 {psychomotorSkills.map((skill, kIdx) => (
                                     <td key={skill} className="p-1 text-center">
                                         <StarRating 
-                                            id={`rating-${student.id}-${skill}`}
-                                            value={scores.find(s => s.studentId === student.id)?.[skill] || 0} 
+                                            id={`rating-${sIdx}-${skill}`}
+                                            value={scores.find(s => s.studentId === sc.studentId)?.[skill] || 0} 
                                             onChange={(val) => {
                                                 if (!batch.isLocked){
-                                                    handleSkillsChange(student.id, skill, val)
+                                                    handleSkillsChange(sc.studentId, skill, val)
                                                 }
                                             }}
                                             onNavigate={(dir) => handleNavigate(sIdx, kIdx, dir)}
@@ -329,11 +363,11 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                                 {otherSkills.map((skill, kIdx) => (
                                     <td key={skill} className={`p-1 text-center ${kIdx === 0 ? 'border-l border-gray-100' : ''}`}>
                                         <StarRating 
-                                            id={`rating-${student.id}-${skill}`}
-                                            value={scores.find(s => s.studentId === student.id)?.[skill] || 0} 
+                                            id={`rating-${sIdx}-${skill}`}
+                                            value={scores.find(s => s.studentId === sc.studentId)?.[skill] || 0} 
                                             onChange={(val) => {
                                                 if (!batch.isLocked){
-                                                    handleSkillsChange(student.id, skill, val)
+                                                    handleSkillsChange(sc.studentId, skill, val)
                                                 }
                                             }}
                                             onNavigate={(dir) => handleNavigate(sIdx, psychomotorSkills.length + kIdx, dir)}
@@ -342,7 +376,7 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
                                 ))}
                             </tr>
                         ))}
-                        {classStudents.length === 0 && (
+                        {scores.length === 0 && (
                             <tr>
                                 <td colSpan={9} className="p-4 text-center text-gray-500 italic">
                                     No students found in this class.
@@ -354,7 +388,7 @@ export const FormTeacherEditor: React.FC<FormTeacherEditorProps> = ({
             </div>
             <div className="mt-1 flex items-center justify-between text-[10px] text-gray-500">
                 <p><i className="fa-solid fa-circle-info mr-1"></i> Use Arrow Keys or Enter to navigate. Type 1-5 to rate.</p>
-                <p>Total Students: {classStudents.length}</p>
+                <p>Total Students: {batch.totalStudents || 0}</p>
             </div>
             <div className="p-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
                     {!batch.isUploaded && <span className="text-yellow-500 text-md" ><b className="fa-solid fa-circle-info mr-1"></b> No Record Found</span>}

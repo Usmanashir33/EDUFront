@@ -36,16 +36,6 @@ export const SchoolFeeSettings : React.FC<AcademicSettingsProps> = ({
     const currentSession = data.session ;
     const currentTerm = data.term ;
 
-    // const getSession = useMemo(() => {
-    //     let s = selectedSchool?.sessions.find((t) => t.name === currentSession);
-    //     return s 
-    // },[data.session])
-
-    // const getTerm = useMemo(() => {
-    //     let t = selectedSchool?.terms.find((t) => t.name === currentTerm);
-    //     return t 
-    // },[data.term])
-
     const TriggeredFunc = ( resp : any ) => {
         // console.log('resp: ', resp);
         setSelectedClassIds([])

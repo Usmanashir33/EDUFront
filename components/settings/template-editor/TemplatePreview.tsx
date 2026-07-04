@@ -47,7 +47,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({config,tempData
         signatures,
         signatureStyle,
         footerStyleObj
-    } = config;
+    } = config || {};
     const resultVerificationPage = window.location.origin + '/resultverification'
     const getStyleString = (style: SectionStyle, isGlobal: boolean = false) => {
         const fontFamily = style.fontFamily === 'inherit' && !isGlobal ? globalFontFamily : style.fontFamily;
@@ -647,10 +647,7 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({config,tempData
                                         style={{
                                             fontWeight: 600,
                                             letterSpacing: "0.05em",
-                                            color:
-                                            sub.grade === "A"
-                                                ? "#b91c1cda" // deeper red
-                                                : "#15803d", // green
+                                            color: sub.grade === "E" ? "#b91c1cda" :sub.grade === "A" ? "#15803d" :  "#505ca8" , 
                                         }}
                                         >
                                         {sub.grade}
@@ -717,11 +714,11 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({config,tempData
                     <div className="doc-remarks" >
                         <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
                             <div className={`font-bold text-md`}>Form Teacher:</div>
-                            <div className={`${getStyleString(remarksStyle)}`}>An excellent result. Keep it up.</div>
+                            <div className={`${getStyleString(remarksStyle)}`}>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ </div>
                         </div>
                         <div style={{ display: 'flex', gap: '16px' }}>
                             <div className={`font-bold text-md`}>Principal:</div>
-                            <div className={`${getStyleString(remarksStyle)}`}>Outstanding performance.</div>
+                            <div className={`${getStyleString(remarksStyle)}`}>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _</div>
                         </div>
                     </div>
                 )}
@@ -812,8 +809,8 @@ export const TemplatePreview: React.FC<TemplatePreviewProps> = ({config,tempData
                 {renderTitleSeparator()}
 
                 {/* Student Info */}
-                {config.visibleSections?.studentInfo !== false && (
-                    <div className="doc-student-info">
+                {config.visibleSections?.studentInfo !== false && ( 
+                    <div className="doc-student-info"> 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {studentInfoFields.slice(0, Math.ceil(studentInfoFields.length / 2)).map((field, index) => (
                                 <div key={index} style={{ display: 'flex' }}>

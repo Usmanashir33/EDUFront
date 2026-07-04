@@ -1,0 +1,568 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+
+.page{padding:1.5rem 0;display:flex;justify-content:center;}
+
+.doc-container{
+  font-family:Georgia,serif;
+  font-size:13px;
+  color:#0a1628;
+  background-color:#fffdf7;
+  border:2px solid #c9a84c;
+  border-radius:12px;
+  position:relative;
+  overflow:hidden;
+  width:100%;
+  max-width:700px;
+  display:flex;
+  flex-direction:column;
+}
+
+/* inner gold inset border */
+.doc-container::before{
+  content:'';
+  position:absolute;
+  inset:6px;
+  border:0.5px solid #c9a84c55;
+  border-radius:8px;
+  pointer-events:none;
+  z-index:2;
+}
+
+/* watermark */
+.doc-watermark-container{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:0;overflow:hidden;
+}
+.doc-watermark-text{
+  font-size:480px;font-weight:bold;
+  color:#0a1628;opacity:0.03;white-space:nowrap;
+}
+
+.doc-content{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+.doc-header{
+  display:flex;align-items:center;
+  background:linear-gradient(135deg,#061020 0%,#0a1628 60%,#112240 100%);
+  padding:24px 32px;
+  border-bottom:4px double #c9a84c;
+  margin-bottom:0;
+  position:relative;
+  overflow:hidden;
+}
+/* decorative corner accents */
+.doc-header::before{
+  content:'';position:absolute;top:0;left:0;
+  width:80px;height:80px;
+  border-top:2px solid #c9a84c44;
+  border-left:2px solid #c9a84c44;
+  border-radius:0;pointer-events:none;
+}
+.doc-header::after{
+  content:'';position:absolute;bottom:0;right:0;
+  width:80px;height:80px;
+  border-bottom:2px solid #c9a84c44;
+  border-right:2px solid #c9a84c44;
+  pointer-events:none;
+}
+
+.doc-logo{
+  width:88px;height:88px;
+  border-radius:50%;
+  background:#c9a84c18;
+  border:2px solid #c9a84c88;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:36px;color:#c9a84c;
+}
+
+.doc-school-info{
+  flex:1;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;text-align:center;
+  padding:0 20px;
+}
+.doc-school-name{
+  font-family:Georgia,serif;font-size:1.55em;
+  color:#f5f0e8;font-weight:bold;
+  letter-spacing:0.04em;margin-bottom:5px;
+}
+/* gold divider line between name and secondary */
+.header-divider{
+  width:60px;height:1px;background:#c9a84c;
+  margin:6px auto;opacity:0.7;
+}
+.doc-school-name-secondary{
+  font-family:Georgia,serif;font-size:13px;
+  color:#c9a84c;font-style:italic;font-weight:normal;
+  margin-bottom:6px;letter-spacing:0.02em;
+}
+.doc-school-address,.doc-school-contact{
+  margin:1px 0;font-size:10.5px;
+  color:#f5f0e866;letter-spacing:0.01em;
+}
+
+/* ── TITLE BAND ── */
+.title-band{
+  background:#0a1628;
+  display:flex;align-items:center;justify-content:center;
+  padding:10px 32px;
+  border-bottom:1px solid #c9a84c44;
+  margin-bottom:28px;
+}
+.doc-title{
+  font-family:Georgia,serif;font-size:1.05em;
+  font-weight:bold;color:#0a1628;
+  background:#c9a84c;
+  border-radius:9999px;
+  padding:6px 40px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+}
+
+/* ── BODY PADDING ── */
+.body-pad{padding:0 28px;}
+
+/* ── STUDENT INFO ── */
+.doc-student-info{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+  padding:18px 20px;
+  margin:0 0 28px;
+  background:#f5f0e8;
+  border:1px solid #c9a84c;
+  border-radius:8px;
+  position:relative;
+}
+/* top-left badge accent */
+.doc-student-info::before{
+  content:'STUDENT DETAILS';
+  position:absolute;top:-9px;left:16px;
+  font-size:9px;font-weight:bold;letter-spacing:0.1em;
+  color:#c9a84c;background:#f5f0e8;
+  padding:0 8px;font-family:Georgia,serif;
+}
+.field-label{
+  display:block;font-size:9.5px;font-weight:bold;
+  color:#9a7c3a;text-transform:uppercase;
+  letter-spacing:0.07em;margin-bottom:3px;
+}
+.field-value{
+  font-weight:bold;color:#0a1628;
+  font-size:12.5px;font-family:Georgia,serif;
+}
+
+/* ── SECTION HEADING ── */
+.section-h4{
+  font-size:11px;font-weight:bold;color:#0a1628;
+  text-transform:uppercase;letter-spacing:0.1em;
+  padding-bottom:6px;margin-bottom:0;
+  border-bottom:2px solid #0a1628;
+  font-family:Georgia,serif;
+  display:flex;align-items:center;gap:8px;
+}
+.section-h4::after{
+  content:'';flex:1;height:1px;background:#c9a84c;margin-left:4px;
+}
+.section-rule{
+  border-bottom:2px solid #c9a84c;
+  margin-bottom:12px;opacity:0.35;
+}
+
+/* ── TABLE ── */
+.doc-table{
+  width:100%;border-collapse:collapse;
+  margin-bottom:6px;font-family:Georgia,serif;
+}
+.doc-table th{
+  font-family:Georgia,serif;font-size:11px;
+  color:#f5f0e8;font-weight:bold;
+  text-align:left;padding:10px 10px;
+  background:#0a1628;
+  letter-spacing:0.05em;text-transform:uppercase;
+}
+.doc-table th:first-child{border-radius:4px 0 0 0;}
+.doc-table th:last-child{border-radius:0 4px 0 0;}
+.doc-table td{
+  font-family:Georgia,serif;font-size:12.5px;
+  color:#1a1a2e;padding:9px 10px;
+  border-bottom:1px solid #c9a84c33;
+}
+/* gold left accent on first col */
+.doc-table td:first-child{
+  border-left:3px solid #c9a84c44;
+  font-weight:500;
+}
+.doc-table th:first-child{border-left:3px solid #c9a84c88;}
+/* bordered: gold cell borders */
+.doc-table.bordered th,
+.doc-table.bordered td{border:1px solid #c9a84c55;}
+.doc-table.bordered td:first-child{border-left:3px solid #c9a84c;}
+.doc-table.bordered th:first-child{border-left:3px solid #c9a84caa;}
+/* even rows: warm tint */
+.doc-table tbody tr:nth-child(even) td{background:rgba(245,240,232,0.5);}
+.doc-table tbody tr:hover td{background:#f5f0e8;}
+
+/* grade cells — hardcoded in component */
+.grade-a{color:#b91c1cda;font-weight:700;letter-spacing:0.05em;}
+.grade-other{color:#15803d;font-weight:700;letter-spacing:0.05em;}
+.total-cell{font-weight:700;color:#0a1628;}
+.score-cell{color:#4b5563;text-align:center;}
+
+.totals-row{
+  display:flex;justify-content:flex-end;gap:32px;
+  padding:8px 12px;
+  background:#0a162808;
+  border:1px solid #c9a84c44;
+  border-top:none;border-radius:0 0 6px 6px;
+  font-family:Georgia,serif;font-size:12.5px;
+  margin-bottom:28px;
+}
+
+/* ── SKILLS ── */
+.skills-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:24px;margin-bottom:28px;
+}
+.skills-table{width:100%;border-collapse:collapse;font-size:11.5px;font-family:Georgia,serif;}
+.skills-table td{padding:6px 10px;border-bottom:1px solid #c9a84c22;}
+.skills-table tr:last-child td{border-bottom:none;}
+.star-gold{color:#f59e0b;}
+.star-blue{color:#3b82f6;}
+.star-empty{color:#e5e7eb;}
+
+/* ── REMARKS ── */
+.doc-remarks{
+  background:#f5f0e8;
+  border:1px solid #c9a84c;
+  border-left:4px solid #c9a84c;
+  border-radius:0 6px 6px 0;
+  padding:16px 20px;
+  margin-bottom:28px;
+  position:relative;
+}
+.doc-remarks::before{
+  content:'REMARKS';
+  position:absolute;top:-9px;left:16px;
+  font-size:9px;font-weight:bold;letter-spacing:0.1em;
+  color:#c9a84c;background:#f5f0e8;padding:0 8px;
+  font-family:Georgia,serif;
+}
+.remark-row{display:flex;gap:16px;margin-bottom:10px;}
+.remark-row:last-child{margin-bottom:0;}
+.remark-label{
+  font-weight:bold;font-style:normal;
+  font-size:12px;color:#0a1628;
+  min-width:110px;font-family:Georgia,serif;
+}
+.remark-value{
+  font-style:italic;color:#0a1628;
+  font-family:Georgia,serif;font-size:12px;
+  flex:1;
+}
+
+/* ── FOOTER ── */
+.doc-footer{
+  display:flex;justify-content:space-between;
+  align-items:flex-end;flex-wrap:wrap;gap:16px;
+  padding:20px 28px 24px;
+  border-top:1px solid #c9a84c44;
+  background:#0a162806;
+  position:relative;margin-top:auto;
+}
+
+/* barcode box */
+.barcode-box{
+  border:1px solid #c9a84c;
+  border-radius:4px;
+  width:80px;height:80px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:#f5f0e8;gap:3px;
+}
+.barcode-box i{font-size:40px;color:#c9a84c66;}
+.barcode-box span{font-size:8px;color:#9a7c3a;letter-spacing:0.08em;text-transform:uppercase;}
+
+/* stamp — exact positioning from config: left:52% top:62% rotate(360deg) opacity:0.22 */
+.doc-stamp{
+  position:absolute;
+  left:52%;top:42%;
+  transform:translate(-50%,-50%) rotate(360deg);
+  width:100px;height:100px;
+  border:2px dashed #0a1628;
+  border-radius:50%;
+  opacity:0.22;
+  display:flex;align-items:center;justify-content:center;
+  color:#0a1628;z-index:10;pointer-events:none;
+  font-size:9px;text-transform:uppercase;font-weight:bold;
+  text-align:center;font-family:Georgia,serif;line-height:1.4;
+}
+
+.sig-center{
+  display:flex;flex-direction:column;
+  align-items:center;position:relative;
+  gap:0;
+}
+.doc-signature{
+  width:160px;text-align:center;
+  margin-top:48px;z-index:1;
+}
+.doc-signature-line{
+  width:128px;border-bottom:1px solid #000;
+  margin-bottom:4px;margin-left:auto;margin-right:auto;
+}
+.doc-signature-title{
+  font-size:10px;color:#6b7280;
+  text-transform:uppercase;margin:0;
+  font-family:Georgia,serif;letter-spacing:0.06em;
+}
+
+/* generated date */
+.footer-date{
+  text-align:right;font-size:10px;
+  color:#9a7c3a;font-family:Georgia,serif;
+  font-style:italic;
+}
+</style>
+
+<div class="page">
+<div class="doc-container">
+
+  <!-- Watermark -->
+  <div class="doc-watermark-container" aria-hidden="true">
+    <div class="doc-watermark-text">
+      <i class="ti ti-school" style="font-size:480px;color:#0a1628;opacity:0.03;"></i>
+    </div>
+  </div>
+
+  <div class="doc-content">
+
+    <!-- HEADER: logoPosition=double -->
+    <div class="doc-header">
+      <div style="margin-right:24px;">
+        <div class="doc-logo"><i class="ti ti-school" aria-hidden="true"></i></div>
+      </div>
+      <div class="doc-school-info">
+        <div class="doc-school-name">Greenfield Academy</div>
+        <div class="header-divider"></div>
+        <div class="doc-school-name-secondary">Excellence in Knowledge &amp; Character</div>
+        <div class="doc-school-address">12 Education Avenue, Kano State, Nigeria</div>
+        <div class="doc-school-contact">info@greenfield.edu.ng &nbsp;|&nbsp; +234 800 000 0000</div>
+      </div>
+      <div style="margin-left:24px;">
+        <div class="doc-logo"><i class="ti ti-award" aria-hidden="true"></i></div>
+      </div>
+    </div>
+
+    <!-- TITLE BAND -->
+    <div class="title-band">
+      <div class="doc-title">Report Sheet</div>
+    </div>
+
+    <!-- STUDENT INFO -->
+    <div class="body-pad">
+      <div class="doc-student-info">
+        <div>
+          <span class="field-label">Full name</span>
+          <span class="field-value">Amina Yusuf</span>
+        </div>
+        <div>
+          <span class="field-label">Admission No</span>
+          <span class="field-value">GFA/2024/0042</span>
+        </div>
+        <div>
+          <span class="field-label">Gender</span>
+          <span class="field-value">Female</span>
+        </div>
+        <div>
+          <span class="field-label">Position in Class</span>
+          <span class="field-value">3<sup>rd</sup> of 45</span>
+        </div>
+        <div>
+          <span class="field-label">Term</span>
+          <span class="field-value">First Term</span>
+        </div>
+        <div>
+          <span class="field-label">Class</span>
+          <span class="field-value">SSS 2A</span>
+        </div>
+      </div>
+
+      <!-- GRADES TABLE -->
+      <div style="margin-bottom:0;">
+        <div class="section-h4" style="margin-bottom:10px;">Academic Performance</div>
+        <table class="doc-table bordered">
+          <thead>
+            <tr>
+              <th style="text-align:left;min-width:140px;">Subject (Code)</th>
+              <th style="text-align:center;width:60px;">1st CA<br><span style="font-weight:normal;font-size:9px;opacity:0.7;">(20)</span></th>
+              <th style="text-align:center;width:60px;">2nd CA<br><span style="font-weight:normal;font-size:9px;opacity:0.7;">(20)</span></th>
+              <th style="text-align:center;width:60px;">Exam<br><span style="font-weight:normal;font-size:9px;opacity:0.7;">(60)</span></th>
+              <th style="text-align:center;width:56px;">Total</th>
+              <th style="text-align:center;width:52px;">Grade</th>
+              <th style="text-align:left;">Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Mathematics (MTH)</td>
+              <td class="score-cell">18</td>
+              <td class="score-cell">17</td>
+              <td class="score-cell">54</td>
+              <td class="total-cell" style="text-align:center;">89</td>
+              <td class="grade-a" style="text-align:center;">A</td>
+              <td style="font-size:11px;font-style:italic;color:#4b5563;">Excellent</td>
+            </tr>
+            <tr>
+              <td>English Language (ENG)</td>
+              <td class="score-cell">15</td>
+              <td class="score-cell">16</td>
+              <td class="score-cell">48</td>
+              <td class="total-cell" style="text-align:center;">79</td>
+              <td class="grade-other" style="text-align:center;">B</td>
+              <td style="font-size:11px;font-style:italic;color:#4b5563;">Very Good</td>
+            </tr>
+            <tr>
+              <td>Physics (PHY)</td>
+              <td class="score-cell">19</td>
+              <td class="score-cell">18</td>
+              <td class="score-cell">56</td>
+              <td class="total-cell" style="text-align:center;">93</td>
+              <td class="grade-a" style="text-align:center;">A</td>
+              <td style="font-size:11px;font-style:italic;color:#4b5563;">Outstanding</td>
+            </tr>
+            <tr>
+              <td>Chemistry (CHM)</td>
+              <td class="score-cell">14</td>
+              <td class="score-cell">13</td>
+              <td class="score-cell">38</td>
+              <td class="total-cell" style="text-align:center;">65</td>
+              <td class="grade-other" style="text-align:center;">B</td>
+              <td style="font-size:11px;font-style:italic;color:#4b5563;">Good</td>
+            </tr>
+            <tr>
+              <td>Biology (BIO)</td>
+              <td class="score-cell">10</td>
+              <td class="score-cell">11</td>
+              <td class="score-cell">30</td>
+              <td class="total-cell" style="text-align:center;">51</td>
+              <td class="grade-other" style="text-align:center;">C</td>
+              <td style="font-size:11px;font-style:italic;color:#4b5563;">Fair</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="totals-row">
+          <span>Average Marks: <b>75.4%</b></span>
+          <span>Total Marks: <b>377 / 500</b></span>
+        </div>
+      </div>
+
+      <!-- SKILLS GRID -->
+      <div class="skills-grid">
+        <div>
+          <div class="section-h4" style="margin-bottom:10px;">Affective Domain</div>
+          <table class="skills-table" style="border:1px solid #c9a84c44;">
+            <tbody>
+              <tr>
+                <td style="font-weight:500;">Punctuality</td>
+                <td style="text-align:right;">
+                  <i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star star-empty"></i>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:500;">Neatness</td>
+                <td style="text-align:right;">
+                  <i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:500;">Attentiveness</td>
+                <td style="text-align:right;">
+                  <i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star star-empty"></i><i class="ti ti-star star-empty"></i>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:500;">Honesty</td>
+                <td style="text-align:right;">
+                  <i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star-filled star-gold"></i><i class="ti ti-star star-empty"></i>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="section-h4" style="margin-bottom:10px;">Psychomotor Skills</div>
+          <table class="skills-table" style="border:1px solid #c9a84c44;">
+            <tbody>
+              <tr>
+                <td style="font-weight:500;">Drawing</td>
+                <td style="text-align:right;">
+                  <i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star star-empty"></i><i class="ti ti-star star-empty"></i>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:500;">Handwriting</td>
+                <td style="text-align:right;">
+                  <i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star star-empty"></i>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:500;">Sports</td>
+                <td style="text-align:right;">
+                  <i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:500;">Creativity</td>
+                <td style="text-align:right;">
+                  <i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star-filled star-blue"></i><i class="ti ti-star star-empty"></i>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REMARKS -->
+      <div class="doc-remarks">
+        <div class="remark-row">
+          <span class="remark-label">Form Teacher:</span>
+          <span class="remark-value">An excellent result. Amina demonstrates commendable dedication and academic discipline. Keep it up.</span>
+        </div>
+        <div class="remark-row">
+          <span class="remark-label">Principal:</span>
+          <span class="remark-value">Outstanding performance this term. We encourage continued excellence and look forward to greater achievements.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="doc-footer">
+      <div class="barcode-box">
+        <i class="ti ti-qrcode" aria-hidden="true"></i>
+        <span>Verify</span>
+      </div>
+
+      <div class="sig-center">
+        <div class="doc-stamp">Official<br>Stamp</div>
+        <div class="doc-signature">
+          <div class="doc-signature-line"></div>
+          <p class="doc-signature-title">Registrar</p>
+        </div>
+        <div class="doc-signature">
+          <div class="doc-signature-line"></div>
+          <p class="doc-signature-title">Principal</p>
+        </div>
+      </div>
+
+      <div class="footer-date">
+        Generated: 01 July 2026<br>
+        <span style="font-size:9px;color:#c9a84c99;">AUA Technologies</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>

@@ -1,10 +1,10 @@
 
-import React, { useState,useEffect, useContext, useMemo } from 'react';
+import React, { useState,useEffect, useContext, useMemo, useRef } from 'react';
 import { Toggle, Button, Input ,Modal} from '../UI';
 
 import { uiContext } from '@/customContexts/UiContext';
 import useRequest from '@/customHooks/RequestHook';
-import { stringify } from 'querystring';
+import { CalendarIcon, CheckIcon, ChevronDownIcon, ClockIcon } from 'lucide-react';
 
 interface AcademicSettingsProps {
     data: any;
@@ -23,12 +23,19 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
     const {selectedSchool,findSessionById,findTermById,} = useContext(uiContext);
     const [newSession, setNewSession] = useState('');
     const [newTerm, setNewTerm] = useState('');
-    const {setToast,classRooms,schoolFees,students,isLoading,promotionLogs} = useContext(uiContext);
+    const [activeSessionPromo,setActiveSessionPromo] = useState(
+        selectedSchool?.sessions?.find(s => s.is_current)?.name || 'All'
+    );
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const {setToast,classRooms,schoolFees,promotionLogs,setPromotionLogs} = useContext(uiContext);
+    const {sendRequest} = useRequest();
 
      // Manual Promotion State
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [promoFromSearch, setPromoFromSearch] = useState('');
     const [promoToSearch, setPromoToSearch] = useState('');
+    const [promotionL, setPromotionL] = useState(promotionLogs || []);
     const [promoFromClassId, setPromoFromClassId] = useState('');
     const [promoToClassId, setPromoToClassId] = useState('');
     const [showAddingSessionorTerm,setShowAddingSessionorTerm] = useState(false);
@@ -52,6 +59,26 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
         return t 
     },[data.term])
 
+    const sessionPromotions = useMemo(()=>{
+        if (!promotionL)return ;
+        let activeSessionId = findSessionById(activeSessionPromo)?.id;
+        if (activeSessionPromo === "All") return promotionL
+        return promotionL.filter(l => l.session === activeSessionId) ||[]
+    },[activeSessionPromo,promotionL])
+    const TriggeredFuncAcad = ((res) => {
+        // console.log('res: ', res);
+        if (res.promotion_logs){
+            const newLogs = res.promotion_logs;
+            setPromotionL(prev => [...newLogs]);
+        }
+      });
+  
+    useEffect(() => {
+        if (!isHistoryModalOpen) return ;
+        let currentSessionName = selectedSchool.sessions.find(s => s.is_current)?.name
+        if (currentSessionName === activeSessionPromo )return setPromotionL(promotionLogs || [])
+        sendRequest(`/academics/promotion_logs/${selectedSchool.id}/${activeSessionPromo}/`,"GET",null as any,TriggeredFuncAcad,true,!true)
+    },[activeSessionPromo,isHistoryModalOpen])
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
     };
@@ -305,7 +332,10 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">Configure exactly which class students should be promoted to at the end of the session.</p>
                             </div>
-                            <Button variant="secondary" onClick={() => setIsHistoryModalOpen(true)} className="whitespace-nowrap max-w-fit">
+                            <Button variant="secondary" onClick={() => {
+                                setActiveSessionPromo(selectedSchool?.sessions?.find(s => s.is_current)?.name || 'All');
+                                setIsHistoryModalOpen(true)
+                                }} className="whitespace-nowrap max-w-fit">
                                 <i className="fa-solid fa-history mr-2"></i> Promotions Records
                             </Button>
                         </div>
@@ -337,7 +367,7 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                                 <datalist id="from-class-list">
                                     {classRooms.filter(c => {
                                         let inMap = !promotionMappings.some(m => m.fromClassId === c.id) 
-                                        let inExec = !promotionLogs?.some(m => m.mappings.find(mc => mc.fromClassId === c.id ))
+                                        let inExec = !sessionPromotions?.some(m => m.mappings?.find(mc => mc.fromClassId === c.id && mc.status ==="failed"))
                                         return inMap && inExec
                                     }).map((c: any) => (
                                         <option key={c.id} value={c.name} />
@@ -380,8 +410,8 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                         </div>
 
                         {promotionMappings.length > 0 && (
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                <table className="min-w-full divide-y divide-gray-200">
+                            <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-scroll">
+                                <table className="min-w-full divide-y divide-gray-200 ">
                                     <thead className="bg-navy-50">
                                         <tr>
                                             <th className="px-6 py-3 text-left text-xs font-bold text-navy-900 uppercase tracking-wider">Origin Class</th>
@@ -457,15 +487,116 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
             
             </div>
              {/* School Fees Configuration */}
-             <Modal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} title="Class Promotion History" size="lg">
-                <div className="space-y-6">
-                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-2 text-sm text-navy-800">
+             <Modal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)}
+                title={
+                    <div className="flex items-center justify-between w-full pr-2">
+
+                    {/* ── Left: icon + title ── */}
+                    <div className="flex items-center gap-2.5 mr-10">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                        <ClockIcon className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                        <p className="text-md font-medium text-gray-900 leading-tight">
+                            Classes Promotion History
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            {activeSessionPromo === "All"
+                            ? "Showing all sessions"
+                            : `Filtered · ${activeSessionPromo}`}
+                        </p>
+                        </div>
+                    </div>
+
+                    {/* ── Right: session dropdown ── */}
+                    <div className="relative" ref={dropdownRef}>
+
+                        {/* Trigger button */}
+                        <button
+                        type="button"
+                        onClick={() => setDropdownOpen(o => !o)}
+                        className={`h-8 pl-3 pr-2.5 rounded-lg border text-sm flex items-center gap-2 transition-all focus:outline-none
+                            ${dropdownOpen
+                            ? "border-blue-500 bg-blue-50 text-blue-600 shadow-[0_0_0_3px_rgba(59,130,246,0.15)]"
+                            : "border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+                            }`}
+                        >
+                        <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
+
+                        <span className="min-w-[92px] text-left text-sm">
+                            {activeSessionPromo}
+                        </span>
+
+                        {/* active filter dot */}
+                        {activeSessionPromo !== "All" && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                        )}
+
+                        <ChevronDownIcon
+                            className={`w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform duration-200
+                            ${dropdownOpen ? "rotate-180" : "rotate-0"}`}
+                        />
+                        </button>
+
+                        {/* Dropdown menu */}
+                        {dropdownOpen && (
+                        <div className="absolute right-0 top-[calc(100%+6px)] w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+
+                            <p className="px-3 py-2 text-[11px] font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                            Academic Session
+                            </p>
+
+                            {selectedSchool.sessions.map((s) => (
+                            <button
+                                key={s.name}
+                                type="button"
+                                onClick={() => {
+                                setActiveSessionPromo(s.name);
+                                setDropdownOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left border-b border-gray-100 last:border-0 transition-colors
+                                ${activeSessionPromo === s.name
+                                    ? "bg-blue-50 text-blue-600"
+                                    : "text-gray-700 hover:bg-gray-50"
+                                }`}
+                            >
+                                {/* icon box */}
+                                <div
+                                className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors
+                                    ${activeSessionPromo === s.name ? "bg-blue-600" : "bg-gray-100"}`}
+                                >
+                                <CalendarIcon
+                                    className={`w-3.5 h-3.5 ${activeSessionPromo === s.name ? "text-white" : "text-gray-400"}`}
+                                />
+                                </div>
+
+                                {/* label + meta */}
+                                <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium leading-tight">{s.name}</p>
+                                {/* <p className="text-[11px] text-gray-400 mt-0.5">{s.meta}</p> */}
+                                </div>
+
+                                {/* checkmark */}
+                                {activeSessionPromo === s.name && (
+                                <CheckIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                )}
+                            </button>
+                            ))}
+                        </div>
+                        )}
+                    </div>
+
+                    </div>
+                }
+                 size="lg">
+                <div className="space-y-6 h-full max-h-[75vh] overflow-y-auto">
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-2 text-sm text-navy-800 ">
                         <i className="fa-solid fa-info-circle mr-2"></i> This is a log of previously executed batch promotions.
                     </div>
 
-                    {promotionLogs?.length > 0 ? (
+                    {sessionPromotions?.length > 0 ? (
                         <div className="space-y-6">
-                            {promotionLogs?.map((exec, index) => {
+                            {sessionPromotions?.map((exec, index) => {
                                 const statusStyles = {
                                     pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
                                     processing: "bg-blue-100 text-blue-800 border-blue-200",
@@ -554,6 +685,6 @@ export const AcademicSettings : React.FC<AcademicSettingsProps> = ({
                 </div>
             </Modal>
 
-        </div>
+        </div> 
     );
 };

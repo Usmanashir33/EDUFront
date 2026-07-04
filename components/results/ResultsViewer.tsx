@@ -12,14 +12,18 @@ interface ResultsViewerProps {
     selectedSession: string;
     selectedTerm: string;
     searchTerm: string;
+    classes: ClassRoom[];
+    accessData?:any
 }
 
 export const ResultsViewer: React.FC<ResultsViewerProps> = ({
     selectedSession,
     selectedTerm,
-    searchTerm
+    searchTerm,
+    classes,
+    accessData
 }) => {
-    const {classRooms:classes,selectedSchool,templates,findSessionById,findTermById} = useContext(uiContext);
+    const {selectedSchool,templates,findSessionById,findTermById} = useContext(uiContext);
     const [selectedResult, setSelectedResult] = useState<any | null >(null);
     const [studentResults,setStudentResults] = useState([]);
     const [showResult,setShowResult] = useState<boolean>(false);
@@ -29,7 +33,7 @@ export const ResultsViewer: React.FC<ResultsViewerProps> = ({
     let termId = findTermById(selectedTerm)?.id ;
 
     const TriggeredFunc = (resp) => {
-        console.log('resp: ', resp);
+        // console.log('resp: ', resp);
         if (resp?.reportSheets){
             setStudentResults(resp?.reportSheets);
         }else if (resp?.reportSheet){
@@ -40,6 +44,11 @@ export const ResultsViewer: React.FC<ResultsViewerProps> = ({
     useEffect(() => {
         // fetch the remaining class students pls // this actually find it by id or name
         if (selectedClassId && sessionId && termId){
+            if (accessData?.role === "teacher"){
+                let url = `/result/fetchreportsheets-by-teacher/${selectedSchool?.id}/${sessionId}/${termId}/${selectedClassId}/`
+                sendRequest(url,"GET",null as any ,TriggeredFunc,true,false);
+                return ;
+            }
             let url = `/result/fetchreportsheets/${selectedSchool?.id}/${sessionId}/${termId}/${selectedClassId}/`
             sendRequest(url,"GET",null as any ,TriggeredFunc,true,false)
         }
@@ -49,7 +58,12 @@ export const ResultsViewer: React.FC<ResultsViewerProps> = ({
     useEffect(() => {
         if (!showResult) return ;
         if (selectedResult){
-            let studentId = selectedResult.student.id
+            let studentId = selectedResult.student.id ;
+            if (accessData?.role === "teacher"){
+                let url = `/result/fetchreportsheet-by-teacher/${selectedSchool?.id}/${sessionId}/${termId}/${selectedClassId}/${studentId}/`
+                sendRequest(url,"GET",null as any ,TriggeredFunc,true,false);
+                return ;
+            }
             let url = `/result/fetchreportsheet/${selectedSchool?.id}/${sessionId}/${termId}/${selectedClassId}/${studentId}/`
             sendRequest(url,"GET",null as any ,TriggeredFunc,true,false)
         }
@@ -96,7 +110,11 @@ export const ResultsViewer: React.FC<ResultsViewerProps> = ({
                 <StudentReport 
                     reportData={genReportData?.data}
                     selectedSchool={genReportData?.school}
-                    activeTemplate={genReportData?.template}
+                    activeTemplate={
+                        genReportData?.template?.config ?
+                            genReportData?.template 
+                        :null
+                    }
                     onCancel={setShowResult} />
             </div>
         )
@@ -117,7 +135,6 @@ export const ResultsViewer: React.FC<ResultsViewerProps> = ({
                             onChange={(e) => setSelectedClassId(e.target.value)}
                             className="p-2 border border-gray-300 rounded-md focus:border-navy-900 focus:ring-1 focus:ring-navy-900 text-sm font-bold text-navy-800"
                         >
-                            {/* <option value="ALL">All Classes</option> */}
                             {classes.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -141,9 +158,6 @@ export const ResultsViewer: React.FC<ResultsViewerProps> = ({
                         <tbody className="divide-y divide-gray-100">
                             {filteredResults.length > 0 ? filteredResults?.map(r => {
                                 const student = r.student
-                                // const { studentSubjects, percentage } = getStudentResultDetails(student.id);
-                                // const cls = classes.find(c => c.id === r?.class_room);
-
                                 return (
                                     <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="p-4">

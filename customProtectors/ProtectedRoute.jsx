@@ -32,13 +32,24 @@ import { Navigate, useLocation } from "react-router-dom";
 import { authContext } from "../customContexts/AuthContext";
 
 const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated } = useContext(authContext);
+    const { isAuthenticated, currentUser } = useContext(authContext);
     const location = useLocation();
 
     const token = localStorage.getItem("a_token");
 
     const isAllowed = isAuthenticated && token;
-
+    // prevent users from accessing routes that are not meant for their role
+    let currentLocation = location.pathname.split("/").filter(Boolean)[0];
+    let userRole = currentUser?.role?.toLowerCase();
+    if (currentLocation && userRole && currentLocation !== userRole) {
+        return (
+            <Navigate
+                to={`/${userRole}`}
+                replace
+                state={{ from: location }}
+            />
+        )
+    }
     if (!isAllowed) {
         return (
             <Navigate

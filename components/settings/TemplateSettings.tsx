@@ -65,7 +65,7 @@ export const TemplateSettings: React.FC<TemplateSettingsProps> = ({
         setPendingAction({name:'',id:''})
 
         setToast({ message: resp?.success, type: 'success' }) ;
-        console.log('resp: ', resp);
+        // console.log('resp: ', resp);
 
         if (resp?.new_temp){ // new template 
             const updated = [...data.documents,resp.new_temp]

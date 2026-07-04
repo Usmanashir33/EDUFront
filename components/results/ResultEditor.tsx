@@ -10,6 +10,7 @@ import useRequest from '@/customHooks/RequestHook';
 
 interface ResultEditorProps { 
     batch: ResultBatch | any ;
+    setBatch:any ;
     editorScores: StudentScore[];
     setEditorScores:any;
     setIsDirty: (data:boolean) => void;
@@ -21,6 +22,7 @@ interface ResultEditorProps {
     onManageEdit: (a:any,b:any) => void;
     selectedSession: string ;
     selectedTerm: string;
+    accessData:any
 }
 const renderProgressBar = (stats: { scored: number, total: number, percentage: number, status: string }) => {
         let color = 'bg-gray-200';
@@ -41,13 +43,15 @@ const renderProgressBar = (stats: { scored: number, total: number, percentage: n
     };
 export const ResultEditor: React.FC<ResultEditorProps> = ({
     batch, 
+    setBatch, 
     editorScores,
     setEditorScores,
     isDirty,
     setIsDirty,
+    accessData,
     onClose, onSave, onScoreChange, onImportClick,onManageEdit ,selectedSession, selectedTerm
 }) => {
-    const {teachers,classRooms, subjects, students,isLoading,setToast} = React.useContext(uiContext);
+    const {teachers,classRooms, subjects, students,setToast} = React.useContext(uiContext);
     const cls = classRooms.find(c => c.id === batch.classId);
     const sub = subjects.find(s => s.id === batch.subjectId);
 
@@ -55,23 +59,28 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
     const teacher = teachers.find(d => d.id === teacherId)
     const teacher_name = teacher ? `${teacher?.title} ${teacher?.first_name} ${teacher?.last_name} ${teacher?.middle_name}`: 'unassigned'
     const { sendFileRequest,sendRequest } = useRequest();
-    const {selectedSchool,getFormattedDate} = React.useContext(uiContext)
-    const stats = getCompletenessStats(batch ,cls.studentsCount || 1);
+    const {selectedSchool,getFormattedDate} = React.useContext(uiContext);
+    const stats = getCompletenessStats(batch);
 
     const [classStudents,setClassStudents] = useState(students.filter(s => s.active_class_rooms.includes(batch.classId)))
     const [showSubmitModal,setShowSubmitModal] = useState(false)
     const disabled = batch.on_submit || batch.isLocked  
     const TriggeredFunc = (resp) => {
-        // console.log('resp: ', resp);
-        if (resp?.classStudents){
-            setClassStudents(resp?.classStudents);
+        // console.log('resp: ', resp) ;
+        if (resp?.batch){
+            let sts = resp?.batchAllstudents ;
+            setBatch(prev => prev.id === resp.batch?.id ? {...resp.batch} : prev) ;
+            setClassStudents(prev => {
+                return sts ;
+            });
         }
     }
     useEffect(() => {
         if (! batch?.scores || batch?.scores?.length === 0) {
-            // const classStudents : any[] = students.filter(s => s?.active_class_rooms.includes(batch.classId));
             const initialScores = classStudents.map(s => ({
                 studentId: s.id,
+                student_name : s.first_name + " " + s.last_name,
+                student_admission_number : s.admission_number,
                 ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'N/A', remark: 'No Score',
                 ca1Abs:false,ca2Abs:false,examAbs:false
             }));
@@ -79,15 +88,29 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
 
         } else {
             // make sure all students are included 
-            const existed_scores = classStudents.map(student => {
-                const existingScore = batch.scores.find(s => s.studentId === student.id);
-                return existingScore || {
+           // 1. Get a fast-lookup set of all student IDs already present in this batch
+            const existingStudentIds = new Set(batch.scores.map(s => s.studentId));
+            // 2. Filter out classStudents missing from the batch, and create empty templates for them
+            const missingStudentsMocked = classStudents
+                .filter(student => !existingStudentIds.has(student.id))
+                .map(student => ({
                     studentId: student.id,
-                    ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'N/A', remark: 'No Score',
-                    ca1Abs:false,ca2Abs:false,examAbs:false
-                };
-            });
-            setEditorScores(existed_scores);
+                    student_name : student.first_name + " " + student.last_name,
+                    student_admission_number : student.admission_number,
+                    ca1: 0, 
+                    ca2: 0, 
+                    exam: 0, 
+                    total: 0, 
+                    grade: 'N/A', 
+                    remark: 'No Score',
+                    ca1Abs: false,
+                    ca2Abs: false,
+                    examAbs: false
+                }));
+
+            // 3. Create the final combined scores list (Existing Batch Students + Missing Mocked Students)
+            const finalScoresList = [...batch.scores, ...missingStudentsMocked];
+            setEditorScores(finalScoresList);
 
         }
         setIsDirty(false);
@@ -95,7 +118,8 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
     },[classStudents,batch]);
     useEffect(() => {
          // fetch the remaining class students pls 
-        let url = `/student/all-students/${selectedSchool?.id}/${batch?.classId}/`
+        // let url = `/student/all-students/${selectedSchool?.id}/${batch?.classId}/`
+        let url = `/result/result-batch/detail/${selectedSchool?.id}/${batch.session}/${batch.term}/${batch.classId}/${batch?.subjectId}/`
         sendRequest(url,"GET",null as any ,TriggeredFunc,true,true)
 
     },[])
@@ -181,13 +205,7 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                     </button>}
                     
                     {/* make the staff able to resubmit even if its locked here by rejecting it  */}
-                    {/* {(batch.on_submit || disabled) && <button
-                        onClick={() => setShowSubmitModal(true)}
-                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
-                    >
-                        <i className="fa-solid fa-paper-plane mr-2"></i>
-                    </button>} */}
-                    {batch.on_submit && <button
+                    {(batch.on_submit && accessData.canApprove) && <button
                         onClick={() => {
                             if (isDirty) return setToast({message:"Save the changes first!",type:'info'})
                             setShowSubmitModal(true)
@@ -198,7 +216,7 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                         Reject
                     </button>}
 
-                    {batch.isLocked && (
+                    {(batch?.isLocked && !batch.on_submit && !batch.approved) && (
                         <button
                             onClick={() => onManageEdit("RESULT","LOCKING")}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
@@ -208,7 +226,7 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                         </button>
                     )}
 
-                    {!batch.isLocked && (
+                    {(!batch?.isLocked && !batch.on_submit && !batch.approved) &&  (
                         <button
                             onClick={() => onManageEdit("RESULT","LOCKING")}
                             className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded flex items-center transition-colors"
@@ -261,12 +279,12 @@ export const ResultEditor: React.FC<ResultEditorProps> = ({
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm">
                             {editorScores.map((score, idx) => {
-                                const student = classStudents.find(s => s.id === score.studentId);
+                                // const student = classStudents.find(s => s.id === score.studentId);
                                 return (
                                     <tr key={score.studentId} className="hover:bg-gray-50 transition-colors">
                                         <td className="p-3 text-center text-gray-400">{idx + 1}</td>
-                                        <td className="p-3 font-bold text-navy-800">{student?.first_name} {student?.last_name}</td>
-                                        <td className="p-3 font-mono text-xs text-gray-500">{student?.admission_number}</td>
+                                        <td className="p-3 font-bold text-navy-800">{score.student_name}</td>
+                                        <td className="p-3 font-mono text-xs text-gray-500">{score?.student_admission_number}</td>
                                         <td className="p-1 text-center bg-blue-50/10">
                                             <input 
                                                 id={`input-${idx}-0`}

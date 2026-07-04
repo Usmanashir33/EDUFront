@@ -140,7 +140,7 @@ return {
           useCustomHeader: true,
           // documents: configuredTemp ,
       }
-  };
+  }; 
 },[selectedSchool])
 
 
@@ -153,9 +153,9 @@ return {
   // const [templates, setTemplates] = useState( defaults.templates);
  
   const TriggeredFuncBord = (res) => {
-    setPendingAction({name:"",method:"ADD",id:null})
+    setPendingAction({name:"",method:"ADD",id:null});
+    if (res?.success){setToast({message: res.success, type: 'success'}) }
     if (res?.updated_school) { 
-    
         setSelectedSchool(prev => ({...prev,...res.updated_school})) ;
     }
     if (res?.updated_user) { 
@@ -333,7 +333,7 @@ return {
         if (operation === 'SETFEE'){
             sendRequest(`/school_finance/school-fee-settings/set-fee-for-classes/`,"POST",fdata as any,TriggeredFuncAcad,true,!true)
         }else if (operation === "SETPROMOTION"){
-          sendRequest(`/director/class/promotion/`,"POST",fdata as any,TriggeredFuncAcad,true,!true)
+          sendRequest(`/academics/class/promotion/`,"POST",fdata as any,TriggeredFuncAcad,true,!true)
         }else if (operation === "CONFIGURATIONS"){
           sendRequest(`/school/config/`,"POST",fdata as any,true,!true)
         }else{
@@ -469,7 +469,7 @@ return {
         sendRequest(`/school_finance/school-fee-settings/set-fee-for-classes/`,"POST",f as any,TriggeredFuncAcad,true,false)
       }else if (pendingAction?.method === 'SETPROMOTION'){
         let f = {...serverForm,pin:pins}
-        sendRequest(`/director/class/promotion/`,"POST",f as any,TriggeredFuncAcad,true,false)
+        sendRequest(`/academics/class/promotion/`,"POST",f as any,TriggeredFuncAcad,true,false)
       }else if (pendingAction?.method === 'CONFIGURATIONS'){
         let f = {...serverForm,pin:pins}
         sendRequest(`/school/config/`,"POST",f as any,TriggeredFuncAcad,true,false)

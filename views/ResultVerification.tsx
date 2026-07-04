@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
-import { Student, ResultBatch, ClassRoom, Subject, ViewState } from '../types';
 import { uiContext } from '@/customContexts/UiContext';
 import useRequest from '@/customHooks/RequestHook';
 import { createPortal } from 'react-dom';

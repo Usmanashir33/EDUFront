@@ -3,20 +3,17 @@ import React, { useState, useEffect,useMemo,useContext } from 'react';
 
 import { ClassRoom, Subject, Teacher, Student, ResultBatch, StudentScore, ActivityLog, ApprovalRecord } from '../types';
 
-import { Modal, PinModal, Toast } from '../components/UI';
-import { ResultDashboard } from '../components/results/ResultDashboard';
-import { ResultEditor } from '../components/results/ResultEditor';
-import { FormTeacherEditor } from '../components/results/FormTeacherEditor';
-import { calculateGrade } from '../components/results/ResultUtils';
+import { Modal, PinModal, Toast } from '@/components/UI';
+import { ResultDashboard } from '@/components/results/ResultDashboard';
+import { ResultEditor } from '@/components/results/ResultEditor';
+import { FormTeacherEditor } from '@/components/results/FormTeacherEditor';
+import { calculateGrade } from '@/components/results/ResultUtils';
 import { uiContext } from '@/customContexts/UiContext';
 import useRequest from '@/customHooks/RequestHook';
 import { authContext } from '@/customContexts/AuthContext';
 
 interface ResultManagerProps {
-    classes: ClassRoom[];
-    subjects: Subject[];
-    teachers: Teacher[];
-    students: Student[];
+    
 }
 type Tab =  'CLASS' | 'TEACHER' | 'SUBJECT' | 'FORM_TEACHER' | 'DIRECTOR_APPROVAL'| 'APPROVAL_HISTORY'|'RESULTS_VIEWER';
 
@@ -67,14 +64,14 @@ const generateMockSkills = (class_rooms,session_id,term_id ): ResultBatch[] => {
                 charAndSkills: [] 
             });
         });
-    return allBatches;
+    return allBatches; 
 };
 
-export const ResultManager: React.FC<ResultManagerProps> = ({ classes, subjects, teachers, students }) => {
+export const TeacherResultManager: React.FC<ResultManagerProps> = ({ }) => {
     const [activeTab, setActiveTab] = useState<Tab>('CLASS');
     const [viewState, setViewState] = useState<ViewState>('DASHBOARD');
     const [searchTerm, setSearchTerm] = useState('');
-    const {selectedSchool, setToast,marks,setReportsRecord,findSessionById,findTermById} = useContext(uiContext) ;
+    const {selectedSchool, setToast,marks,setReportsRecord,findSessionById,findTermById,subjects,classRooms:classes,teachers,students} = useContext(uiContext) ;
     const {currentUser} = useContext(authContext) ;
     const {sendRequest,sendFileRequest} = useRequest() ;
     const [serverForm,setServerForm] =useState<any|null>({})
@@ -184,10 +181,7 @@ const handleCancelUpload = () => {
             });
             return ;
         }
-        if (res?.approvalHistories) { // update approval histories
-            setApprovalHistory(res.approvalHistories);
-            return ;
-        }
+        
         if (res?.reportRecords) { // update approval histories
             setReportsRecord(res.reportRecords);
             return ;
@@ -204,15 +198,6 @@ const handleCancelUpload = () => {
                 let updated = ar.id === r?.id
                 return updated? {...r,...ar} : r;
             }));
-        }else if (res?.approvedResults) { // update the approved  Results data  list
-            let ar = res?.approvedResults
-            setResults(prev => prev.map(r => {
-                let updated = ar.find(res => res.id === r?.id)
-                return updated? {...r,...updated} : r;
-            }));
-            let record = res?.history ;
-            setApprovalHistory(prev => [record, ...prev]);
-            return ;
         }
         if (res?.manageSkills) { 
             let ar = res?.manageSkills ;
@@ -221,15 +206,7 @@ const handleCancelUpload = () => {
                 let updated = (ar.id === r?.id)? {...r,...ar} : r ;
                 return updated
             }));
-        }else if (res?.approvedSkills) { 
-            let ar = res?.approvedSkills ;
-            setSkillBatches(prev => prev.map(r => {
-                let updated = ar.find(res => res.id === r?.id)
-                return updated? {...r,...updated} : r;
-            }));
-            let record = res?.history ;
-            setApprovalHistory(prev => [record, ...prev]);
-            return ;
+        
         }
         if (res?.currentSkills) { // update response from save action
             let updated = res?.currentSkills ;
@@ -280,16 +257,17 @@ const handleCancelUpload = () => {
             setResults(freshData);
             // we call api here to fetch results for the selected session and term, but for now we generate mock data
             // API CALL HERE to fetch results for selectedSession and selectedTerm
-            let url =`/result/result-batch/fetch/${selectedSchool.id}/${session_id}/${term_id}/`
+            let url =`/result/result-batch/fetch-by-teacher/${selectedSchool.id}/${session_id}/${term_id}/`
             sendRequest(url,"GET",null as any,triggeredFuncFetch,true,false);
     }
     }, [selectedSession,selectedTerm,subjects]);
+
     useEffect(() => {
         // Whenever session or term changes, reset to dashboard view
         if (selectedSession && selectedTerm && selectedSchool) {
             let session_id = findSessionById(selectedSession)?.id;
             let term_id = findTermById(selectedTerm)?.id;
-            let url =`/result/reportrecords/${selectedSchool.id}/${session_id}/${term_id}/`
+            let url =`/result/reportrecords-by-teacher/${selectedSchool.id}/${session_id}/${term_id}/`
             sendRequest(url,"GET",null as any,triggeredFuncFetch,true,false);
     }
     }, [selectedSession,selectedTerm]);
@@ -302,15 +280,10 @@ const handleCancelUpload = () => {
             let s = generateMockSkills(classes,session_id, term_id)
             setSkillBatches(s) ;
             // API CALL HERE to fetch results for selectedSession and selectedTerm
-            let url =`/result/result-skill/fetch/${selectedSchool.id}/${session_id}/${term_id}/`
+            let url =`/result/result-skill/fetch-by-teacher/${selectedSchool.id}/${session_id}/${term_id}/`;    
             sendRequest(url,"GET",null as any,triggeredFuncFetch,true,false)
-
         }
-        // fetch approval history here 
-        if (!approvalHistory.length && selectedSchool){
-            let url =`/result/approval-history/fetch/${selectedSchool.id}` ;
-            sendRequest(url,"GET",null as any,triggeredFuncFetch,true,false) ;
-        }
+       
     }, [selectedSession,selectedTerm,selectedSchool]);
 
     const handleOpenFormTeacherEditor = (classRoom: ClassRoom) => {
@@ -333,41 +306,33 @@ const handleCancelUpload = () => {
         
         // Make the api call here  when pin is not needed by the user 
         if (pendingAction === 'SAVE') {
-            sendRequest(`/result/result-batch/upsert/`,"POST",{...serverForm,pin:pins} as any ,triggeredFunc,true,false)
+            sendRequest(`/result/result-batch/upsert-by-teacher/`,"POST",{...serverForm,pin:pins} as any ,triggeredFunc,true,false)
             return ;
         }
         if (pendingAction === 'UPLOAD') {
             serverForm.append('pin', pins) ;
-            let url = `/result/result-batch/upload/`
+            let url = `/result/result-batch/upload-by-teacher/`
             sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,true) // is formdata, is secure
             return ;
         }
         if (pendingAction === 'CHARUPLOAD') {
             serverForm.append('pin', pins) ;
-            let url = `/result/result-skill/upload/`
+            let url = `/result/result-skill/upload-by-teacher/`
             sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,true) // is formdata, is secure
             return ;
         }
-        if (pendingAction === 'REPORTGENERATION') {
-            let url = `/result/generate-report-sheets/`
-            sendRequest(url ,"POST",{...serverForm,pin:pins} as any,triggeredFunc,true,false) //
-            return ;
-        }
+        
         if (pendingAction === 'SAVECHAR') {
-            let url = `/result/result-skill/save/`
+            let url = `/result/result-skill/save-by-teacher/`
             sendRequest(url ,"POST",{...serverForm,pin:pins} as any,triggeredFunc,true,false) // is not  formdata, is secure
             return ;
         }
         if (pendingAction === 'BATCHMANAGE') {
-            let url = `/result/result-editing/managing/`
+            let url = `/result/result-editing/managing-by-teacher/`
             sendRequest(url ,"POST",{...serverForm,pin:pins} as any ,triggeredFunc,true,!true)
             return ;
         }
-        if (pendingAction === 'BATCHAPPROVAL') {
-            let url = `/result/result-editing/approval/`
-            sendRequest(url ,"POST",{...serverForm,pin:pins} as any,triggeredFunc,true,!true)
-            return ;
-        }
+        
     };
 
     const handleSaveScores = () => { 
@@ -375,7 +340,7 @@ const handleCancelUpload = () => {
         // Check if any score is actually entered to mark as uploaded
         const hasData = editorScores.some(s => s.total > 0);
         const updatedBatch = { 
-            ...currentBatch, 
+            ...currentBatch,  
             scores: editorScores, 
             isUploaded: hasData, 
             teacher : currentBatch.teacherId ,
@@ -388,7 +353,7 @@ const handleCancelUpload = () => {
 
         setPendingAction('SAVE') ;  
         if (!currentUser?.user?.pin_set){
-            sendRequest(`/result/result-batch/upsert/`,"POST",serverForm as any ,triggeredFunc,true,false)
+            sendRequest(`/result/result-batch/upsert-by-teacher/`,"POST",serverForm as any ,triggeredFunc,true,false)
             return ;
         }
         setShowPinModal(true) 
@@ -408,7 +373,7 @@ const handleCancelUpload = () => {
         setPendingAction("BATCHMANAGE");
         if (!currentUser?.user?.pin_set) {
             // process file immediately if no pin is set
-            let url = `/result/result-editing/managing/`
+            let url = `/result/result-editing/managing-by-teacher/`
             sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,!true)
             return ;
         }
@@ -429,37 +394,25 @@ const handleCancelUpload = () => {
                 const updated = { ...score };
 
                 // Handle ABS
-                // if (value.trim().toUpperCase() === "ABS") {
                 if (value.trim().toUpperCase() === "0A" || value.trim().toUpperCase() === "0B") {
                     updated[field] = 0;
                     updated[absentField] = true;
-
                 } else {
-
                     const maxScore = field === "exam" ? marks.exam :field === "ca1" ? marks.ca1 : marks.ca2;
-
-
-                    const numVal = Math.min(
-                        Math.max(Number(value) || 0, 0),
-                        maxScore
-                    );
-
+                    const numVal = Math.min(   Math.max(Number(value) || 0, 0),   maxScore);
                     updated[field] = numVal;
                     updated[absentField] = false;
                 }
-
                 // Recalculate totals
                 updated.total =
                     (updated.ca1 || 0) +
                     (updated.ca2 || 0) +
                     (updated.exam || 0);
 
-                const { grade, remark } =
-                    calculateGrade(updated.total);
+                const { grade, remark } = calculateGrade(updated.total);
 
                 updated.grade = grade;
                 updated.remark = remark;
-
                 return updated;
             })
         );
@@ -484,7 +437,7 @@ const handleCancelUpload = () => {
             setShowUploadModal(false) ;
             if (!currentUser?.user?.pin_set) {
                 // process file immediately if no pin is set
-                let url = `/result/result-batch/upload/`
+                let url = `/result/result-batch/upload-by-teacher/`
                 sendRequest(url ,"POST",serverForm as any,triggeredFunc,true,true)
                 return ;
             }
@@ -508,7 +461,7 @@ const handleCancelUpload = () => {
             setShowUploadModal(false) ;
             if (!currentUser?.user?.pin_set) {
                 // process file immediately if no pin is set
-                let url = `/result/result-skill/upload/`
+                let url = `/result/result-skill/upload-by-teacher/`
                 sendRequest(url ,"POST",serverForm,triggeredFunc,true,true)
                 return ;
             }
@@ -517,42 +470,9 @@ const handleCancelUpload = () => {
     };
 
     const handleApproveResult = (batchIds: string[] ,target: "RESULT" | "CHAR") => {
-        setServerForm({
-            target,
-            school : selectedSchool?.id ,
-            batchIds ,
-            pin : ""
-        })
-        setPendingAction("BATCHAPPROVAL")
-        if (!currentUser?.user?.pin_set) {
-                // process file immediately if no pin is set
-                let url = `/result/result-editing/approval/`
-                sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,!true)
-                return ;
-            }
-            setShowPinModal(true) ;
+        
     };
-
-    const generateReportSheet = (class_id:any ) => {
-        setPendingAction("REPORTGENERATION")
-        let sessionId = selectedSchool?.sessions.find(s => s.name === selectedSession)?.id;
-        let termId = selectedSchool?.terms.find(t => t.name === selectedTerm)?.id ;
-        let form = {
-            class_room : class_id ,
-            school : selectedSchool?.id ,
-            term : termId,
-            session : sessionId
-        }
-        setServerForm(form)
-        if (!currentUser?.user?.pin_set) {
-            // process file immediately if no pin is set
-            let url = `/result/generate-report-sheets/`
-            sendRequest(url ,"POST",serverForm as any ,triggeredFunc,true,false)
-            return ;
-        }
-        setShowPinModal(true) ;
-    }
-
+   
     const downloadCharSheet = (class_id:any ) => {
         setPendingAction("CHAR_UPLOAD")  
         let cls = classes.find((c) => c.id === class_id)
@@ -565,21 +485,21 @@ const handleCancelUpload = () => {
         return ;
     }
     const handleSaveChar = (scores) => {
-        setPendingAction("SAVECHAR")
+        setPendingAction("SAVECHAR") ;
         let sessionId = selectedSchool?.sessions.find(s => s.name === selectedSession)?.id;
         let termId = selectedSchool?.terms.find(t => t.name === selectedTerm)?.id ;
         const SaveForm : any = {
             school : selectedSchool?.id,
             class_room : formTeacherClass?.id ,
-            session : sessionId ,
-            term : termId,
-            teacher : formTeacherClass?.form_teacher  ,
-            charAndSkills : scores
+            session : sessionId, 
+            term : termId, 
+            teacher : formTeacherClass?.form_teacher,
+            charAndSkills : scores ,
         }
         setServerForm(SaveForm)
         if (!currentUser?.user?.pin_set) {
-            let url = `/result/result-skill/save/`
-            sendRequest(url ,"POST",SaveForm,triggeredFunc,true,false) // is not  formdata, is secure
+            let url = `/result/result-skill/save-by-teacher/` ;
+            sendRequest(url ,"POST",SaveForm,triggeredFunc,true,false); // is not  formdata, is secure
             return ;
         }
         setShowPinModal(true) ;
@@ -589,8 +509,6 @@ const handleCancelUpload = () => {
         <>
         <PinModal isOpen={showPinModal} onClose={() => { setShowPinModal(false); setPendingAction(null as any); }} onSuccess={handlePinSuccess} title={'Confirm Action'} />
         <div className="animate-fadeIn h-full flex flex-col reletive ">
-            
-            {/* {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null as any)} />} */}
             
             {viewState === 'DASHBOARD' ? (
                     <ResultDashboard 
@@ -611,18 +529,20 @@ const handleCancelUpload = () => {
                         onSearchChange={setSearchTerm}
                         onSessionChange={setSelectedSession}
                         onTermChange={setSelectedTerm}
-                        onGenerateReportSheet ={generateReportSheet}
                         accessData={
                         {
-                            role : currentUser?.role.toLowerCase() || 'director',
-                            canApprove :true ,
-                            canGenerateReports : true ,
-                            masterClassIds : classes.map(c => c.id) || [],
-                        }}
+                            role : currentUser?.role.toLowerCase() || 'teacher',
+                            canApprove :false ,
+                            canGenerateReports : false ,
+                            masterClassIds : classes.filter(c => c.form_teacher?.id === currentUser?.id).map(c => c.id) || [],
+                        }
+                        }
                     />
 
              ) : viewState === 'EDITOR' ? (
                 currentBatch && (
+                    // some props are passed to ResultEditor, including batch, setBatch, setEditorScores, setIsDirty, editorScores, isDirty, selectedSession, selectedTerm, onClose, onSave, onScoreChange, onImportClick, onManageEdit, and accessData
+                    // are useless  ijust leave it because i want to keep the code structure consistent with the other components
                     <ResultEditor 
                         batch={currentBatch}
                         setBatch ={setCurrentBatch}
@@ -640,6 +560,13 @@ const handleCancelUpload = () => {
                             setShowUploadModal(true); 
                         }}
                         onManageEdit ={handleManageEdit}
+                        accessData={
+                            {role : currentUser?.role.toLowerCase() || 'teacher',
+                                canApprove :false ,
+                                canGenerateReports : false ,
+                                masterClassIds : classes.filter(c => c.form_teacher?.id === currentUser?.id).map(c => c.id) || [],
+                            }
+                        }
                     />
                 )
             ) : viewState === 'FORM_TEACHER_EDITOR' ? (
@@ -662,6 +589,14 @@ const handleCancelUpload = () => {
                             setShowUploadModal(true); 
                         }}
                         onManageEdit = {handleManageEdit}
+                        accessData={
+                        {
+                            role : currentUser?.role.toLowerCase() || 'teacher',
+                            canApprove :false ,
+                            canGenerateReports : false ,
+                            masterClassIds : classes.filter(c => c.form_teacher?.id === currentUser?.id).map(c => c.id) || [],
+                        }
+                        }
                        
                     />
                 )

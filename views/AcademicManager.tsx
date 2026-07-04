@@ -28,8 +28,6 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [currentSession] = useState("2023/2024");
-  const [currentTerm] = useState("2nd Term");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingClass, setEditingClass] = useState(false);
@@ -46,8 +44,6 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
   const [classSubjectDelId,setClassSubjectDelId] = useState<string|null>('')
 
   const {
-    students,
-    setStudents, // students data
     teachers,setTeachers,
     sections,
     setSections, // sections data
@@ -59,6 +55,12 @@ export const AcademicManager: React.FC<AcademicManagerProps> = ({
     isLoading, setToast
   } = useContext(uiContext);
   const {currentUser} = useContext(authContext);
+  const [currentSession,setCurrentSession] = useState<any>(
+    selectedSchool?.sessions.find(s => s.is_current)?.name
+  );
+  const [currentTerm,setCurrentTerm] = useState<any>(
+    selectedSchool?.terms.find(s => s.is_current)?.name
+  );
 
   // Add/Edit Forms
   const [sectionForm, setSectionForm] = useState({name: ""});
@@ -891,22 +893,7 @@ const filteredTeachers = useMemo(() => {
               setEditSubjectTarget(s);
               setEditSubjectForm({name: s.name, code: s.code,credits:s?.credits});
             }}
-            // onAssignClass={(s) => {
-            //   setSelectedSubjectForClass(s);
-            //   setEditingClass(false);
-            //   setEditSubjectTarget(s);
-            //   setShowClassSelectModal(true);
-            // }}
-            // onAssignTeacher={(s  : any) => {
-            //   setTeacherSelectMode("ADD_TO_SUBJECT");
-            //   setEditSubjectTarget(s);
-            //   setEditingClass(false);
-            //   setCurrentContextData({
-            //     subjectId: s.id,
-            //     selectedIds: s?.teachers,
-            //   });
-            //   setShowTeacherSelectModal(true);
-            // }}
+          
             onDeleteAcademics={deleteAcademics}
           />
         )}

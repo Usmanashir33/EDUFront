@@ -193,6 +193,7 @@ export const TemplateEditor: React.FC<TemplateEditorProps> = ({
 
         );
         onSave(config, htmlString);
+        // console.log('config: ', config);
     }, [config, onSave]);
     
 

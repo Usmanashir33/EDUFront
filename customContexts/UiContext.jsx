@@ -10,7 +10,7 @@ const UiContextProvider = ({ children }) => {
     const [pageLoading, setPageLoading] = useState(false);
     const [currentView, setCurrentView] = useState(
         // make it check local storage first
-        localStorage.getItem('session') ? ViewState.DASHBOARD : ViewState.LOGIN
+        // localStorage.getItem('session') ? ViewState.DASHBOARD : ViewState.LOGIN
     );
     const [toast, setToast] = useState(null); //  we must use { messag, type:''}); or null
     const [students, setStudents] = useState([])
@@ -18,6 +18,7 @@ const UiContextProvider = ({ children }) => {
     const [schoolFees, setSchoolFees] = useState([])
     const [pendingPayments, setPendingPayments] = useState([]);
     const [promotionLogs, setPromotionLogs] = useState([]);
+    const [reportsRecord, setReportsRecord] = useState([]);
     const [permissions, setPermissions] = useState([]);
     const [roles, setRoles] = useState([]);
     const [marks, setMarks] = useState(
@@ -137,6 +138,7 @@ const UiContextProvider = ({ children }) => {
             permissions, setPermissions,
             roles, setRoles,
             marks, setMarks,
+            reportsRecord, setReportsRecord,
 
         }}>
             {children}
