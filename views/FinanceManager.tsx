@@ -243,7 +243,6 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         let directorValidation =  paymentAmount ;
         let parsonalValidation = (!paymentPhone || !paymentAccount || !paymentBankName  || !paymentAmount) ;
         
-        // console.log('currentUser?.role?.toLowerCase(): ', currentUser?.role?.toLowerCase());
         if (((currentUser?.role?.toLowerCase() === "director") && !directorValidation)) return (
                 setToast({type:"error",message:"Please fill amount fields"})
             )
@@ -680,9 +679,6 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                     {isLoading && <div className="font-bold text-gray-500 text-lg">
                                         🔃Loading....
                                     </div>}
-                                    {/* <button onClick={() => setDrillDownStatus(null)} className="text-gray-400 hover:text-gray-600">
-                                        <i className="fa-solid fa-times text-xl"></i>
-                                    </button> */}
                                 </div>
                                 <div className="max-h-[400px] overflow-y-auto custom-scrollbar relative">
                                     <table className="min-w-full divide-y divide-gray-200">
@@ -704,7 +700,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                                     const balance = r.current_net_balance ;
                                                     const clss = classRooms.filter(cls =>  r.active_classes.includes(cls.id))
                                                     return (
-                                                        <tr key={r.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => {
+                                                        <tr key={r.id} className="hover:bg-gray-50 cursor-pointer" 
+                                                        onClick={() => {
                                                             // Set active student for ledger view
                                                             setLedgerStudentId(r?.student || null);
                                                         }}>

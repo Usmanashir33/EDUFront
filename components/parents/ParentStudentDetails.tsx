@@ -1,5 +1,4 @@
 import React, {useState, useEffect, useRef, useContext} from "react";
-import {Student, ClassRoom, Subject, AcademicRecord} from "../../types";
 import {Input, Button, FadeIn, MultiSelectDropdown, PinModal, Toast, ImageUpload, ImageViewer, Modal} from "../UI";
 import {generateStudentReportData} from "../../utils";
 
@@ -7,29 +6,24 @@ import {uiContext} from "@/customContexts/UiContext";
 import useRequest from "@/customHooks/RequestHook";
 import urls from "@/customHooks/ServerUrls";
 import {authContext} from "@/customContexts/AuthContext";
-import StudentReport from "./StudentReport";
-import { setTimeout } from "timers/promises";
+import StudentReport from "../students/StudentReport";
 
 
 
-type ViewMode = "LIST" | "DETAIL" | "ADD" | "EDIT";
-type DetailTab = "OVERVIEW" | "ACADEMIC" | "GUARDIAN" | "ADMIN";
+type DetailTab = "OVERVIEW" | "ACADEMIC" | "GUARDIAN" ;
 type TermViewTab = "REPORT" | "ANALYSIS" | "RECORDS";
 interface StudentDetailProps {
   id: string;
-  student,setStudent,
-  setViewMode?: (param?:ViewMode) => void | undefined;
-  triggerSuspend: () => void;
-  triggerDelete: () => void;
+  student:  any,
+  setStudent?: (p :any) => void ;
 }
 // --- DETAIL VIEW ---
-export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStudent, setViewMode, triggerDelete, triggerSuspend}) => {
+export const ParentStudentDetail: React.FC<StudentDetailProps> = ({id,student:s, setStudent}) => {
   const [activeTab, setActiveTab] = useState<DetailTab>("OVERVIEW");
   const [showImage, setShowImage] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
   // Academic History State
   const [selectedHistoryClass, setSelectedHistoryClass] = useState<string | null>(null);
-  const [isDeletingModalOpen,setIsDeletingModalOpen] = useState(false)
   const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
   const [termViewTab, setTermViewTab] = useState<TermViewTab>("REPORT");
   const [reportData, setReportData] = useState<any>(null);
@@ -62,7 +56,6 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
   };
   // Handle Report Card Generation
   const handleViewReport = (clsId: string,termId: string) => {
-    // fetch from serverv/*   */
     setSelectedTerm(termId);
     setPendingAction("REPORT");
     let url = `/result/fetchstudentreportsheet/${selectedSchool?.id}/${termId}/${clsId}/${s.id}/`;
@@ -70,8 +63,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
   };
   useEffect(() => {
     if (id){ 
-      // setSelectedCls(classRooms.find((c) => c.id === selectedId)) ;
-      let sUrl = `/student/details/${selectedSchool?.id}/${id}/`
+      let sUrl = `/student/details-by-parent/${selectedSchool?.id}/${id}/`
       sendRequest(sUrl,"GET",null as any ,triggeredFunc,!true,false);
     }
     // return (() => {setStudent(null)});
@@ -85,87 +77,11 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
   }, [])
 
   return (
-    <div className="animate-fadeIn space-y-6">
-      {/* Print Styling - Ensures scrollable content is visible on paper */}
-      {/* <style>{`
-                
-                    @media print {
-                      body * {
-                        visibility: hidden;
-                      }
-
-                      #report-card-container,
-                      #report-card-container * {
-                        visibility: visible;
-                      }
-
-                      #report-card-container {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                      }
-
-                      .no-print {
-                        display: none !important;
-                      }
-                    }
-                     @page {
-                      size: A4;
-                      // margin: 6mm;
-                    }
-
-                    @media print {
-                      html, body {
-                        width: 210mm;
-                        height: 297mm;
-                      }
-                      body{
-                        -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-                      }
-
-                      #report-card-container {
-                        width: 100%;
-                        min-height: 100%;
-                        box-shadow: none !important;
-                      }
-
-  .no-print {
-    display: none !important;
-  }
-
- 
-}
-  @media print {
-  table {
-    page-break-inside: avoid;
-  }
-
-  .page-break {
-    page-break-before: always;
-  }
-}
-  @media print {
-  body {
-    zoom: 0.95;
-  }
-}
-  @media print {
-  #report-card-container {
-    transform: scale(0.97);
-    transform-origin: top center;
-  }
-}
-            `}</style> */}
-
-      {/* Professional Profile Header (Hidden when printing Report Card) */}
-      
+    <div className="animate-fadeIn h-full ">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden no-print" >
-        <div className="h-32 bg-gradient-to-r from-navy-900 to-navy-700 relative">
-          {/* <div className="absolute inset-0 bg-pattern opacity-10 "></div> */}
-          <div className="absolute -mt-20 -top-10 bbd " ref={topRef}> </div>
-          <button onClick={() =>{ setViewMode("LIST")}} className="absolute left-4 top-2 flex items-center text-gold-400 hover:text-gold-700 transition-colors no-print animate-pulse">
+        <div className="h-32 bg-gradient-to-r from-emerald-900 to-emerald-700  relative">
+          <div className="absolute -mt-20 -top-10  " ref={topRef}> </div>
+          <button onClick={() =>{ setStudent(null)}} className="absolute left-4 top-2 flex items-center text-gold-400 hover:text-gold-700 transition-colors no-print animate-pulse">
             <i className="fa-solid fa-arrow-left mr-2 text-xl rounded-lg p-2 rounded-lg bg-gold-50"></i> Back 
           </button>
           <div className="absolute bottom-4 right-6 text-white/20 text-4xl">
@@ -192,11 +108,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
                 </p>
               </div>
             </div>
-            <div className="flex gap-3 mt-4 md:mt-0">
-              <Button variant="outline" className="w-auto px-4" onClick={() => setViewMode("EDIT")}>
-                <i className="fa-solid fa-pen-to-square mr-2"></i> Edit Profile
-              </Button>
-            </div>
+            
           </div>
 
           {/* Navigation Tabs */}
@@ -205,8 +117,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
               {id: "OVERVIEW", label: "Overview", icon: "fa-solid fa-chart-pie"},
               {id: "ACADEMIC", label: "Academic History", icon: "fa-solid fa-book-open"},
               {id: "GUARDIAN", label: "Guardian Info", icon: "fa-solid fa-house-user"},
-              {id: "ADMIN", label: "Administrative", icon: "fa-solid fa-shield-halved"},
-            ].map((tab) => (
+            ].map((tab) => ( 
               <button
                 key={tab.id}
                 onClick={() => {
@@ -272,7 +183,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
             )}
 
             {activeTab === "ACADEMIC" && (
-              <div className="flex flex-col lg:flex-row gap-8 h-full min-h-[600px]">
+              <div className="flex flex-col lg:flex-row gap-8 h-full min-h-[600px]  overflow-y-auto  ">
                 {/* Left: History Navigation */}
                 <div className="lg:w-1/3 space-y-4 no-print flex-shrink-0">
                   <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center">
@@ -315,8 +226,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
 
                 {/* Right: Result View */}
                 <div className="lg:w-2/3 flex-1">
-                  {selectedTerm && reportData ? (
-                    <div className="animate-fadeIn flex flex-col h-full">
+                    {(activeTab=== "ACADEMIC" && reportData) && <div className="animate-fadeIn flex flex-col h-full">
                       {/* Term View Tabs */}
                       <div className="flex items-center gap-2 mb-4 bg-gray-100 p-1 rounded-lg w-fit no-print">
                         <button onClick={() => setTermViewTab("REPORT")} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${termViewTab === "REPORT" ? "bg-white text-navy-900 shadow-sm" : "text-gray-500 hover:text-navy-700"}`}>
@@ -414,16 +324,14 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
                           </div>
                         </div>
                       )}
-                    </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-12 text-center text-gray-400">
+                    </div>}
+                    {(activeTab=== "ACADEMIC" && !reportData) && <div className="h-full flex flex-col items-center justify-center bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-12 text-center text-gray-400">
                       <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
                         <i className="fa-solid fa-file-invoice text-2xl text-navy-200"></i>
                       </div>
                       <h3 className="text-lg font-bold text-navy-900 mb-2">Select a Term or No record found</h3>
                       <p className="max-w-xs">Click on a class from the history list on the left, then select a term to view reports and records.</p>
-                    </div>
-                  )}
+                    </div>}
                 </div>
               </div>
             )}
@@ -467,57 +375,9 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({id,student:s,setStu
               </div>
             )}
 
-            {activeTab === "ADMIN" && (
-              <div className="bg-red-50 border border-red-100 rounded-lg p-8">
-                <h3 className="text-xl font-bold text-red-800 mb-2 flex items-center">
-                  <i className="fa-solid fa-triangle-exclamation mr-3"></i> Danger Zone
-                </h3>
-                <p className="text-sm text-red-600 mb-8 max-w-2xl">These actions are critical and require Director Verification (PIN).</p>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-white p-5 rounded border border-red-100 shadow-sm">
-                    <div>
-                      <h4 className="font-bold text-gray-800">{!s.is_active ? "Reactivate Student" : "Suspend Student"}</h4>
-                      <p className="text-xs text-gray-500 mt-1">Temporarily revoke access.</p>
-                    </div>
-                    <Button disabled={isLoading} variant={!s.is_active ? "primary" : "secondary"} className="w-auto max-w-fit  px-6" onClick={triggerSuspend}>
-                      {!s.is_active ? "Activate" : "Suspend"}
-                    </Button>
-                  </div>
-                  <div className="flex items-center justify-between bg-white p-5 rounded border border-red-100 shadow-sm">
-                    <div>
-                      <h4 className="font-bold text-red-700">Delete Record</h4>
-                      <p className="text-xs text-gray-500 mt-1">Permanently remove student record.</p>
-                    </div>
-                    <Button disabled={isLoading} variant="danger" className="w-auto max-w-fit  px-6" onClick={() => {setIsDeletingModalOpen(true)}}>
-                      Delete Student
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
-      {/* Rejection Note Modal */}
-                  <Modal isOpen={isDeletingModalOpen} onClose={() => {setIsDeletingModalOpen(false);  }} title="Student Deletion" size="md">
-                      <div className="space-y-4">
-                          <p className=" bg-red-50 p-2 text-sm text-red-600 rounded-md ">Please confirm student record delete. This action is irreversible and all the student related data will also be deleted!</p>
-                          <div className="flex justify-end gap-3">
-                              <Button isLoading={isLoading}  variant="secondary" onClick={() => setIsDeletingModalOpen(false)}>Cancel</Button>
-                              <Button 
-                                  isLoading={isLoading}
-                                  onClick={() => {
-                                    triggerDelete() ;
-                                    setIsDeletingModalOpen(false);
-                                  }}
-                                  className="bg-red-600 text-white"
-
-                              >
-                                  Confirm Deleting
-                              </Button>
-                          </div>
-                      </div>
-                  </Modal>
       <ImageViewer isOpen={showImage} imageUrl={urls.BASE_URL + s.picture} onClose={() => setShowImage(false)} />
     </div>
   );

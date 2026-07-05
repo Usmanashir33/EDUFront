@@ -276,7 +276,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
                       setStudent = {setStudent}
                       setViewMode ={setViewMode} 
                       triggerSuspend = {triggerSuspend}
-                      triggerDelete ={triggerDelete}
+                      triggerDelete ={triggerDelete} 
                   />
                 </>
           ) : (
