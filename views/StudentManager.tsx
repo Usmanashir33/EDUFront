@@ -14,8 +14,6 @@ interface StudentManagerProps {
 }
 
 type ViewMode = 'LIST' | 'DETAIL' | 'ADD' | 'EDIT';
-type DetailTab = 'OVERVIEW' | 'ACADEMIC' | 'GUARDIAN' | 'ADMIN';
-type TermViewTab = 'REPORT' | 'ANALYSIS' | 'RECORDS';
 
 
 
@@ -306,7 +304,9 @@ export const StudentManager: React.FC<StudentManagerProps> = ({initialStudentId,
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
-                        {filteredStudents.map(student => (<tr key={student?.id} onClick={() => { setSelectedStudentId(student?.id);setStudent(student); setViewMode('DETAIL'); }} className="hover:bg-blue-50 cursor-pointer transition-colors">
+                        {filteredStudents.map(student => (<tr key={student?.id}
+                         onClick={() => { setSelectedStudentId(student?.id);setStudent(student); setViewMode('DETAIL'); }} 
+                         className="hover:bg-blue-50 cursor-pointer transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="w-8 h-8 rounded-full bg-navy-100 flex items-center justify-center text-navy-700 font-bold text-xs mr-3 overflow-hidden">

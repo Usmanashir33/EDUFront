@@ -12,7 +12,6 @@ import useRequest from '@/customHooks/RequestHook';
 import { uiContext } from '@/customContexts/UiContext';
 
 interface TeacherManagerProps {
-    onUpdateTeachers: (teachers: Teacher[]) => void;
 }
 
 type ViewMode = 'LIST' | 'DETAIL' | 'ADD' | 'EDIT';
@@ -29,7 +28,7 @@ const getMockAttendance = (teacherId: string, dateStr: string) => {
     return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} AM`;
 };
 
-export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers }) => {
+export const TeacherManager: React.FC<TeacherManagerProps> = ({  }) => {
     const [viewMode, setViewMode] = useState<ViewMode>('LIST');
     const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -318,7 +317,6 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
                     setTeacher={setSelectedTeacher}
                     onBack={() => setViewMode('LIST')}
                     onEdit={() => setViewMode('EDIT')}
-                    // onUpdateTeacher={(t) => onUpdateTeachers(teachers.map(old => old.id === t.id ? t : old))}
                     onTriggerSalary={(data) => { setPayrollData(data); setShowPayrollModal(true);}}
                     onViewReceipt={(record) => { setReceiptData({ selectedTeacher, record }); setShowReceipt(true); }}
                     onTriggerSuspend={ triggerSuspend }
@@ -330,7 +328,7 @@ export const TeacherManager: React.FC<TeacherManagerProps> = ({ onUpdateTeachers
                 />
                 
                 <PayrollCalculator isOpen={showPayrollModal} onClose={() => setShowPayrollModal(false)} data={payrollData} setData={setPayrollData} onAuthorize={() => { setShowPayrollModal(false); setPendingAction({ type: 'PAY_SALARY', payload: { month: payrollData.month, breakdown: { ...payrollData, netSalary: (safeParseFloat(payrollData.baseSalary) + safeParseFloat(payrollData.bonus)-safeParseFloat(payrollData.tax)-safeParseFloat(payrollData.deductions)).toString() } } }); setShowPinModal(true); }} />
-                <BankDetailsModal isOpen={showBankModal} onClose={() => setShowBankModal(false)} data={bankForm} setData={setBankForm} onSave={() => { onUpdateTeachers(teachers.map(t => t.id === selectedTeacherId ? { ...t, bankDetails: bankForm } : t)); setShowBankModal(false); }} />
+                <BankDetailsModal isOpen={showBankModal} onClose={() => setShowBankModal(false)} data={bankForm} setData={setBankForm} onSave={() => { setTeachers(teachers.map(t => t.id === selectedTeacherId ? { ...t, bankDetails: bankForm } : t)); setShowBankModal(false); }} />
                 
                 {showReceipt && receiptData && <PaymentReceipt data={receiptData} onClose={() => setShowReceipt(false)} />}
                 {viewDoc && (

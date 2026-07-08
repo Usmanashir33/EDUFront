@@ -20,6 +20,7 @@ const UiContextProvider = ({ children }) => {
     const [promotionLogs, setPromotionLogs] = useState([]);
     const [reportsRecord, setReportsRecord] = useState([]);
     const [permissions, setPermissions] = useState([]);
+
     const [roles, setRoles] = useState([]);
     const [marks, setMarks] = useState(
         {

@@ -10,6 +10,8 @@ const AuthContextProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null); // object to hold current user info
     const [currentSchool, setCurrentSchool] = useState(null); // for future use
     const [userRole, setUserRole] = useState('director');
+    const [userPermissions, setUserPermissions] = useState([]);
+    const [userPermissionsRole, setUserPermissionsRole] = useState([]);
     const {
         setError,
         setPageLoading,
@@ -26,7 +28,7 @@ const AuthContextProvider = ({ children }) => {
         setPromotionLogs,
         setActivities,
         setPermissions,
-        setRoles
+        setRoles,
     } = useContext(uiContext);
 
     const [isAuthenticated, setIsAuthenticated] = useState(
@@ -132,7 +134,8 @@ const AuthContextProvider = ({ children }) => {
         console.log('data: ', data);
         let scl = data?.school_and_academics
         setSelectedSchool(scl || []);
-
+        setUserPermissions(data?.staff_role?.permissions.map(p => p.name) || []);
+        setUserPermissionsRole(scl?.staff_role || {});
         setSections(scl?.sections || []);
         setSubjects(scl?.subjects || []);
         setClassRooms(scl?.classrooms || []);
@@ -156,7 +159,9 @@ const AuthContextProvider = ({ children }) => {
         <authContext.Provider value={{
             currentUser, setCurrentUser, currentUserFullname, userRole, setUserRole,
             currentSchool, setCurrentSchool,
-            getCurrentUser, getToken, isAuthenticated, setIsAuthenticated, setSchoolData
+            getCurrentUser, getToken, isAuthenticated, setIsAuthenticated, setSchoolData,
+            userPermissions, setUserPermissions,
+            userPermissionsRole, setUserPermissionsRole
         }} >
             {children}
         </authContext.Provider>

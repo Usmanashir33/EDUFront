@@ -233,7 +233,7 @@ const {sendRequest} = useRequest() ;
                     {<DeviceManager devices={devices} onUpdateDevices={setDevices}/>}
                 />
                 <Route path='teachers/' element =
-                    {<TeacherManager onUpdateTeachers={setTeachers}/>}
+                    {<TeacherManager />}
                 />
                 <Route path='staffs/' element =
                     {<StaffManager staff={staff}/>}

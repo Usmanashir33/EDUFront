@@ -17,6 +17,7 @@ import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import UnProtectedRoutes from './customProtectors/UnProtectedRoutes';
 import { TeacherDashboard } from './views/TeacherDashboard';
 import { ParentDashboard } from './views/ParentDashboard';
+import { StaffDashboard } from './views/staff';
 
 // Layout for Authentication Pages
 const AuthLayout = ({ children }: { children?: React.ReactNode }) => {
@@ -117,7 +118,7 @@ const App: React.FC = () => {
           getCurrentUser,getToken,
           userRole, setUserRole,
           isAuthenticated,setIsAuthenticated,
-          setSchoolData,
+          setSchoolData,setUserPermissions,setUserPermissionsRole
         } = useContext(authContext);
   const {sendRequest} = useRequest();
   const fetchedRef = useRef(false);
@@ -169,6 +170,8 @@ const App: React.FC = () => {
       }
       setIsLoginSession(true);
       setUserRole(role);
+      setUserPermissions(responseData?.staff_role?.permissions.map(p => p.name) || [])
+      setUserPermissionsRole(responseData?.staff_role || {}) // only for staff login 
       setCurrentUser(responseData) // user instance data base on the role 
       setIsAuthenticated(true);
       navigate('/',{replace:true})
@@ -303,6 +306,19 @@ const App: React.FC = () => {
               <ProtectedRoute>
                     {selectedSchool ? (
                     <TeacherDashboard
+                      onLogout={handleLogout}
+                    />
+                  ) : (
+                    <PageLoader />
+                  )} 
+              </ProtectedRoute>
+           </DashboardLayout>
+        }/>
+        <Route path='/staff/*' element ={
+          <DashboardLayout>
+              <ProtectedRoute>
+                    {selectedSchool ? (
+                    <StaffDashboard
                       onLogout={handleLogout}
                     />
                   ) : (

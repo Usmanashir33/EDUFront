@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import useWebSocketHook from "../customHooks/WebSocketHook";
 import { uiContext } from "./UiContext";
+import { authContext } from "./AuthContext";
 
 export const liveContext = createContext();
 
@@ -14,10 +15,12 @@ const LiveContextProvider = ({ children }) => {
         setReportsRecord
 
     } = useContext(uiContext);
+    const { setPermissions } = useContext(authContext);
     useEffect(() => {
         if (appSocketRef.current) {
             appSocketRef.current.onmessage = async (e) => {
                 let data = JSON.parse(e.data)
+                console.log('data: ', data);
                 if (data?.newPendingPayment) {
                     let newData = data?.newPendingPayment;
                     let updated = pendingPayments.filter(p => p?.id != newData.id)
@@ -28,6 +31,7 @@ const LiveContextProvider = ({ children }) => {
                     setActivities((prev) => [data?.activity_log, ...prev])
                     return;
                 }
+
             }
         }
     }, [appSocketRef.current])

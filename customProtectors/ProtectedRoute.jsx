@@ -41,15 +41,15 @@ const ProtectedRoute = ({ children }) => {
     // prevent users from accessing routes that are not meant for their role
     let currentLocation = location.pathname.split("/").filter(Boolean)[0];
     let userRole = currentUser?.role?.toLowerCase();
-    if (currentLocation && userRole && currentLocation !== userRole) {
-        return (
-            <Navigate
-                to={`/${userRole}`}
-                replace
-                state={{ from: location }}
-            />
-        )
-    }
+    // if (currentLocation && userRole && currentLocation !== userRole) {
+    //     return (
+    //         <Navigate
+    //             to={`/${userRole}`}
+    //             replace
+    //             state={{ from: location }}
+    //         />
+    //     )
+    // }
     if (!isAllowed) {
         return (
             <Navigate
