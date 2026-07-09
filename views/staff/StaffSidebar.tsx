@@ -66,23 +66,27 @@ const getNavItems = () => {
 
         case 'ACCOUNTANT': {
             const baseNavs = [
-                { id: 'OVERVIEW', icon: 'fa-solid fa-chart-pie', label: 'Finance Overview' },
+                { id: 'OVERVIEW', icon: 'fa-solid fa-chart-pie', label: 'Finance Overview' ,
+                    // requiredPermissions: ['can_manage_finance']
+                },
+
             ];
 
             const potentialTabs = [
                 { 
-                    id: 'TRANSACTIONS', 
-                    icon: 'fa-solid fa-money-bill-transfer', 
-                    label: 'Transactions',
-                    requiredPermissions: ['can_view_finance', 'can_manage_payments']
+                    id:"PAYMENT_VALIDATION",  label:"Validations" , icon:"fa-solid fa-check-double",
+                    requiredPermissions: ['can_manage_payments']
                 },
                 
                 { 
-                    id: 'REPORTS', 
-                    icon: 'fa-solid fa-chart-line', 
-                    label: 'Financial Reports',
-                    requiredPermissions: ['can_view_financial_reports']
+                    id:"PAYMENT", label:"Payment", icon:"fa-solid fa-credit-card",
+                    requiredPermissions: ['can_manage_payments']
                 },
+                { 
+                    id:"SEARCH", label:"Search Payment", icon:"fa-solid fa-search" ,
+                    requiredPermissions: ['can_manage_finance']
+                },
+                
                 { 
                     id: 'PROFILE', 
                     icon: 'fa-solid fa-id-badge', 

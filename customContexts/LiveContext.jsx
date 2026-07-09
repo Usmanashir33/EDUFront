@@ -20,7 +20,7 @@ const LiveContextProvider = ({ children }) => {
         if (appSocketRef.current) {
             appSocketRef.current.onmessage = async (e) => {
                 let data = JSON.parse(e.data)
-                console.log('data: ', data);
+                // console.log('data: ', data);
                 if (data?.newPendingPayment) {
                     let newData = data?.newPendingPayment;
                     let updated = pendingPayments.filter(p => p?.id != newData.id)

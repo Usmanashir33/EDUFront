@@ -1,11 +1,8 @@
 import React, { useState, useMemo, useRef, useContext,useEffect  } from 'react';
-import { Student, Teacher, Staff, Transaction, FeeRecord, ClassFeeSetting, ParentPaymentInitiation } from '../types';
 import { FadeIn, Modal, Button, PinModal, ImageUpload, ImageViewer } from '../components/UI';
 import { uiContext } from '@/customContexts/UiContext';
 import { authContext } from '@/customContexts/AuthContext';
 import useRequest from '@/customHooks/RequestHook';
-import { Star } from 'lucide-react';
-import FeeManager from '@/components/settings/FeeManager';
 import PaymentPage from '@/components/finance/PaymentSection';
 import StudentLedger from '@/components/finance/StudentLedger';
 import PaymentDetails from '@/components/finance/PaymentDetails';
@@ -143,11 +140,21 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
     const [currentTermRecords,setCurrentTermRecords] = useState<any>([])
 
-    const totalPendingPayments = useMemo(() => {
-        if (!pendingPayments?.length) return ;
-        let count = pendingPayments.filter(p => p.status === "PENDING")
-        return count.length || 0 
-    },[pendingPayments])
+    const pendingPaymentStats = useMemo(() => {
+        // Return zeros immediately if data is missing or empty
+        if (!pendingPayments?.length) return { totalAmount: 0, pendingCount: 0 };
+
+        // Filter for items that actually have a PENDING status
+        const pendingItems = pendingPayments.filter(p => p.status === "PENDING");
+
+        // Sum up the total_amount of the filtered pending items
+        const totalAmount = pendingItems.reduce((sum, p) => sum + (Number(p.total_amount) || 0), 0);
+
+        return {
+            totalAmount,
+            pendingCount: pendingItems.length
+        };
+    }, [pendingPayments]);
 
     const studentsPaymentAmount = useMemo(() => {
     if (!paymentStudents?.length) return 0;
@@ -246,7 +253,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         if (((currentUser?.role?.toLowerCase() === "director") && !directorValidation)) return (
                 setToast({type:"error",message:"Please fill amount fields"})
             )
-        if (((currentUser?.role?.toLowerCase() !== "director") && !parsonalValidation)) return (
+        if ((!parsonalValidation)) return (
                 setToast({type:"error",message:"Please fill all fields"})
             )
 
@@ -254,9 +261,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         if (isNaN(amount) || amount <= 0) return (
             setToast({type:"error",message:"invalid amount"})
         );
-        if ((currentUser?.role?.toLowerCase() !== "director")){
-            // return 
-        }
+        
         // director actions  process form 
         let form = new FormData()
         form.append("school",selectedSchool?.id)
@@ -373,81 +378,6 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     const [feeRecords, setFeeRecords] = useState([]);
 
 
-    // Generate Transactions
-    const transactions: Transaction[] = useMemo(() => {
-        let txns: Transaction[] = [];
-
-        // 1. Fee Incomes (Only relevant for Directors or the specific Student)
-        if (!personalMode || currentUserRole === 'student') {
-            const feeTxns = feeRecords
-                // .filter(r => r.amountPaid > 0)
-                // .map(r => {
-                //     const s = students.find(st => st.id === r.studentId);
-                //     return {
-                //         id: `txn-fee-${r.id}`,
-                //         type: 'INCOME' as const,
-                //         category: 'FEES' as const,
-                //         amount: r.amountPaid,
-                //         description: `School Fees (${r.term}) - ${s?.firstName} ${s?.lastName}`,
-                //         date: r.lastPaymentDate || new Date().toISOString(),
-                //         status: 'COMPLETED' as const,
-                //         reference: `REF-${r.id.slice(-6)}`
-                //     };
-                // });
-            txns = [...txns, ...feeTxns];
-        }
-
-        // 2. Salary Expenses (Only relevant for Directors or the specific Teacher/Staff)
-        if (!personalMode || currentUserRole === 'teacher' || currentUserRole === 'staff') {
-            const relevantTeachers = personalMode && currentUserRole === 'teacher' 
-                ? teachers.filter(t => t.id === currentUserId) 
-                : teachers;
-                
-            const teacherTxns = relevantTeachers
-                .flatMap(t => t.paymentHistory || [])
-                .map(p => {
-                    const teacher = teachers.find(t => t.paymentHistory?.includes(p));
-                    return {
-                        id: `txn-sal-t-${p.id}`,
-                        type: 'EXPENSE' as const,
-                        category: 'SALARY' as const,
-                        amount: parseFloat(p.amount.toString().replace(/,/g, '')),
-                        description: `Salary - ${teacher?.title} ${teacher?.lastName}`,
-                        date: p.date,
-                        status: 'COMPLETED' as const,
-                        reference: p.transactionRef
-                    };
-                });
-            txns = [...txns, ...teacherTxns];
-        }
-
-        // 3. Other Expenses (Director Only)
-        if (!personalMode) {
-             const otherTxns = [
-                { id: 't-exp-1', type: 'EXPENSE' as const, category: 'MAINTENANCE' as const, amount: 45000, description: 'Generator Repair', date: '2023-10-28', status: 'COMPLETED' as const, reference: 'EXP-001' },
-                { id: 't-exp-2', type: 'EXPENSE' as const, category: 'OTHER' as const, amount: 12500, description: 'Office Stationery', date: '2023-11-02', status: 'COMPLETED' as const, reference: 'EXP-002' }
-            ];
-            txns = [...txns, ...otherTxns];
-        }
-
-        return txns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [feeRecords, teachers, students, personalMode, currentUserId, currentUserRole]);
-
-
-    // --- STATS ---
-    
-    // Director Stats
-    const totalIncome = transactions.filter(t => t.type === 'INCOME').reduce((acc, curr) => acc + curr.amount, 0);
-    const totalExpenses = transactions.filter(t => t.type === 'EXPENSE').reduce((acc, curr) => acc + curr.amount, 0);
-    const netBalance = totalIncome - totalExpenses;
-
-    // Student Personal Stats
-    const myTotalPaid = feeRecords.reduce((acc, r) => acc + r?.amountPaid, 0);
-    const myTotalDue = feeRecords.reduce((acc, r) => acc + r?.totalDue, 0);
-    const myOutstanding = myTotalDue - myTotalPaid;
-
-    // Teacher Personal Stats
-    const myTotalEarned = transactions.filter(t => t.type === 'EXPENSE' && t.category === 'SALARY').reduce((acc, curr) => acc + curr.amount, 0);
 
     const TabButton = ({ id, label, icon }: { id: FinanceTab, label: string, icon: string }) => (
         <button
@@ -471,7 +401,6 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
     return (
         <div className="h-full flex flex-col space-y-4 animate-fadeIn max-h-screen">
-            {/* Merged Header: Fee Collection Analysis + Tabs */}
             
             {!personalMode && (
                 <div className="bg-navy-900 text-white p-3 rounded-xl shadow-lg relative overflow-hidden flex-shrink-0 ">
@@ -514,7 +443,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                     {/* <TabButton id="PAYROLL" label="Payroll" icon="fa-solid fa-file-invoice-dollar" /> */}
                                     {/* <TabButton id="TRANSACTIONS" label="Ledger" icon="fa-solid fa-list" /> */}
                                     <div className='relative'>
-                                       {(totalPendingPayments > 0) &&  <span className='absolute top-2 right-1 animate-bounce z-10'>
+                                       {(pendingPaymentStats?.pendingCount > 0) &&  <span className='absolute top-2 right-1 animate-bounce z-10'>
 
                                             <span className='relative flex items-center justify-center'>
 
@@ -522,7 +451,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
                                                 <span className=" absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white
                                                 ">
-                                                    {totalPendingPayments}
+                                                    {pendingPaymentStats.pendingCount}
                                                 </span>
 
                                             </span>
@@ -555,95 +484,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar -mb-2">
                 
-                {/* --- STUDENT PERSONAL VIEW --- */}
-                {personalMode && currentUserRole === 'student' && (
-                    <FadeIn>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="bg-navy-900 text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10"></div>
-                                <p className="text-xs font-bold text-navy-300 uppercase">Outstanding Balance</p>
-                                <h3 className="text-3xl font-bold mt-1 text-gold-500">{formatCurrency(myOutstanding)}</h3>
-                                <p className="text-xs text-navy-200 mt-2">{myOutstanding > 0 ? 'Payment Due Immediately' : 'All fees cleared'}</p>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                <p className="text-xs font-bold text-gray-500 uppercase">Total Paid (YTD)</p>
-                                <h3 className="text-3xl font-bold mt-1 text-green-600">{formatCurrency(myTotalPaid)}</h3>
-                            </div> 
 
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                <p className="text-xs font-bold text-gray-500 uppercase">Session Total</p>
-                                <h3 className="text-3xl font-bold mt-1 text-navy-900">{formatCurrency(myTotalDue)}</h3>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="p-6 border-b border-gray-200"><h3 className="font-bold text-navy-900">Fee Records</h3></div>
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Term</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Total Due</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Paid</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Balance</th>
-                                        <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {feeRecords.map(r => (
-                                        <tr key={r.id}>
-                                            <td className="px-6 py-4 text-sm font-bold text-navy-900">{r.term}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-600">{formatCurrency(r.totalDue)}</td>
-                                            <td className="px-6 py-4 text-sm text-green-600 font-medium">{formatCurrency(r.amountPaid)}</td>
-                                            <td className="px-6 py-4 text-sm text-red-600 font-medium">{formatCurrency(r.totalDue - r.amountPaid)}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${r.status === 'PAID' ? 'bg-green-100 text-green-700' : r.status === 'PARTIAL' ? 'bg-gold-100 text-gold-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </FadeIn>
-                )}
-
-                {/* --- TEACHER PERSONAL VIEW --- */}
-                {personalMode && currentUserRole === 'teacher' && (
-                    <FadeIn>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-navy-900">
-                                <p className="text-xs font-bold text-gray-500 uppercase">Total Earnings (YTD)</p>
-                                <h3 className="text-3xl font-bold mt-1 text-navy-900">{formatCurrency(myTotalEarned)}</h3>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                <p className="text-xs font-bold text-gray-500 uppercase">Last Payment Date</p>
-                                <h3 className="text-3xl font-bold mt-1 text-navy-900">{transactions[0] ? new Date(transactions[0].date).toLocaleDateString() : 'N/A'}</h3>
-                            </div>
-                        </div>
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="p-6 border-b border-gray-200"><h3 className="font-bold text-navy-900">Salary History</h3></div>
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Date</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Description</th>
-                                        <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Amount</th>
-                                        <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {transactions.map(t => (
-                                        <tr key={t.id}>
-                                            <td className="px-6 py-4 text-sm text-gray-600">{new Date(t.date).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 text-sm font-medium text-navy-900">{t.description}</td>
-                                            <td className="px-6 py-4 text-sm font-bold text-right text-green-600">{formatCurrency(t.amount)}</td>
-                                            <td className="px-6 py-4 text-center"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">{t.status}</span></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </FadeIn>
-                )}
 
                 {/* --- DIRECTOR OVERVIEW VIEW (Existing) --- */}
                 {!personalMode && activeTab === 'OVERVIEW' && (
@@ -736,9 +577,11 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                     {!currentTermRecords?.data?.filter(r => r.status === drillDownStatus).length && <div className="px-6 py-3 text-center p-10 my-10 tex font-bold text-gray-400 ">
                                         {`No ${drillDownStatus} Payment found For ${selectedSession} » ${selectedTerm} `}
                                     </div>}
-                                    {currentTermRecords?.data?.length >= 14 && <div className=" text-center text-blue-600 font-xl  hover:pointer-cursor" onClick={() => {
-                                        setShowAllStudents(true);
-                                    }}> »» see all</div>}
+                                    {currentTermRecords?.data?.length >= 14 && <div className=" text-center text-blue-600 font-xl  hover:pointer-cursor"
+                                        onClick={() => {
+                                            setShowAllStudents(true);
+                                        }}
+                                    > »» see all</div>}
                                 </div>
                             </div>
                         )}
@@ -947,7 +790,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                                         onClick={() => setValidationTab('PENDING')}
                                         className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${validationTab === 'PENDING' ? 'bg-white text-navy-900 shadow-sm' : 'text-gray-500 hover:text-navy-700'}`}
                                     >
-                                        Pending ({totalPendingPayments})
+                                        Pending ({pendingPaymentStats.pendingCount})
                                     </button>
                                     <button 
                                         onClick={() => setValidationTab('APPROVED')}

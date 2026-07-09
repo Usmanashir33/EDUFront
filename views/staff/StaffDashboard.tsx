@@ -22,6 +22,8 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({ onLogout }) => {
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
     const {selectedSchool:school,userPermissions} = useContext(uiContext);
     const {currentUser} = useContext(authContext);
+    const  currentTerm = school.terms.find(t => t.is_current)
+    const  currentSession = school.sessions.find(t => t.is_current)
 
     // Mock Name based on role
     const getStaffName = () => {
@@ -67,7 +69,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({ onLogout }) => {
             case 'REGISTRAR':
                 return <RegistrarView activePage={activeModule} />;
             case 'ACCOUNTANT':
-                return <AccountantView />;
+                return <AccountantView  activeTab={activeModule} setActiveTab={setActiveModule} />;
             case 'EXAM_OFFICER':
                 return <ExamOfficerView />;
             default:
@@ -107,6 +109,15 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({ onLogout }) => {
                         <h1 className="text-xl font-black text-slate-900 tracking-tight">{school.name}</h1>
                         <div className="h-6 w-px bg-slate-200"></div>
                         <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">{activeModule.replace('_', ' ')}</div>
+                        <div className="h-6 w-px bg-slate-200"></div>
+                        <p className="text-sm text-gray-500 flex items-center gap-3 mt-1">
+                            <span>
+                                <i className="fa-solid fa-calendar mr-1"></i> {currentSession?.name}
+                            </span>
+                            <span>
+                                <i className="fa-solid fa-flag mr-1"></i> {currentTerm?.name}
+                            </span>
+                        </p>
                     </div>
 
                     {/* Role Switcher for Demo Purposes */}
